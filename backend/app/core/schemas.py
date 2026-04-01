@@ -210,3 +210,18 @@ class StatsResponse(BaseModel):
     patents_this_week: int
     top_cpc_sections: list[dict[str, Any]]
     top_assignees: list[dict[str, Any]]
+
+
+class ExpirySummary(BaseModel):
+    within_30_days: int
+    within_90_days: int
+    within_365_days: int
+
+
+class TrendPoint(BaseModel):
+    period: str
+    count: int
+
+
+class TrendResponse(BaseModel):
+    points: list[TrendPoint]

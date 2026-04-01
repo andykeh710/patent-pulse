@@ -129,6 +129,21 @@ def ingest_grants_range(self, start_date: str, end_date: str) -> dict:
     return stats
 
 
+@celery_app.task(
+    bind=True,
+    name="app.tasks.ingest_grants.ingest_expiry_window_grants",
+    max_retries=1,
+)
+def ingest_expiry_window_grants(self) -> dict:
+    """
+    Backfill USPTO grants from 2006-2011.
+    These have filing dates ~2004-2009, giving expiry dates ~2024-2029.
+    Used to populate the 'expiring soon' content bucket.
+    """
+    logger.info("Starting expiry window backfill: 2006-01-01 to 2011-12-31")
+    return ingest_grants_range.run("2006-01-01", "2011-12-31")
+
+
 async def _upsert_patent_async(data: dict):
     """Helper to run async upsert from sync Celery task."""
     async with async_session_maker() as session:

@@ -1,10 +1,12 @@
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
+from app.api.deps import AppSettings, DbSession
 from app.config import settings
 from app.core.schemas import TaskStatusResponse
 from app.tasks.celery_app import celery_app
@@ -12,6 +14,17 @@ from app.tasks.ingest_applications import ingest_weekly_applications
 from app.tasks.ingest_grants import ingest_weekly_grants
 
 router = APIRouter()
+
+DEFAULT_THEMES = [
+    {"name": "Human Necessities", "cpc_prefixes": ["A"], "assignee_keywords": [], "title_keywords": [], "description": "Biotechnology, pharma, food, agriculture"},
+    {"name": "Performing Operations", "cpc_prefixes": ["B"], "assignee_keywords": [], "title_keywords": [], "description": "Manufacturing, transport, tools"},
+    {"name": "Chemistry & Metallurgy", "cpc_prefixes": ["C"], "assignee_keywords": [], "title_keywords": [], "description": "Chemical processes, materials, metallurgy"},
+    {"name": "Textiles & Paper", "cpc_prefixes": ["D"], "assignee_keywords": [], "title_keywords": [], "description": "Textiles, paper, flexible materials"},
+    {"name": "Fixed Constructions", "cpc_prefixes": ["E"], "assignee_keywords": [], "title_keywords": [], "description": "Building, construction, mining"},
+    {"name": "Mechanical Engineering", "cpc_prefixes": ["F"], "assignee_keywords": [], "title_keywords": [], "description": "Engines, pumps, mechanical systems"},
+    {"name": "Physics & Computing", "cpc_prefixes": ["G"], "assignee_keywords": [], "title_keywords": [], "description": "AI/ML, computing, optics, instruments"},
+    {"name": "Electricity & Electronics", "cpc_prefixes": ["H"], "assignee_keywords": [], "title_keywords": [], "description": "Electronics, communications, energy"},
+]
 
 
 class TriggerIngestRequest(BaseModel):
@@ -121,3 +134,69 @@ async def trigger_family_resolution(limit: int = 100) -> TaskStatusResponse:
         status="PENDING",
         result=None,
     )
+
+
+@router.post("/trigger-expiry-backfill", response_model=TaskStatusResponse)
+async def trigger_expiry_backfill(settings: AppSettings) -> TaskStatusResponse:
+    """
+    Trigger backfill of USPTO grants from 2006-2011 for expiry window population (development only).
+    """
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Not available in production")
+
+    from app.tasks.ingest_grants import ingest_expiry_window_grants
+
+    task = ingest_expiry_window_grants.delay()
+
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
+@router.post("/seed-themes")
+async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
+    """
+    Seed default CPC-section themes if they don't already exist (development only).
+    """
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Not available in production")
+
+    from app.core.theme_models import Theme
+
+    created = 0
+    skipped = 0
+
+    for theme_data in DEFAULT_THEMES:
+        name = theme_data["name"]
+        result = await db.execute(select(Theme).where(Theme.name == name))
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            skipped += 1
+        else:
+            theme = Theme(
+                name=name,
+                description=theme_data["description"],
+                cpc_prefixes=theme_data["cpc_prefixes"],
+                assignee_keywords=theme_data["assignee_keywords"],
+                title_keywords=theme_data["title_keywords"],
+            )
+            db.add(theme)
+            created += 1
+
+    await db.commit()
+
+    return {"created": created, "skipped": skipped}
+
+
+@router.post("/trigger-match-themes", response_model=TaskStatusResponse)
+async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
+    """
+    Trigger theme matching for all active themes (development only).
+    """
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Not available in production")
+
+    from app.tasks.theme_matcher import match_all_themes
+
+    task = match_all_themes.delay(limit_per_theme=10000)
+
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)

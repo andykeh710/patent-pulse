@@ -2,17 +2,21 @@ from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import Text, and_, func, select
+from sqlalchemy import Text, and_, func, select, text
 from sqlalchemy.orm import load_only
 
 from app.api.deps import DbSession
+from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
 from app.core.schemas import (
+    ExpirySummary,
     PaginatedResponse,
     PatentDetailResponse,
     PatentListItem,
     StatsResponse,
     SummarySchema,
+    TrendPoint,
+    TrendResponse,
 )
 
 router = APIRouter()
@@ -121,15 +125,94 @@ async def get_stats(db: DbSession) -> StatsResponse:
     )
     patents_this_week = week_result.scalar() or 0
 
+    cpc_rows = (
+        await db.execute(
+            text(
+                """
+                SELECT LEFT(cpc_val, 1) AS section, COUNT(*) AS count
+                FROM patent_publications, jsonb_array_elements_text(cpc) AS cpc_val
+                WHERE cpc_val IS NOT NULL AND cpc_val != ''
+                GROUP BY section ORDER BY count DESC LIMIT 5
+                """
+            )
+        )
+    ).fetchall()
+    top_cpc_sections = [{"section": r.section, "count": r.count} for r in cpc_rows]
+
+    assignee_rows = (
+        await db.execute(
+            text(
+                """
+                SELECT assignee_val AS assignee, COUNT(*) AS count
+                FROM patent_publications, jsonb_array_elements_text(assignees) AS assignee_val
+                WHERE assignee_val IS NOT NULL AND assignee_val != ''
+                GROUP BY assignee_val ORDER BY count DESC LIMIT 5
+                """
+            )
+        )
+    ).fetchall()
+    top_assignees = [{"assignee": r.assignee, "count": r.count} for r in assignee_rows]
+
     return StatsResponse(
         total_patents=total_patents,
         total_grants=total_grants,
         total_applications=total_applications,
         summarized_count=summarized_count,
         patents_this_week=patents_this_week,
-        top_cpc_sections=[],
-        top_assignees=[],
+        top_cpc_sections=top_cpc_sections,
+        top_assignees=top_assignees,
     )
+
+
+@router.get("/expiry-summary", response_model=ExpirySummary)
+async def get_expiry_summary(db: DbSession) -> ExpirySummary:
+    """Get count of expiring patents within 30, 90, and 365 days."""
+    today = date.today()
+
+    async def count_expiring(days: int) -> int:
+        cutoff = today + timedelta(days=days)
+        r = await db.execute(
+            select(func.count()).select_from(PatentPublication).where(
+                and_(
+                    PatentPublication.estimated_expiry_date >= today,
+                    PatentPublication.estimated_expiry_date <= cutoff,
+                    PatentPublication.legal_status == LegalStatus.GRANTED,
+                )
+            )
+        )
+        return r.scalar() or 0
+
+    within_30 = await count_expiring(30)
+    within_90 = await count_expiring(90)
+    within_365 = await count_expiring(365)
+
+    return ExpirySummary(
+        within_30_days=within_30,
+        within_90_days=within_90,
+        within_365_days=within_365,
+    )
+
+
+@router.get("/trend", response_model=TrendResponse)
+async def get_trend(db: DbSession) -> TrendResponse:
+    """Get publication trend for the last 12 months."""
+    twelve_months_ago = date.today().replace(day=1) - timedelta(days=365)
+    result = await db.execute(
+        select(
+            func.date_trunc("month", PatentPublication.publication_date).label("month"),
+            func.count().label("count"),
+        )
+        .where(PatentPublication.publication_date >= twelve_months_ago)
+        .group_by(text("month"))
+        .order_by(text("month"))
+    )
+    rows = result.fetchall()
+    points = [
+        TrendPoint(period=row.month.strftime("%Y-%m"), count=row.count)
+        for row in rows
+        if row.month
+    ]
+    return TrendResponse(points=points)
 
 
 @router.get("/{patent_id}", response_model=PatentDetailResponse)
