@@ -196,7 +196,14 @@ async def get_expiry_summary(db: DbSession) -> ExpirySummary:
 @router.get("/trend", response_model=TrendResponse)
 async def get_trend(db: DbSession) -> TrendResponse:
     """Get publication trend for the last 12 months."""
-    twelve_months_ago = date.today().replace(day=1) - timedelta(days=365)
+    today = date.today()
+    # Go back exactly 12 calendar months
+    year = today.year
+    month = today.month - 12
+    if month <= 0:
+        month += 12
+        year -= 1
+    twelve_months_ago = date(year, month, 1)
     result = await db.execute(
         select(
             func.date_trunc("month", PatentPublication.publication_date).label("month"),
