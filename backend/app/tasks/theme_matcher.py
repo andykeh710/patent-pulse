@@ -1,0 +1,203 @@
+"""
+Theme Matching Tasks.
+
+Matches patents to themes based on CPC prefixes, assignee keywords,
+and title keywords.
+"""
+
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from uuid import UUID
+
+from sqlalchemy import and_, func, select
+from sqlalchemy.dialects.postgresql import insert
+
+from app.core.models import PatentPublication
+from app.core.theme_models import Theme, ThemeMatch
+from app.database import async_session_maker
+from app.tasks.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.theme_matcher.match_all_themes",
+)
+def match_all_themes(self, limit_per_theme: int = 500) -> dict:
+    """
+    Match patents to all active themes.
+
+    Args:
+        limit_per_theme: Maximum patents to match per theme
+
+    Returns:
+        Stats dict with matched/failed counts per theme
+    """
+    logger.info("Starting theme matching for all themes")
+
+    stats = asyncio.run(_match_all_themes_async(limit_per_theme))
+
+    logger.info(f"Theme matching complete: {stats}")
+    return stats
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.theme_matcher.match_theme",
+)
+def match_theme(self, theme_id: str, limit: int = 500) -> dict:
+    """
+    Match patents to a specific theme.
+
+    Args:
+        theme_id: UUID of the theme
+        limit: Maximum patents to process
+
+    Returns:
+        Stats dict with matched count
+    """
+    logger.info(f"Starting theme matching for theme {theme_id}")
+
+    stats = asyncio.run(_match_theme_async(UUID(theme_id), limit))
+
+    logger.info(f"Theme matching complete for {theme_id}: {stats}")
+    return stats
+
+
+async def _match_all_themes_async(limit_per_theme: int) -> dict:
+    """Match patents to all active themes."""
+    stats = {"themes_processed": 0, "total_matches": 0, "errors": 0}
+
+    async with async_session_maker() as session:
+        result = await session.execute(select(Theme).where(Theme.is_active == True))
+        themes = result.scalars().all()
+
+        for theme in themes:
+            try:
+                theme_stats = await _match_single_theme(session, theme, limit_per_theme)
+                stats["total_matches"] += theme_stats["matched"]
+                stats["themes_processed"] += 1
+            except Exception as e:
+                logger.error(f"Failed to match theme {theme.name}: {e}")
+                stats["errors"] += 1
+
+        await session.commit()
+
+    return stats
+
+
+async def _match_theme_async(theme_id: UUID, limit: int) -> dict:
+    """Match patents to a specific theme."""
+    async with async_session_maker() as session:
+        result = await session.execute(select(Theme).where(Theme.id == theme_id))
+        theme = result.scalar_one_or_none()
+
+        if not theme:
+            return {"error": "Theme not found"}
+
+        stats = await _match_single_theme(session, theme, limit)
+        await session.commit()
+
+        return stats
+
+
+async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
+    """Match patents to a single theme."""
+    stats = {"matched": 0, "updated": 0, "skipped": 0}
+
+    conditions = []
+
+    if theme.cpc_prefixes:
+        for prefix in theme.cpc_prefixes:
+            conditions.append(
+                PatentPublication.cpc.op("@>")(func.array([prefix]))
+            )
+
+    if theme.assignee_keywords:
+        for keyword in theme.assignee_keywords:
+            conditions.append(
+                func.array_to_string(PatentPublication.assignees, " ").ilike(
+                    f"%{keyword}%"
+                )
+            )
+
+    if theme.title_keywords:
+        for keyword in theme.title_keywords:
+            conditions.append(PatentPublication.title.ilike(f"%{keyword}%"))
+
+    if not conditions:
+        return stats
+
+    from sqlalchemy import or_
+
+    query = (
+        select(PatentPublication)
+        .where(or_(*conditions))
+        .order_by(PatentPublication.publication_date.desc())
+        .limit(limit)
+    )
+
+    result = await session.execute(query)
+    patents = result.scalars().all()
+
+    for patent in patents:
+        score, reasons = _calculate_match_score(patent, theme)
+
+        if score > 0:
+            stmt = (
+                insert(ThemeMatch)
+                .values(
+                    theme_id=theme.id,
+                    patent_id=patent.id,
+                    match_score=score,
+                    match_reasons=reasons,
+                    matched_at=datetime.utcnow(),
+                )
+                .on_conflict_do_update(
+                    index_elements=["theme_id", "patent_id"],
+                    set_={
+                        "match_score": score,
+                        "match_reasons": reasons,
+                        "matched_at": datetime.utcnow(),
+                    },
+                )
+            )
+            await session.execute(stmt)
+            stats["matched"] += 1
+        else:
+            stats["skipped"] += 1
+
+    return stats
+
+
+def _calculate_match_score(patent: PatentPublication, theme: Theme) -> tuple[float, list[str]]:
+    """Calculate how well a patent matches a theme."""
+    score = 0.0
+    reasons = []
+
+    if theme.cpc_prefixes and patent.cpc:
+        for prefix in theme.cpc_prefixes:
+            for cpc in patent.cpc:
+                if cpc.upper().startswith(prefix.upper()):
+                    score += 0.4
+                    reasons.append(f"CPC: {cpc}")
+                    break
+
+    if theme.assignee_keywords and patent.assignees:
+        assignee_text = " ".join(patent.assignees).lower()
+        for keyword in theme.assignee_keywords:
+            if keyword.lower() in assignee_text:
+                score += 0.3
+                reasons.append(f"Assignee: {keyword}")
+
+    if theme.title_keywords and patent.title:
+        title_lower = patent.title.lower()
+        for keyword in theme.title_keywords:
+            if keyword.lower() in title_lower:
+                score += 0.3
+                reasons.append(f"Title: {keyword}")
+
+    score = min(score, 1.0)
+    return score, reasons

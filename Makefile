@@ -1,0 +1,95 @@
+.PHONY: up down build logs shell test migrate seed clean
+
+# Start all services
+up:
+	docker compose up -d
+
+# Start with logs
+up-logs:
+	docker compose up
+
+# Stop all services
+down:
+	docker compose down
+
+# Rebuild all images
+build:
+	docker compose build
+
+# View logs
+logs:
+	docker compose logs -f
+
+# View specific service logs
+logs-%:
+	docker compose logs -f $*
+
+# Shell into backend container
+shell:
+	docker compose exec backend bash
+
+# Shell into frontend container
+shell-frontend:
+	docker compose exec frontend sh
+
+# Run backend tests
+test:
+	docker compose exec backend pytest
+
+# Run backend tests with coverage
+test-cov:
+	docker compose exec backend pytest --cov=app --cov-report=html
+
+# Run frontend tests
+test-frontend:
+	docker compose exec frontend npm test
+
+# Run alembic migrations
+migrate:
+	docker compose exec backend alembic upgrade head
+
+# Create new migration
+migration:
+	@read -p "Migration message: " msg; \
+	docker compose exec backend alembic revision --autogenerate -m "$$msg"
+
+# Run linting
+lint:
+	docker compose exec backend ruff check app
+	docker compose exec frontend npm run lint
+
+# Format code
+format:
+	docker compose exec backend ruff format app
+
+# Reset database
+reset-db:
+	docker compose down -v
+	docker compose up -d db
+	sleep 3
+	docker compose exec backend alembic upgrade head
+
+# Install backend dependencies locally (for IDE support)
+install-local:
+	cd backend && poetry install
+
+# Install frontend dependencies locally
+install-frontend:
+	cd frontend && npm install
+
+# Clean up
+clean:
+	docker compose down -v --rmi local
+	rm -rf backend/.pytest_cache backend/.coverage backend/htmlcov
+	rm -rf frontend/.next frontend/node_modules
+
+# Production build
+build-prod:
+	docker compose -f docker-compose.yml build
+
+# Health check
+health:
+	@echo "Backend:"
+	@curl -s http://localhost:8000/health | python3 -m json.tool || echo "Backend not running"
+	@echo "\nFrontend:"
+	@curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "Frontend not running"
