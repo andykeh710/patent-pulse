@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import { patentsApi, searchApi } from "@/lib/api";
 import type {
+  ExpirySummary,
   PaginatedResponse,
   PatentDetail,
   PatentListItem,
@@ -8,6 +9,7 @@ import type {
   SearchParams,
   Stats,
   Summary,
+  TrendResponse,
 } from "@/lib/types";
 
 export function usePatents(params: PatentListParams = {}) {
@@ -46,4 +48,12 @@ export function usePatentSearch(params: SearchParams | null) {
   return useSWR<PaginatedResponse<PatentListItem>>(key, () =>
     searchApi.search(params!)
   );
+}
+
+export function useExpirySummary() {
+  return useSWR<ExpirySummary>(["expiry-summary"], () => patentsApi.getExpirySummary());
+}
+
+export function usePatentTrend() {
+  return useSWR<TrendResponse>(["patent-trend"], () => patentsApi.getTrend());
 }

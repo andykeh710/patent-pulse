@@ -20,7 +20,7 @@ export default function PatentDetailPage({
     patent?.summarized_at ? null : id
   );
 
-  const displaySummary = patent?.summary || summary;
+  const displaySummary = (patent?.summary || summary) ?? null;
 
   if (isLoading) {
     return (
