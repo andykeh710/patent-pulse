@@ -1,0 +1,9 @@
+{
+  "_meta": {
+    "description": "Deterministic 50-patent dev fixture used by AI tests.",
+    "stratification": "stratified across 6 CPC sections (A, B, C, G, H, F) and grant years 2017-2024, mix of expired/active, includes patents with prior summaries for regression checks.",
+    "schema_version": 1,
+    "generated_by": "scripts/dump_dev_fixture.py (run manually after a fresh ingest)"
+  },
+  "patents": []
+}

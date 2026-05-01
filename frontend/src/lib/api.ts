@@ -1,14 +1,23 @@
 import type {
+  CreateRunRequest,
+  EstimateRequest,
+  EstimateResponse,
   ExpiryItem,
   ExpiryParams,
   ExpirySummary,
+  OpportunityItem,
+  OpportunityListParams,
   PaginatedResponse,
   PatentDetail,
   PatentListItem,
   PatentListParams,
+  RunListResponse,
+  RunMetadata,
+  RunSummary,
   SearchParams,
   Stats,
   Summary,
+  TabCounts,
   Theme,
   ThemeStats,
   TrendResponse,
@@ -70,6 +79,38 @@ export const patentsApi = {
   getExpirySummary: () => apiFetch<ExpirySummary>(`/api/v1/patents/expiry-summary`),
 
   getTrend: () => apiFetch<TrendResponse>(`/api/v1/patents/trend`),
+
+  getPriorityWatch: (
+    bucket: "expiring_soon" | "recent" | "all" = "expiring_soon",
+    pageSize = 12
+  ) =>
+    apiFetch<PaginatedResponse<PatentListItem>>(
+      `/api/v1/patents/priority-watch?bucket=${bucket}&page_size=${pageSize}`
+    ),
+
+  generateWhyNow: (id: string) =>
+    apiFetch<{ status: string; headline: string; summary: string; signals: { type: string; explanation: string }[]; confidence: string; limitations: string[] }>(
+      `/api/v1/patents/${id}/why-now`,
+      { method: "POST" }
+    ),
+
+  generateOpportunityNarrative: (id: string) =>
+    apiFetch<{ status: string; opportunity_type: string; plain_english_opportunity: string; possible_products: string[]; target_customers: string[]; implementation_difficulty: string; commercial_timing: string; risks: string[] }>(
+      `/api/v1/patents/${id}/opportunity-narrative`,
+      { method: "POST" }
+    ),
+
+  generateTrendSnapshot: (id: string) =>
+    apiFetch<{ status: string; artifact_id: string; trend_score: number; components: Record<string, { sub_score: number; weight: number; contribution: number }> }>(
+      `/api/v1/patents/${id}/trend-snapshot`,
+      { method: "POST" }
+    ),
+
+  generateAssigneeIntelligence: (id: string) =>
+    apiFetch<{ status: string; artifact_id: string; assignee_intelligence_score: number; components: Record<string, { sub_score: number; weight: number; contribution: number }> }>(
+      `/api/v1/patents/${id}/assignee-intelligence`,
+      { method: "POST" }
+    ),
 };
 
 export const searchApi = {
@@ -110,6 +151,36 @@ export const adminApi = {
     apiFetch<{ created: number; skipped: number }>(`/api/v1/admin/seed-themes`, { method: "POST" }),
   triggerMatchThemes: () =>
     apiFetch<{ task_id: string; status: string }>(`/api/v1/admin/trigger-match-themes`, { method: "POST" }),
+};
+
+export const aiRunsApi = {
+  estimate: (body: EstimateRequest) =>
+    apiFetch<EstimateResponse>(`/api/v1/ai-runs/estimate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  create: (body: CreateRunRequest) =>
+    apiFetch<RunSummary>(`/api/v1/ai-runs`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  list: (limit = 50, taskType?: string) => {
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (taskType) qs.set("task_type", taskType);
+    return apiFetch<RunListResponse>(`/api/v1/ai-runs?${qs.toString()}`);
+  },
+  get: (id: string) => apiFetch<RunSummary>(`/api/v1/ai-runs/${id}`),
+  artifacts: (id: string, limit = 50, offset = 0) =>
+    apiFetch<ArtifactListResponse>(`/api/v1/ai-runs/${id}/artifacts?limit=${limit}&offset=${offset}`),
+  meta: () => apiFetch<RunMetadata>(`/api/v1/ai-runs/meta/options`),
+};
+
+export const opportunityApi = {
+  list: (params: OpportunityListParams = {}) =>
+    apiFetch<PaginatedResponse<OpportunityItem>>(
+      `/api/v1/opportunity?${toQueryString(params)}`
+    ),
+  tabCounts: () => apiFetch<TabCounts>(`/api/v1/opportunity/tab-counts`),
 };
 
 export const healthApi = {

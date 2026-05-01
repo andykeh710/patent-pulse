@@ -5,9 +5,21 @@ import Link from "next/link";
 import { usePatent, usePatentSummary } from "@/hooks/usePatents";
 import { AISummaryPanel } from "@/components/patents/AISummaryPanel";
 import { ScoreBadge } from "@/components/patents/ScoreBadge";
+import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
+import { OpportunityBreakdown } from "@/components/patents/OpportunityBreakdown";
+import { TagsPanel } from "@/components/patents/TagsPanel";
+import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge";
+import { RiskFlagsBadge } from "@/components/patents/RiskFlagsBadge";
+import { WhyNowPanel } from "@/components/patents/WhyNowPanel";
+import { OpportunityNarrativePanel } from "@/components/patents/OpportunityNarrativePanel";
+import { TrendSnapshotPanel } from "@/components/patents/TrendSnapshotPanel";
+import { AssigneeIntelligencePanel } from "@/components/patents/AssigneeIntelligencePanel";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/lib/utils";
+import { patentsApi } from "@/lib/api";
+import useSWR from "swr";
+import { useState } from "react";
 
 export default function PatentDetailPage({
   params,
@@ -21,6 +33,94 @@ export default function PatentDetailPage({
   );
 
   const displaySummary = (patent?.summary || summary) ?? null;
+
+  // Why Now state: load from why_now_text or generate on demand
+  const [whyNowArtifact, setWhyNowArtifact] = useState<{
+    headline: string;
+    summary: string;
+    signals: { type: string; explanation: string }[];
+    confidence: string;
+    limitations: string[];
+  } | null>(null);
+
+  const whyNowFromPatent = patent?.why_now_text
+    ? {
+        headline: patent.why_now_text,
+        summary: "",
+        signals: [],
+        confidence: "medium",
+        limitations: [],
+      }
+    : null;
+
+  const effectiveWhyNow = whyNowArtifact ?? whyNowFromPatent;
+  const [whyNowLoading, setWhyNowLoading] = useState(false);
+
+  const handleGenerateWhyNow = async () => {
+    setWhyNowLoading(true);
+    try {
+      const data = await patentsApi.generateWhyNow(id);
+      setWhyNowArtifact(data);
+    } finally {
+      setWhyNowLoading(false);
+    }
+  };
+
+  // Opportunity Narrative state
+  const [oppNarrativeArtifact, setOppNarrativeArtifact] = useState<{
+    opportunity_type: string;
+    plain_english_opportunity: string;
+    possible_products: string[];
+    target_customers: string[];
+    implementation_difficulty: string;
+    commercial_timing: string;
+    risks: string[];
+  } | null>(null);
+  const [oppNarrativeLoading, setOppNarrativeLoading] = useState(false);
+
+  const handleGenerateOppNarrative = async () => {
+    setOppNarrativeLoading(true);
+    try {
+      const data = await patentsApi.generateOpportunityNarrative(id);
+      setOppNarrativeArtifact(data);
+    } finally {
+      setOppNarrativeLoading(false);
+    }
+  };
+
+  // Trend Snapshot state
+  const [trendArtifact, setTrendArtifact] = useState<{
+    trend_score: number;
+    components: Record<string, { sub_score: number; weight: number; contribution: number }>;
+  } | null>(null);
+  const [trendLoading, setTrendLoading] = useState(false);
+
+  const handleGenerateTrend = async () => {
+    setTrendLoading(true);
+    try {
+      const data = await patentsApi.generateTrendSnapshot(id);
+      setTrendArtifact(data);
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  // Assignee Intelligence state
+  const [assigneeArtifact, setAssigneeArtifact] = useState<{
+    assignee_intelligence_score: number;
+    components: Record<string, { sub_score: number; weight: number; contribution: number }>;
+  } | null>(null);
+  const [assigneeLoading, setAssigneeLoading] = useState(false);
+
+  const handleGenerateAssignee = async () => {
+    setAssigneeLoading(true);
+    try {
+      const data = await patentsApi.generateAssigneeIntelligence(id);
+      setAssigneeArtifact(data);
+    } finally {
+      setAssigneeLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -77,10 +177,13 @@ export default function PatentDetailPage({
           <h1 className="text-2xl font-bold text-gray-900">
             {patent.title || "Untitled Patent"}
           </h1>
-          <ScoreBadge score={patent.interesting_score} />
+          <div className="flex flex-col items-end gap-1.5">
+            <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
+            <ScoreBadge score={patent.interesting_score} />
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500">
           <span>{patent.publication_number}</span>
           <span>•</span>
           <span>{patent.office}</span>
@@ -90,7 +193,16 @@ export default function PatentDetailPage({
           >
             {patent.legal_status}
           </Badge>
+          <LegalConfidenceBadge
+            confidence={patent.legal_status_confidence}
+            legalStatus={patent.legal_status}
+          />
         </div>
+        {patent.tags?.risk_flags && patent.tags.risk_flags.length > 0 && (
+          <div className="mt-2">
+            <RiskFlagsBadge flags={patent.tags.risk_flags} />
+          </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -99,6 +211,41 @@ export default function PatentDetailPage({
             summary={displaySummary}
             isLoading={summaryLoading && !patent.summarized_at}
           />
+
+          <WhyNowPanel
+            patent={patent}
+            artifact={effectiveWhyNow}
+            isLoading={whyNowLoading}
+            onGenerate={handleGenerateWhyNow}
+          />
+
+          <OpportunityNarrativePanel
+            patent={patent}
+            artifact={oppNarrativeArtifact}
+            isLoading={oppNarrativeLoading}
+            onGenerate={handleGenerateOppNarrative}
+          />
+
+          <TrendSnapshotPanel
+            patent={patent}
+            artifact={trendArtifact}
+            isLoading={trendLoading}
+            onGenerate={handleGenerateTrend}
+          />
+
+          <AssigneeIntelligencePanel
+            patent={patent}
+            artifact={assigneeArtifact}
+            isLoading={assigneeLoading}
+            onGenerate={handleGenerateAssignee}
+          />
+
+          {patent.tags && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="font-semibold text-gray-900 mb-3">Tags</h2>
+              <TagsPanel tags={patent.tags} variant="full" />
+            </div>
+          )}
 
           {patent.abstract && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -187,10 +334,16 @@ export default function PatentDetailPage({
             </div>
           )}
 
+          {patent.opportunity_breakdown && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <OpportunityBreakdown breakdown={patent.opportunity_breakdown} />
+            </div>
+          )}
+
           {patent.score_breakdown && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="font-semibold text-gray-900 mb-3">
-                Score Breakdown
+                Interesting Score Breakdown
               </h2>
               <dl className="space-y-2 text-sm">
                 {Object.entries(patent.score_breakdown).map(([key, value]) => (

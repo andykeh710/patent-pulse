@@ -36,7 +36,10 @@ class PatentListItem(BaseModel):
     publication_date: date | None = None
     grant_date: date | None = None
     legal_status: str | None = None
+    legal_status_confidence: str = "estimated"
     interesting_score: float | None = None
+    opportunity_score: float | None = None
+    tags: dict | None = None
     summary_what_it_is: str | None = None
     estimated_expiry_date: date | None = None
 
@@ -58,7 +61,12 @@ class PatentListItem(BaseModel):
             publication_date=patent.publication_date,
             grant_date=patent.grant_date,
             legal_status=patent.legal_status,
+            legal_status_confidence=getattr(
+                patent, "legal_status_confidence", None
+            ) or "estimated",
             interesting_score=patent.interesting_score,
+            opportunity_score=getattr(patent, "opportunity_score", None),
+            tags=getattr(patent, "tags", None),
             summary_what_it_is=summary_what,
             estimated_expiry_date=patent.estimated_expiry_date,
         )
@@ -83,17 +91,26 @@ class PatentDetailResponse(BaseModel):
     title: str | None = None
     abstract: str | None = None
     legal_status: str | None = None
+    legal_status_confidence: str = "estimated"
     maintenance_status: str | None = None
     estimated_expiry_date: date | None = None
     summary: SummarySchema | None = None
     novel_applications: list[str] = []
     interesting_score: float | None = None
     score_breakdown: ScoreBreakdown | None = None
+    opportunity_score: float | None = None
+    opportunity_score_version: int | None = None
+    opportunity_breakdown: dict | None = None
+    tags: dict | None = None
+    why_now_text: str | None = None
     family_members: list[str] = []
     citations_backward: list[str] = []
     summarized_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    presentation_rank_score: float | None = None
+    presentation_rank_reason: str | None = None
+    presentation_rank_confidence: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -126,17 +143,28 @@ class PatentDetailResponse(BaseModel):
             title=patent.title,
             abstract=patent.abstract,
             legal_status=patent.legal_status,
+            legal_status_confidence=getattr(
+                patent, "legal_status_confidence", None
+            ) or "estimated",
             maintenance_status=patent.maintenance_status,
             estimated_expiry_date=patent.estimated_expiry_date,
             summary=summary,
             novel_applications=patent.novel_applications or [],
             interesting_score=patent.interesting_score,
             score_breakdown=score_breakdown,
+            opportunity_score=getattr(patent, "opportunity_score", None),
+            opportunity_score_version=getattr(patent, "opportunity_score_version", None),
+            opportunity_breakdown=getattr(patent, "opportunity_breakdown", None),
+            tags=getattr(patent, "tags", None),
+            why_now_text=getattr(patent, "why_now_text", None),
             family_members=patent.family_members or [],
             citations_backward=patent.citations_backward or [],
             summarized_at=patent.summarized_at,
             created_at=patent.created_at,
             updated_at=patent.updated_at,
+            presentation_rank_score=getattr(patent, "presentation_rank_score", None),
+            presentation_rank_reason=getattr(patent, "presentation_rank_reason", None),
+            presentation_rank_confidence=getattr(patent, "presentation_rank_confidence", None),
         )
 
 
@@ -148,6 +176,9 @@ class ExpiryItem(BaseModel):
     estimated_expiry_date: date | None = None
     days_until_expiry: int | None = None
     legal_status: str | None = None
+    legal_status_confidence: str = "estimated"
+    opportunity_score: float | None = None
+    tags: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -185,7 +216,7 @@ class SearchParams(BaseModel):
 
 
 class ExpiryParams(BaseModel):
-    days_ahead: int = Field(default=365, ge=1, le=3650)
+    days_ahead: int = Field(default=365, ge=1, le=7300)
     office: str | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
@@ -213,9 +244,10 @@ class StatsResponse(BaseModel):
 
 
 class ExpirySummary(BaseModel):
-    within_30_days: int
-    within_90_days: int
-    within_365_days: int
+    within_5_years: int
+    within_10_years: int
+    within_20_years: int
+    total_with_expiry: int
 
 
 class TrendPoint(BaseModel):

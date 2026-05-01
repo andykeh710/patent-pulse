@@ -39,7 +39,36 @@ async def upsert_patent(
     existing_row = existing.first()
     was_existing = existing_row is not None
 
-    update_data = {k: v for k, v in patent_data.items() if k not in ("id", "created_at", "doc_id")}
+    # Build update_data carefully:
+    #  - Never overwrite 'id', 'created_at', or 'doc_id' (identity / audit fields)
+    #  - Never overwrite enriched content fields with NULL. These columns are
+    #    populated by downstream enrichment tasks (EPO OPS, Google Patents,
+    #    summarizer). USPTO's initial ingest has abstract=None, claims=None, etc.,
+    #    so blindly setting them on re-ingestion wipes out all enrichment.
+    #  - Never overwrite AI-generated fields from ingestion; those come from
+    #    the summarizer/scorer/embedder pipeline.
+    _EXCLUDED_FROM_UPDATE = {"id", "created_at", "doc_id"}
+    _ENRICHED_CONTENT_FIELDS = {
+        "abstract",
+        "claims_text",
+        "description_text",
+        "citations_backward",
+        "family_members",
+        "summary",
+        "novel_applications",
+        "interesting_score",
+        "score_breakdown",
+        "embedding",
+        "summarized_at",
+    }
+    update_data: dict = {}
+    for k, v in patent_data.items():
+        if k in _EXCLUDED_FROM_UPDATE:
+            continue
+        # Never overwrite an enriched column with NULL or empty-list/dict.
+        if k in _ENRICHED_CONTENT_FIELDS and (v is None or v == [] or v == {}):
+            continue
+        update_data[k] = v
     update_data["updated_at"] = datetime.utcnow()
 
     stmt = (

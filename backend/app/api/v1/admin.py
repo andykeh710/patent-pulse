@@ -187,6 +187,45 @@ async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
     return {"created": created, "skipped": skipped}
 
 
+@router.post("/trigger-enrich-abstracts", response_model=TaskStatusResponse)
+async def trigger_enrich_abstracts(
+    batch_size: int = 200,
+) -> TaskStatusResponse:
+    """
+    Fetch abstracts from EPO OPS for patents missing them (development only).
+
+    This is the critical step to get high-quality AI summaries.
+    EPO OPS rate limit: ~120 requests/min, so 200 patents takes ~2 minutes.
+    """
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Not available in production")
+
+    if not settings.epo_ops_client_id:
+        raise HTTPException(status_code=400, detail="EPO OPS credentials not configured")
+
+    from app.tasks.enrich_abstracts import enrich_batch
+
+    task = enrich_batch.delay(batch_size)
+
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
+@router.post("/trigger-resummarize", response_model=TaskStatusResponse)
+async def trigger_resummarize(limit: int = 50) -> TaskStatusResponse:
+    """
+    Re-summarize patents that now have abstracts but were previously
+    summarized with title-only (development only).
+    """
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Not available in production")
+
+    from app.tasks.summarize import batch_resummarize_enriched
+
+    task = batch_resummarize_enriched.delay(limit)
+
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
 @router.post("/trigger-match-themes", response_model=TaskStatusResponse)
 async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
     """

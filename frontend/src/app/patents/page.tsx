@@ -46,6 +46,7 @@ export default function PatentsPage() {
           >
             <option value="publication_date">Publication Date</option>
             <option value="interesting_score">Interest Score</option>
+            <option value="opportunity_score">Opportunity Score</option>
             <option value="created_at">Recently Added</option>
           </select>
         </div>

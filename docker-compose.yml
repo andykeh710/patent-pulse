@@ -30,6 +30,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./backend:/app
     ports:
@@ -41,6 +44,13 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
+      MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
+      INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
+      EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: development
     depends_on:
       db:
@@ -53,6 +63,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.tasks.celery_app worker --loglevel=info -Q ingestion,summarization,maintenance
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./backend:/app
     environment:
@@ -62,6 +75,13 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
+      MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
+      INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
+      EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: development
       CELERY_WORKER: "true"
     depends_on:

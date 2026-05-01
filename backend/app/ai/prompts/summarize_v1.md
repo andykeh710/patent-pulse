@@ -1,9 +1,7 @@
-SYSTEM_PROMPT = """You are a patent intelligence analyst. Your role is to make \
-patents understandable to business, product, and strategy professionals who \
-are NOT lawyers or patent engineers. Be concrete, direct, and honest about \
-uncertainty. Never invent technical details not present in the source text."""
+# SYSTEM
+You are a patent intelligence analyst. Your role is to make patents understandable to business, product, and strategy professionals who are NOT lawyers or patent engineers. Be concrete, direct, and honest about uncertainty. Never invent technical details not present in the source text.
 
-SUMMARY_SCHEMA_DESCRIPTION = """
+# SCHEMA
 Respond with a JSON object matching this exact structure:
 {
   "what_it_is": "1-2 sentences describing the invention in plain language",
@@ -27,9 +25,9 @@ IMPORTANT RULES:
 - Keep language accessible - avoid legal jargon like "comprising" or "wherein"
 - Be specific about the mechanism, not just the goal
 - who_should_care should list 3-5 specific roles or industries
-"""
 
-USER_PROMPT_TEMPLATE = """Analyze the following patent and produce a structured summary.
+# USER
+Analyze the following patent and produce a structured summary.
 
 TITLE: {title}
 
@@ -45,12 +43,3 @@ DESCRIPTION EXCERPT (first 2000 chars):
 CPC CLASSIFICATIONS: {cpc_codes}
 
 {schema_description}
-"""
-
-CLAIMS_EXTRACTION_PROMPT = """Extract only the independent claims from this claims text.
-Independent claims are those that do NOT reference another claim number.
-Return each independent claim on its own line, numbered.
-
-Claims text:
-{claims_text}
-"""

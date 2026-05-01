@@ -12,6 +12,28 @@ from app.ingestion.uspto_client import USPTOClient, get_last_tuesday
 from app.tasks.celery_app import celery_app
 from app.tasks.summarize import summarize_patent
 
+
+def _should_skip(data: dict) -> str | None:
+    """
+    Return a skip reason string if this patent should not be ingested,
+    None if it should proceed.
+
+    Skips:
+    - Already-expired patents (no value to track them)
+    """
+    expiry = data.get("estimated_expiry_date")
+    if expiry and expiry < date.today():
+        return "already_expired"
+    return None
+
+
+def _should_summarize_now(data: dict) -> bool:
+    """
+    Return True if a patent should be queued for immediate summarization.
+    Otherwise summarization is deferred until enrichment populates the abstract.
+    """
+    return bool(data.get("abstract"))
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,13 +65,17 @@ def ingest_weekly_grants(self, target_date: str | None = None) -> dict:
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
-    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0, "summarization_queued": 0}
+    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0, "skipped_expired": 0, "summarization_queued": 0}
     failed_ids = []
 
     for raw in client.fetch_grants_by_date(grant_date):
         patent_number = raw.get("patent_number", "unknown")
         try:
             data = normalizer.normalize_grant(raw)
+
+            if _should_skip(data) == "already_expired":
+                stats["skipped_expired"] += 1
+                continue
 
             score, breakdown = scorer.score_dict(data)
             data["interesting_score"] = score
@@ -59,8 +85,9 @@ def ingest_weekly_grants(self, target_date: str | None = None) -> dict:
 
             if created:
                 stats["created"] += 1
-                summarize_patent.delay(str(record.id))
-                stats["summarization_queued"] += 1
+                if _should_summarize_now(data):
+                    summarize_patent.delay(str(record.id))
+                    stats["summarization_queued"] += 1
             else:
                 stats["updated"] += 1
 
@@ -69,7 +96,7 @@ def ingest_weekly_grants(self, target_date: str | None = None) -> dict:
             failed_ids.append(patent_number)
             logger.error(f"Grant ingest failed for {patent_number}: {exc}")
 
-    stats["processed"] = stats["created"] + stats["updated"] + stats["failed"]
+    stats["processed"] = stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
 
     if failed_ids:
         logger.warning(f"Grant ingest completed with {len(failed_ids)} failures: {failed_ids[:10]}")
@@ -107,23 +134,40 @@ def ingest_grants_range(self, start_date: str, end_date: str) -> dict:
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
-    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
+    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0, "skipped_expired": 0, "summarization_queued": 0}
 
     for raw in client.fetch_grants_range(start, end):
         try:
             data = normalizer.normalize_grant(raw)
-            score, breakdown = scorer.score_dict(data)
-            data["interesting_score"] = score
-            data["score_breakdown"] = breakdown
 
-            record, created = asyncio.run(_upsert_patent_async(data))
+            if _should_skip(data) == "already_expired":
+                stats["skipped_expired"] += 1
+            else:
+                score, breakdown = scorer.score_dict(data)
+                data["interesting_score"] = score
+                data["score_breakdown"] = breakdown
 
-            stats["created" if created else "updated"] += 1
+                record, created = asyncio.run(_upsert_patent_async(data))
+
+                if created:
+                    stats["created"] += 1
+                    if _should_summarize_now(data):
+                        summarize_patent.delay(str(record.id))
+                        stats["summarization_queued"] += 1
+                else:
+                    stats["updated"] += 1
         except Exception as exc:
             stats["failed"] += 1
             logger.error(f"Grant ingest failed: {exc}")
 
-    stats["processed"] = stats["created"] + stats["updated"] + stats["failed"]
+        stats["processed"] = stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
+        if stats["processed"] % 100 == 0:
+            logger.info(
+                f"  Range progress: {stats['processed']} processed "
+                f"({stats['created']} new, {stats['updated']} updated, "
+                f"{stats['skipped_expired']} skipped-expired, {stats['failed']} failed)"
+            )
+
     logger.info(f"Grant range ingestion complete: {stats}")
 
     return stats

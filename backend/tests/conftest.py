@@ -13,7 +13,17 @@ from sqlalchemy.orm import sessionmaker
 from app.api.deps import get_db
 from app.config import Settings
 from app.core.models import Base
+from app.core import ai_models, theme_models  # noqa: F401  -- register tables
 from app.main import app
+from tests.fixtures.loader import insert_dev_fixture
+
+
+def pytest_configure(config) -> None:  # noqa: D401
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers",
+        "dev_fixture: load tests/fixtures/dev_50.json into the test DB session",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -89,6 +99,19 @@ def sample_patent_data() -> dict[str, Any]:
         "legal_status": "GRANTED",
         "estimated_expiry_date": date(2042, 1, 15),
     }
+
+
+@pytest_asyncio.fixture
+async def dev_fixture(db_session: AsyncSession) -> int:
+    """Load the deterministic 50-patent dev fixture into the active session.
+
+    Use via ``@pytest.mark.dev_fixture`` + a ``dev_fixture`` argument:
+
+        @pytest.mark.dev_fixture
+        async def test_something(dev_fixture, client):
+            assert dev_fixture >= 0
+    """
+    return await insert_dev_fixture(db_session)
 
 
 @pytest.fixture

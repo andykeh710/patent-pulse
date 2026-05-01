@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
 
-    claude_model: str = "claude-sonnet-4-6"
+    claude_model: str = "claude-sonnet-4-20250514"
+    claude_haiku_model: str = "claude-haiku-4-5"
     summarization_batch_size: int = 10
     max_summary_retries: int = 3
     ingest_lookback_days: int = 7
@@ -23,6 +24,32 @@ class Settings(BaseSettings):
 
     epo_ops_client_id: str | None = None
     epo_ops_client_secret: str | None = None
+
+    # Phase 0: single-user mode + AI cost controls
+    single_user_mode: bool = True
+    default_user_id: str = "local-user"
+    default_user_display_name: str = "Local User"
+
+    # LLM mode controls the llm_client wrapper behavior:
+    #   live   -> always call the API (still writes to cache on success)
+    #   record -> call API only on cache miss, write result to cache
+    #   replay -> never call API; raise if cache miss
+    llm_mode: Literal["live", "record", "replay"] = "record"
+
+    # Soft auto-approval threshold: AIRun requests with est_cost_usd <=
+    # this value can be confirmed with a single click in /admin/ai-runs.
+    # Above this, the UI requires an explicit "Confirm run" action.
+    llm_run_auto_approve_usd: float = 5.0
+
+    # Hard upper bound; anything above requires typing RUN FULL BATCH.
+    llm_run_full_batch_threshold_usd: float = 25.0
+
+    # Per-model USD pricing per 1M tokens (input, output). Used for cost
+    # estimation and accounting. Adjust when Anthropic updates prices.
+    claude_sonnet_input_usd_per_mtok: float = 3.0
+    claude_sonnet_output_usd_per_mtok: float = 15.0
+    claude_haiku_input_usd_per_mtok: float = 0.8
+    claude_haiku_output_usd_per_mtok: float = 4.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

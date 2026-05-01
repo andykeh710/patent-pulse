@@ -1,12 +1,14 @@
 "use client";
 
-import { usePatents, usePatentStats, useExpirySummary, usePatentTrend } from "@/hooks/usePatents";
+import { useState } from "react";
+import { usePatents, usePatentStats, useExpirySummary, usePatentTrend, usePriorityWatch } from "@/hooks/usePatents";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { formatNumber } from "@/lib/utils";
 import type { TrendPoint } from "@/lib/types";
 
 export default function DashboardPage() {
+  const [priorityBucket, setPriorityBucket] = useState<"expiring_soon" | "recent" | "all">("expiring_soon");
   const { data: stats, isLoading: statsLoading } = usePatentStats();
   const { data: patents, isLoading: patentsLoading } = usePatents({
     sort_by: "interesting_score",
@@ -15,6 +17,7 @@ export default function DashboardPage() {
   });
   const { data: expirySummary, isLoading: expiryLoading } = useExpirySummary();
   const { data: trend, isLoading: trendLoading } = usePatentTrend();
+  const { data: priority, isLoading: priorityLoading } = usePriorityWatch(priorityBucket, 12);
 
   return (
     <div>
@@ -49,6 +52,74 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Priority Watch — patents that need immediate attention */}
+      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Priority Watch</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {priorityBucket === "expiring_soon" && "Granted patents expiring within 5 years, soonest first"}
+              {priorityBucket === "recent" && "Patents published in the last 90 days, ranked by interest score"}
+              {priorityBucket === "all" && "Combined view: top expiring + most recent"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setPriorityBucket("expiring_soon")}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                priorityBucket === "expiring_soon"
+                  ? "bg-white text-primary-700 shadow-sm font-medium"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              Expiring Soon
+            </button>
+            <button
+              onClick={() => setPriorityBucket("recent")}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                priorityBucket === "recent"
+                  ? "bg-white text-primary-700 shadow-sm font-medium"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              Recent
+            </button>
+            <button
+              onClick={() => setPriorityBucket("all")}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                priorityBucket === "all"
+                  ? "bg-white text-primary-700 shadow-sm font-medium"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              All
+            </button>
+          </div>
+        </div>
+        {priorityLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <PatentCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (priority?.items?.length ?? 0) === 0 ? (
+          <div className="text-center py-8 text-sm text-gray-400">
+            No patents in this bucket yet
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {priority?.items.map((patent) => (
+              <PatentCard key={patent.id} patent={patent} />
+            ))}
+          </div>
+        )}
+        {priority && priority.total > 12 && (
+          <p className="text-xs text-gray-400 mt-3 text-right">
+            Showing 12 of {priority.total.toLocaleString()} patents
+          </p>
+        )}
+      </div>
+
       {/* AI Summarization Progress */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex justify-between items-center mb-2">
@@ -76,11 +147,12 @@ export default function DashboardPage() {
 
       {/* Expiry Summary */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Expiring Patents</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard label="Expiring in 30 Days" value={expirySummary?.within_30_days} isLoading={expiryLoading} highlight />
-          <StatCard label="Expiring in 90 Days" value={expirySummary?.within_90_days} isLoading={expiryLoading} />
-          <StatCard label="Expiring in 1 Year" value={expirySummary?.within_365_days} isLoading={expiryLoading} />
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Patent Expiry Outlook</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard label="Expiring in 5 Years" value={expirySummary?.within_5_years} isLoading={expiryLoading} highlight />
+          <StatCard label="Expiring in 10 Years" value={expirySummary?.within_10_years} isLoading={expiryLoading} />
+          <StatCard label="Expiring in 20 Years" value={expirySummary?.within_20_years} isLoading={expiryLoading} />
+          <StatCard label="Total with Expiry" value={expirySummary?.total_with_expiry} isLoading={expiryLoading} />
         </div>
       </div>
 

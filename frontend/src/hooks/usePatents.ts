@@ -57,3 +57,13 @@ export function useExpirySummary() {
 export function usePatentTrend() {
   return useSWR<TrendResponse>(["patent-trend"], () => patentsApi.getTrend());
 }
+
+export function usePriorityWatch(
+  bucket: "expiring_soon" | "recent" | "all" = "expiring_soon",
+  pageSize = 12
+) {
+  return useSWR<PaginatedResponse<PatentListItem>>(
+    ["priority-watch", bucket, pageSize],
+    () => patentsApi.getPriorityWatch(bucket, pageSize)
+  );
+}

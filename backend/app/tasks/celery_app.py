@@ -14,8 +14,15 @@ celery_app = Celery(
         "app.tasks.ingest_wipo",
         "app.tasks.summarize",
         "app.tasks.embeddings",
+        "app.tasks.enrich_abstracts",
         "app.tasks.theme_matcher",
         "app.tasks.expiry_watch",
+        "app.tasks.tag",
+        "app.tasks.opportunity",
+        "app.tasks.why_now",
+        "app.tasks.opportunity_narrative",
+        "app.tasks.trend_snapshot",
+        "app.tasks.assignee_intelligence",
     ],
 )
 
@@ -32,7 +39,16 @@ celery_app.conf.update(
         "app.tasks.ingest_grants.*": {"queue": "ingestion"},
         "app.tasks.ingest_applications.*": {"queue": "ingestion"},
         "app.tasks.summarize.*": {"queue": "summarization"},
+        "app.tasks.enrich_abstracts.*": {"queue": "ingestion"},
         "app.tasks.expiry_watch.*": {"queue": "maintenance"},
+        # Phase 1 AI tasks share the summarization queue (LLM-bound or fast rules)
+        "app.tasks.tag.*": {"queue": "summarization"},
+        "app.tasks.opportunity.*": {"queue": "summarization"},
+        # Phase 2 Narrative tasks share the summarization queue
+        "app.tasks.why_now.*": {"queue": "summarization"},
+        "app.tasks.opportunity_narrative.*": {"queue": "summarization"},
+        "app.tasks.trend_snapshot.*": {"queue": "summarization"},
+        "app.tasks.assignee_intelligence.*": {"queue": "summarization"},
     },
     task_default_retry_delay=60,
     task_max_retries=3,
@@ -68,10 +84,24 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=6, minute=0, day_of_week=5),
         "options": {"queue": "maintenance"},
     },
+    # Abstract enrichment - Saturday (after weekly ingestion, before summarization)
+    "enrich-abstracts-weekly": {
+        "task": "app.tasks.enrich_abstracts.enrich_batch",
+        "schedule": crontab(hour=20, minute=0, day_of_week=6),
+        "kwargs": {"batch_size": 200},
+        "options": {"queue": "ingestion"},
+    },
     # Summarization - Sunday batch
     "batch-summarize": {
         "task": "app.tasks.summarize.batch_summarize_pending",
         "schedule": crontab(hour=2, minute=0, day_of_week=0),
+        "options": {"queue": "summarization"},
+    },
+    # Re-summarize enriched patents - Sunday (after new summaries)
+    "resummarize-enriched": {
+        "task": "app.tasks.summarize.batch_resummarize_enriched",
+        "schedule": crontab(hour=5, minute=0, day_of_week=0),
+        "kwargs": {"limit": 50},
         "options": {"queue": "summarization"},
     },
     # Embeddings - Sunday batch (after summarization)

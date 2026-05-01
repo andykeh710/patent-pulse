@@ -143,6 +143,118 @@ class EPOClient:
         except httpx.RequestError as e:
             raise TransientIngestionError(f"EPO connection error: {e}") from e
 
+    def fetch_abstract_for_us_patent(self, us_publication_number: str) -> str | None:
+        """
+        Fetch the abstract for a US patent via EPO OPS.
+
+        Args:
+            us_publication_number: US publication number (e.g., "12586484")
+
+        Returns:
+            Abstract text or None if not found.
+        """
+        clean_number = us_publication_number.replace(",", "").strip()
+        epodoc_id = f"US{clean_number}"
+
+        try:
+            path = f"/published-data/publication/epodoc/{epodoc_id}/abstract"
+            result = self._request("GET", path)
+
+            wpd = result.get("ops:world-patent-data", {})
+            ed = wpd.get("exchange-documents", wpd.get("exchange-document", {}))
+            if isinstance(ed, list):
+                ed = ed[0] if ed else {}
+            doc = ed.get("exchange-document", ed)
+
+            return self._extract_abstract(doc)
+
+        except IngestionError as e:
+            if "404" in str(e) or "Not Found" in str(e):
+                logger.debug(f"No abstract found for {epodoc_id}")
+                return None
+            logger.warning(f"EPO abstract fetch failed for {epodoc_id}: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Unexpected error fetching abstract for {epodoc_id}: {e}")
+            return None
+
+    def fetch_claims_for_us_patent(self, us_publication_number: str) -> str | None:
+        """
+        Fetch the claims text for a US patent via EPO OPS.
+
+        Args:
+            us_publication_number: US publication number (e.g., "12586484")
+
+        Returns:
+            Claims text or None if not found.
+        """
+        clean_number = us_publication_number.replace(",", "").strip()
+        epodoc_id = f"US{clean_number}"
+
+        try:
+            path = f"/published-data/publication/epodoc/{epodoc_id}/claims"
+            result = self._request("GET", path)
+
+            wpd = result.get("ops:world-patent-data", {})
+            ft = wpd.get("ftxt:fulltext-documents", wpd.get("fulltext-documents", {}))
+            if not ft:
+                return None
+
+            ftdoc = ft.get("ftxt:fulltext-document", ft.get("fulltext-document", {}))
+            if isinstance(ftdoc, list):
+                ftdoc = ftdoc[0] if ftdoc else {}
+
+            claims = ftdoc.get("claims", {})
+            if isinstance(claims, list):
+                claims = claims[0] if claims else {}
+
+            claim_list = claims.get("claim", [])
+            if isinstance(claim_list, dict):
+                claim_list = [claim_list]
+
+            texts = []
+            for claim in claim_list:
+                claim_text = claim.get("claim-text", [])
+                if isinstance(claim_text, str):
+                    texts.append(claim_text)
+                elif isinstance(claim_text, dict):
+                    texts.append(claim_text.get("$", ""))
+                elif isinstance(claim_text, list):
+                    for ct in claim_text:
+                        if isinstance(ct, str):
+                            texts.append(ct)
+                        elif isinstance(ct, dict):
+                            texts.append(ct.get("$", ""))
+
+            return "\n\n".join(t for t in texts if t) if texts else None
+
+        except IngestionError as e:
+            if "404" in str(e) or "Not Found" in str(e):
+                logger.debug(f"No claims found for {epodoc_id}")
+                return None
+            logger.warning(f"EPO claims fetch failed for {epodoc_id}: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Unexpected error fetching claims for {epodoc_id}: {e}")
+            return None
+
+    def fetch_fulltext_for_us_patent(self, us_publication_number: str) -> dict:
+        """
+        Fetch abstract and claims for a US patent via EPO OPS.
+        Makes separate API calls for abstract and claims.
+
+        Args:
+            us_publication_number: US publication number (e.g., "12586484")
+
+        Returns:
+            Dict with 'abstract' and 'claims_text' keys (values may be None).
+        """
+        result = {
+            "abstract": self.fetch_abstract_for_us_patent(us_publication_number),
+            "claims_text": self.fetch_claims_for_us_patent(us_publication_number),
+        }
+        return result
+
     def fetch_publication(self, publication_number: str) -> dict:
         """
         Fetch bibliographic data for a single publication.
