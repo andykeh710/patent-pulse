@@ -11,6 +11,7 @@ import type {
   PatentDetail,
   PatentListItem,
   PatentListParams,
+  ArtifactListResponse,
   RunListResponse,
   RunMetadata,
   RunSummary,

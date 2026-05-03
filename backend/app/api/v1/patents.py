@@ -36,7 +36,10 @@ async def list_patents(
     date_from: date | None = None,
     date_to: date | None = None,
     min_score: float | None = None,
-    sort_by: str = Query(default="publication_date", regex="^(publication_date|interesting_score|created_at)$"),
+    sort_by: str = Query(
+        default="publication_date",
+        regex="^(publication_date|interesting_score|opportunity_score|created_at)$",
+    ),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
