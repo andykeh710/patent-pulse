@@ -12,7 +12,7 @@ const mockPatent: PatentListItem = {
   publication_date: "2024-03-15",
   grant_date: "2024-03-15",
   legal_status: "GRANTED",
-  legal_status_confidence: "high",
+  legal_status_confidence: "confirmed",
   interesting_score: 0.75,
   opportunity_score: 82,
   tags: null,
