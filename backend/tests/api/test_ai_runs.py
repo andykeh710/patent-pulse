@@ -248,3 +248,12 @@ def test_summary_cache_input_hash_changes_with_patent_inputs() -> None:
     )
 
     assert base_hash != changed_hash
+
+
+def test_cached_completion_count_counts_each_matching_patent_input() -> None:
+    from app.api.v1.ai_runs import _cached_completion_count
+
+    assert _cached_completion_count(
+        patent_input_hashes=["same-hash", "same-hash", "other-hash"],
+        cached_input_hashes={"same-hash"},
+    ) == 2

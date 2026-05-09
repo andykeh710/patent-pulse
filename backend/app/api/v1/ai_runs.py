@@ -313,16 +313,7 @@ async def _resolve_cohort(
                 )
 
             # Per-task-type sensible defaults.
-            if task_type == "summary":
-                if cohort.has_summary is None:
-                    conditions.append(PatentPublication.summarized_at.is_(None))
-                conditions.append(
-                    or_(
-                        PatentPublication.abstract.isnot(None),
-                        PatentPublication.title.isnot(None),
-                    )
-                )
-            elif task_type == "tags":
+            if task_type == "tags":
                 # Tagging is only useful once we have a summary; skip the rest.
                 conditions.append(PatentPublication.summarized_at.isnot(None))
             elif task_type == "opportunity_score":
@@ -345,6 +336,15 @@ async def _resolve_cohort(
             stmt = stmt.order_by(PatentPublication.grant_date.desc().nullslast())
             if cohort.limit:
                 stmt = stmt.limit(cohort.limit)
+
+    if task_type == "summary":
+        stmt = stmt.where(PatentPublication.summarized_at.is_(None))
+        stmt = stmt.where(
+            or_(
+                PatentPublication.abstract.isnot(None),
+                PatentPublication.title.isnot(None),
+            )
+        )
 
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]
@@ -463,23 +463,36 @@ async def _count_cached_artifacts(
         .scalars()
         .all()
     )
-    input_hashes = {
+    patent_input_hashes = [
         _cache_input_hash_for_task(task_type, patent, model) for patent in patents
-    }
+    ]
+    input_hashes = set(patent_input_hashes)
     if not input_hashes:
         return 0
 
     stmt = (
-        select(func.count())
+        select(AIArtifact.input_hash)
         .select_from(AIArtifact)
         .where(AIArtifact.artifact_type == task_type)
         .where(AIArtifact.prompt_hash == prompt_hash)
         .where(AIArtifact.input_hash.in_(input_hashes))
         .where(AIArtifact.status == "complete")
-        .where(AIArtifact.patent_publication_id.in_(patent_ids))
+        .group_by(AIArtifact.input_hash)
     )
     result = await db.execute(stmt)
-    return int(result.scalar_one() or 0)
+    cached_input_hashes = set(result.scalars().all())
+    return _cached_completion_count(
+        patent_input_hashes=patent_input_hashes,
+        cached_input_hashes=cached_input_hashes,
+    )
+
+
+def _cached_completion_count(
+    *, patent_input_hashes: list[str], cached_input_hashes: set[str]
+) -> int:
+    return sum(
+        1 for input_hash in patent_input_hashes if input_hash in cached_input_hashes
+    )
 
 
 def _cache_input_hash_for_task(
