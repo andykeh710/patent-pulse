@@ -288,6 +288,8 @@ async def _resolve_cohort(
 
             # Per-task-type sensible defaults.
             if task_type == "summary":
+                if cohort.has_summary is None:
+                    conditions.append(PatentPublication.summarized_at.is_(None))
                 conditions.append(
                     or_(
                         PatentPublication.abstract.isnot(None),
@@ -662,7 +664,7 @@ def _dispatch_celery_per_patent(
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), False, run_id)
         return len(patent_ids)
 
     if task_type == "tags":

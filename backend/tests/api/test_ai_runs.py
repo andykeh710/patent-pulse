@@ -1,7 +1,7 @@
 """Tests for the /api/v1/ai-runs estimate + run-history endpoints."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 
 import pytest
@@ -63,6 +63,26 @@ async def test_estimate_summary_with_seeded_patents(
     assert data["cached_count"] == 0
     assert data["est_input_tokens"] > 0
     assert data["est_cost_usd"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_estimate_summary_defaults_to_unsummarized_patents(
+    db_session: AsyncSession, client: AsyncClient
+) -> None:
+    patents = await _seed_patents(db_session, n=3)
+    patents[0].summarized_at = datetime.utcnow()
+    await db_session.commit()
+
+    body = {
+        "task_type": "summary",
+        "run_mode": "cohort",
+        "cohort": {"has_abstract": True},
+    }
+    r = await client.post("/api/v1/ai-runs/estimate", json=body)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["cohort_size"] == 2
 
 
 @pytest.mark.asyncio
@@ -165,3 +185,29 @@ async def test_runs_metadata_options(client: AsyncClient) -> None:
     assert "summary" in data["task_types"]
     assert "dev_fixture" in data["run_modes"]
     assert data["auto_approve_threshold_usd"] > 0
+
+
+def test_summary_dispatch_passes_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.v1.ai_runs import _dispatch_celery_per_patent
+    import app.tasks.summarize as summarize_tasks
+
+    patent_id = uuid4()
+    run_id = str(uuid4())
+    calls: list[tuple[str, bool, str]] = []
+
+    class FakeSummaryTask:
+        @staticmethod
+        def delay(patent_id_arg: str, force_arg: bool = False, run_id_arg: str | None = None) -> None:
+            assert run_id_arg is not None
+            calls.append((patent_id_arg, force_arg, run_id_arg))
+
+    monkeypatch.setattr(summarize_tasks, "summarize_patent", FakeSummaryTask)
+
+    enqueued = _dispatch_celery_per_patent(
+        task_type="summary",
+        patent_ids=[patent_id],
+        run_id=run_id,
+    )
+
+    assert enqueued == 1
+    assert calls == [(str(patent_id), False, run_id)]

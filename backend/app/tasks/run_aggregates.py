@@ -77,6 +77,7 @@ async def recompute_run_aggregates(
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
 
+    completed += int(run.cached_count or 0)
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status
     finished_at = run.finished_at
