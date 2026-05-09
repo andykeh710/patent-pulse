@@ -8,7 +8,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_models import AIRun
 from app.core.models import PatentPublication
 
 
@@ -188,8 +187,8 @@ async def test_runs_metadata_options(client: AsyncClient) -> None:
 
 
 def test_summary_dispatch_passes_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.api.v1.ai_runs import _dispatch_celery_per_patent
     import app.tasks.summarize as summarize_tasks
+    from app.api.v1.ai_runs import _dispatch_celery_per_patent
 
     patent_id = uuid4()
     run_id = str(uuid4())
