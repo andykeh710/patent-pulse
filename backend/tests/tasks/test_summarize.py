@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -140,4 +141,48 @@ async def test_summarize_patent_async_links_summary_artifact_to_run(
     assert result["artifact_id"] == str(artifact_id)
     assert patent.latest_summary_artifact_id == artifact_id
     assert session.committed is True
+    assert recompute_calls == [str(run_uuid)]
+
+
+@pytest.mark.asyncio
+async def test_summarize_patent_async_recomputes_run_when_summary_skips(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.tasks.summarize as summarize_tasks
+
+    patent_id = uuid4()
+    run_uuid = uuid4()
+    patent = PatentPublication(
+        id=patent_id,
+        doc_id="USPTO:SUMMARY-SKIP",
+        office="USPTO",
+        publication_number="SUMMARY-SKIP",
+        title="Already summarized",
+        abstract="Abstract",
+        summarized_at=datetime.utcnow(),
+    )
+    session = _SummarySession(patent)
+    recompute_calls: list[str] = []
+
+    async def fake_recompute(session_arg, run_id_arg):
+        assert session_arg is session
+        recompute_calls.append(str(run_id_arg))
+
+    monkeypatch.setattr(
+        summarize_tasks,
+        "async_session_maker",
+        lambda: _SummarySessionContext(session),
+    )
+    monkeypatch.setattr(
+        summarize_tasks,
+        "recompute_run_aggregates",
+        fake_recompute,
+    )
+
+    result = await summarize_tasks._summarize_patent_async(
+        str(patent_id),
+        run_id=str(run_uuid),
+    )
+
+    assert result == {"status": "skipped", "reason": "already_summarized"}
     assert recompute_calls == [str(run_uuid)]

@@ -210,3 +210,41 @@ def test_summary_dispatch_passes_run_id(monkeypatch: pytest.MonkeyPatch) -> None
 
     assert enqueued == 1
     assert calls == [(str(patent_id), False, run_id)]
+
+
+def test_summary_cache_input_hash_changes_with_patent_inputs() -> None:
+    from app.api.v1.ai_runs import _cache_input_hash_for_task
+
+    base_patent = PatentPublication(
+        id=uuid4(),
+        doc_id="USPTO:CACHE-HASH-1",
+        office="USPTO",
+        publication_number="CACHE-HASH-1",
+        title="Same title",
+        abstract="Original abstract",
+        claims_text="1. A method comprising X.",
+        cpc=["G06F"],
+    )
+    changed_patent = PatentPublication(
+        id=uuid4(),
+        doc_id="USPTO:CACHE-HASH-2",
+        office="USPTO",
+        publication_number="CACHE-HASH-2",
+        title="Same title",
+        abstract="Updated abstract",
+        claims_text="1. A method comprising X.",
+        cpc=["G06F"],
+    )
+
+    base_hash = _cache_input_hash_for_task(
+        "summary",
+        base_patent,
+        "claude-sonnet-4-20250514",
+    )
+    changed_hash = _cache_input_hash_for_task(
+        "summary",
+        changed_patent,
+        "claude-sonnet-4-20250514",
+    )
+
+    assert base_hash != changed_hash

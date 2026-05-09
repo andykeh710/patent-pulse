@@ -157,6 +157,7 @@ async def _summarize_patent_async(
     summary is cached as an ``AIArtifact(summary)`` row and the patent's
     ``latest_summary_artifact_id`` is updated for fast denormalized reads.
     """
+    run_uuid = UUID(run_id) if run_id else None
     async with async_session_maker() as session:
         result = await session.execute(
             select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
@@ -169,13 +170,16 @@ async def _summarize_patent_async(
 
         if patent.summarized_at and not force:
             logger.debug(f"Patent {patent_id} already summarized")
+            if run_uuid:
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "skipped", "reason": "already_summarized"}
 
         if not patent.title and not patent.abstract:
             logger.warning(f"Patent {patent_id} has no title or abstract")
+            if run_uuid:
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "skipped", "reason": "no_content"}
 
-        run_uuid = UUID(run_id) if run_id else None
         summary, artifact_id = await cached_summarize_patent(
             session,
             patent,

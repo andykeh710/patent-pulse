@@ -35,8 +35,12 @@ from app.ai.assignee_intelligence import (
 from app.ai.assignee_intelligence import (
     RULES_VERSION as ASSIGNEE_RULES_VERSION,
 )
+from app.ai.assignee_intelligence import (
+    extract_features as extract_assignee_features,
+)
 from app.ai.llm_client import (
     _model_for_tier,
+    compute_input_hash,
     estimate_cost_usd,
     estimate_tokens,
     hash_rules,
@@ -57,6 +61,9 @@ from app.ai.opportunity_scorer import (
 from app.ai.opportunity_scorer import (
     RULES_VERSION as OPPORTUNITY_RULES_VERSION,
 )
+from app.ai.opportunity_scorer import (
+    extract_features as extract_opportunity_features,
+)
 from app.ai.prompts import get_prompt
 from app.ai.summarizer import (
     SUMMARY_PROMPT_NAME,
@@ -76,6 +83,9 @@ from app.ai.trend_snapshot import (
 )
 from app.ai.trend_snapshot import (
     RULES_VERSION as TREND_RULES_VERSION,
+)
+from app.ai.trend_snapshot import (
+    extract_features as extract_trend_features,
 )
 from app.ai.why_now import (
     WHY_NOW_PROMPT_NAME,
@@ -438,21 +448,70 @@ def _prompt_for_task(task_type: str):
 
 
 async def _count_cached_artifacts(
-    db, *, task_type: str, prompt_hash: str, patent_ids: list[UUID]
+    db, *, task_type: str, prompt_hash: str, model: str, patent_ids: list[UUID]
 ) -> int:
     """Count complete AIArtifact rows for (task_type, prompt_hash, input_hash in patents)."""
     if not patent_ids:
         return 0
+
+    patents = list(
+        (
+            await db.execute(
+                select(PatentPublication).where(PatentPublication.id.in_(patent_ids))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    input_hashes = {
+        _cache_input_hash_for_task(task_type, patent, model) for patent in patents
+    }
+    if not input_hashes:
+        return 0
+
     stmt = (
         select(func.count())
         .select_from(AIArtifact)
         .where(AIArtifact.artifact_type == task_type)
         .where(AIArtifact.prompt_hash == prompt_hash)
+        .where(AIArtifact.input_hash.in_(input_hashes))
         .where(AIArtifact.status == "complete")
         .where(AIArtifact.patent_publication_id.in_(patent_ids))
     )
     result = await db.execute(stmt)
     return int(result.scalar_one() or 0)
+
+
+def _cache_input_hash_for_task(
+    task_type: str, patent: PatentPublication, model: str
+) -> str:
+    if task_type == "summary":
+        payload = build_summary_payload(patent)
+    elif task_type == "tags":
+        payload = build_tag_payload(patent)
+    elif task_type == "why_now":
+        payload = build_why_now_payload(patent)
+    elif task_type == "opportunity_narrative":
+        payload = build_opportunity_narrative_payload(patent)
+    elif task_type == "opportunity_score":
+        payload = extract_opportunity_features(patent).as_dict()
+    elif task_type == "trend_snapshot":
+        payload = extract_trend_features(patent).as_dict()
+    elif task_type == "assignee_intelligence":
+        payload = extract_assignee_features(patent).as_dict()
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Cache estimator for task_type={task_type} is not implemented yet.",
+        )
+
+    return compute_input_hash(
+        {
+            "payload": payload,
+            "subject_key": None,
+            "model": model,
+        }
+    )
 
 
 async def _recent_cache_hit_rate(db, *, task_type: str) -> float:
@@ -513,6 +572,7 @@ async def estimate_run(
         db,
         task_type=request.task_type,
         prompt_hash=prompt_hash,
+        model=model,
         patent_ids=patent_ids,
     )
     uncached = max(0, cohort_size - cached)
