@@ -15,6 +15,7 @@ from app.tasks.celery_app import celery_app
 from app.tasks.run_aggregates import (
     recompute_run_aggregates,
     record_run_task_completion,
+    record_run_task_failure,
 )
 
 logger = logging.getLogger(__name__)
@@ -169,6 +170,9 @@ async def _summarize_patent_async(
 
         if not patent:
             logger.warning(f"Patent {patent_id} not found")
+            if run_uuid:
+                await record_run_task_failure(session, run_uuid)
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "failed", "error": "Patent not found"}
 
         if patent.summarized_at and not force:

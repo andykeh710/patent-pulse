@@ -39,6 +39,19 @@ async def record_run_task_completion(
     )
 
 
+async def record_run_task_failure(session: AsyncSession, run_id: UUID | str) -> None:
+    """Record that one dispatched task reached a terminal failed outcome."""
+    if isinstance(run_id, str):
+        run_id = UUID(run_id)
+
+    await session.execute(
+        update(AIRun)
+        .where(AIRun.id == run_id)
+        .where(AIRun.status.notin_(("succeeded", "failed", "cancelled")))
+        .values(failed_count=AIRun.failed_count + 1)
+    )
+
+
 async def recompute_run_aggregates(
     session: AsyncSession, run_id: UUID | str
 ) -> None:
@@ -92,10 +105,8 @@ async def recompute_run_aggregates(
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
 
-    completed = max(
-        completed + int(run.cached_count or 0),
-        int(getattr(run, "completed_count", 0) or 0),
-    )
+    completed = max(completed, int(getattr(run, "completed_count", 0) or 0))
+    failed = max(failed, int(getattr(run, "failed_count", 0) or 0))
     cohort_size = max(int(run.cohort_size or 0), 0)
     finished = completed + failed >= cohort_size
     new_status = run.status

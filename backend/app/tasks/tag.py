@@ -16,6 +16,7 @@ from app.tasks.celery_app import celery_app
 from app.tasks.run_aggregates import (
     recompute_run_aggregates,
     record_run_task_completion,
+    record_run_task_failure,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,28 +35,35 @@ def tag_patent(self, patent_id: str, run_id: str | None = None) -> dict[str, Any
 
 
 async def _tag_patent_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
+    run_uuid = UUID(run_id) if run_id else None
     async with async_session_maker() as session:
         result = await session.execute(
             select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
         )
         patent = result.scalar_one_or_none()
         if not patent:
+            if run_uuid:
+                await record_run_task_failure(session, run_uuid)
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "failed", "error": "patent not found"}
 
         if not patent.title and not patent.abstract:
+            if run_uuid:
+                await record_run_task_completion(session, run_uuid)
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "skipped", "reason": "no_content"}
 
         tags, artifact_id = await cached_tag_patent(
             session,
             patent,
-            run_id=UUID(run_id) if run_id else None,
+            run_id=run_uuid,
         )
         patent.tags = tags
         patent.latest_tags_artifact_id = artifact_id
         await session.commit()
-        if run_id:
-            await record_run_task_completion(session, run_id)
-            await recompute_run_aggregates(session, run_id)
+        if run_uuid:
+            await record_run_task_completion(session, run_uuid)
+            await recompute_run_aggregates(session, run_uuid)
         return {
             "status": "success",
             "artifact_id": str(artifact_id),

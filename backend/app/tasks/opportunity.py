@@ -18,6 +18,7 @@ from app.tasks.celery_app import celery_app
 from app.tasks.run_aggregates import (
     recompute_run_aggregates,
     record_run_task_completion,
+    record_run_task_failure,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def score_patent_opportunity_task(
 
 
 async def _score_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
+    run_uuid = UUID(run_id) if run_id else None
     async with async_session_maker() as session:
         patent = (
             await session.execute(
@@ -46,20 +48,23 @@ async def _score_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if not patent:
+            if run_uuid:
+                await record_run_task_failure(session, run_uuid)
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "failed", "error": "patent not found"}
 
         breakdown, artifact_id = await score_patent_opportunity(
             session,
             patent,
-            run_id=UUID(run_id) if run_id else None,
+            run_id=run_uuid,
         )
         patent.opportunity_score = float(breakdown["score"])
         patent.opportunity_score_version = int(breakdown["version"])
         patent.opportunity_breakdown = breakdown
         await session.commit()
-        if run_id:
-            await record_run_task_completion(session, run_id)
-            await recompute_run_aggregates(session, run_id)
+        if run_uuid:
+            await record_run_task_completion(session, run_uuid)
+            await recompute_run_aggregates(session, run_uuid)
         return {
             "status": "success",
             "artifact_id": str(artifact_id),

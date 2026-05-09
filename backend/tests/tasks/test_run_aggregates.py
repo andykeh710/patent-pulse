@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -57,7 +56,7 @@ class _FakeSession:
 
 
 @pytest.mark.asyncio
-async def test_recompute_run_aggregates_counts_cached_items_as_completed(
+async def test_recompute_run_aggregates_waits_for_cached_task_completion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     run_id = uuid4()
@@ -92,13 +91,13 @@ async def test_recompute_run_aggregates_counts_cached_items_as_completed(
     await run_aggregates.recompute_run_aggregates(session, run_id)
 
     assert session.committed is True
-    assert session.updated_values["completed_count"] == 3
+    assert session.updated_values["completed_count"] == 1
     assert session.updated_values["failed_count"] == 1
     assert session.updated_values["actual_input_tokens"] == 100
     assert session.updated_values["actual_output_tokens"] == 50
     assert session.updated_values["actual_cost_usd"] == 0.01
-    assert session.updated_values["status"] == "succeeded"
-    assert isinstance(session.updated_values["finished_at"], datetime)
+    assert session.updated_values["status"] == "running"
+    assert session.updated_values["finished_at"] is None
     assert len(update_statements) == 1
 
 
