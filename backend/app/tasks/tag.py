@@ -13,7 +13,10 @@ from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
-from app.tasks.run_aggregates import recompute_run_aggregates
+from app.tasks.run_aggregates import (
+    recompute_run_aggregates,
+    record_run_task_completion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ async def _tag_patent_async(patent_id: str, run_id: str | None) -> dict[str, Any
         patent.latest_tags_artifact_id = artifact_id
         await session.commit()
         if run_id:
+            await record_run_task_completion(session, run_id)
             await recompute_run_aggregates(session, run_id)
         return {
             "status": "success",

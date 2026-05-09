@@ -12,7 +12,10 @@ from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.ingestion.dedup import get_unsummarized_patents
 from app.tasks.celery_app import celery_app
-from app.tasks.run_aggregates import recompute_run_aggregates
+from app.tasks.run_aggregates import (
+    recompute_run_aggregates,
+    record_run_task_completion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -171,12 +174,14 @@ async def _summarize_patent_async(
         if patent.summarized_at and not force:
             logger.debug(f"Patent {patent_id} already summarized")
             if run_uuid:
+                await record_run_task_completion(session, run_uuid)
                 await recompute_run_aggregates(session, run_uuid)
             return {"status": "skipped", "reason": "already_summarized"}
 
         if not patent.title and not patent.abstract:
             logger.warning(f"Patent {patent_id} has no title or abstract")
             if run_uuid:
+                await record_run_task_completion(session, run_uuid)
                 await recompute_run_aggregates(session, run_uuid)
             return {"status": "skipped", "reason": "no_content"}
 
@@ -195,6 +200,7 @@ async def _summarize_patent_async(
 
         await session.commit()
         if run_uuid:
+            await record_run_task_completion(session, run_uuid)
             await recompute_run_aggregates(session, run_uuid)
 
         logger.info(f"Successfully summarized patent {patent_id}")

@@ -24,6 +24,21 @@ from app.core.ai_models import AIArtifact, AIRun
 logger = logging.getLogger(__name__)
 
 
+async def record_run_task_completion(
+    session: AsyncSession, run_id: UUID | str
+) -> None:
+    """Record that one dispatched task reached a terminal non-failed outcome."""
+    if isinstance(run_id, str):
+        run_id = UUID(run_id)
+
+    await session.execute(
+        update(AIRun)
+        .where(AIRun.id == run_id)
+        .where(AIRun.status.notin_(("succeeded", "failed", "cancelled")))
+        .values(completed_count=AIRun.completed_count + 1)
+    )
+
+
 async def recompute_run_aggregates(
     session: AsyncSession, run_id: UUID | str
 ) -> None:
@@ -77,12 +92,16 @@ async def recompute_run_aggregates(
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
 
-    completed += int(run.cached_count or 0)
-    finished = completed + failed >= max(run.cohort_size, 1)
+    completed = max(
+        completed + int(run.cached_count or 0),
+        int(getattr(run, "completed_count", 0) or 0),
+    )
+    cohort_size = max(int(run.cohort_size or 0), 0)
+    finished = completed + failed >= cohort_size
     new_status = run.status
     finished_at = run.finished_at
     if finished:
-        new_status = "succeeded" if completed > 0 else "failed"
+        new_status = "succeeded" if completed > 0 or cohort_size == 0 else "failed"
         finished_at = finished_at or datetime.utcnow()
 
     await session.execute(

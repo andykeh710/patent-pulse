@@ -8,12 +8,17 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.ai.opportunity_narrative import generate_opportunity_narrative as cached_generate_opportunity_narrative
+from app.ai.opportunity_narrative import (
+    generate_opportunity_narrative as cached_generate_opportunity_narrative,
+)
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
-from app.tasks.run_aggregates import recompute_run_aggregates
+from app.tasks.run_aggregates import (
+    recompute_run_aggregates,
+    record_run_task_completion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +53,7 @@ async def _generate_opportunity_narrative_async(patent_id: str, run_id: str | No
             run_id=UUID(run_id) if run_id else None,
         )
         if run_id:
+            await record_run_task_completion(session, run_id)
             await recompute_run_aggregates(session, run_id)
         return {
             "status": "success",

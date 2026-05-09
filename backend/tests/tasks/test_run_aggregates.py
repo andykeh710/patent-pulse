@@ -100,3 +100,63 @@ async def test_recompute_run_aggregates_counts_cached_items_as_completed(
     assert session.updated_values["status"] == "succeeded"
     assert isinstance(session.updated_values["finished_at"], datetime)
     assert len(update_statements) == 1
+
+
+@pytest.mark.asyncio
+async def test_recompute_run_aggregates_preserves_recorded_task_completions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run_id = uuid4()
+    run = type(
+        "Run",
+        (),
+        {
+            "id": run_id,
+            "status": "running",
+            "cohort_size": 2,
+            "cached_count": 0,
+            "completed_count": 2,
+            "finished_at": None,
+        },
+    )()
+    session = _FakeSession(run, rows=[("complete", 1, 100, 50, 0.01)])
+
+    def fake_update(_model):
+        return _FakeUpdate()
+
+    monkeypatch.setattr(run_aggregates, "update", fake_update)
+
+    await run_aggregates.recompute_run_aggregates(session, run_id)
+
+    assert session.updated_values["completed_count"] == 2
+    assert session.updated_values["status"] == "succeeded"
+
+
+@pytest.mark.asyncio
+async def test_recompute_run_aggregates_finishes_empty_cohort(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run_id = uuid4()
+    run = type(
+        "Run",
+        (),
+        {
+            "id": run_id,
+            "status": "running",
+            "cohort_size": 0,
+            "cached_count": 0,
+            "completed_count": 0,
+            "finished_at": None,
+        },
+    )()
+    session = _FakeSession(run, rows=[])
+
+    def fake_update(_model):
+        return _FakeUpdate()
+
+    monkeypatch.setattr(run_aggregates, "update", fake_update)
+
+    await run_aggregates.recompute_run_aggregates(session, run_id)
+
+    assert session.updated_values["completed_count"] == 0
+    assert session.updated_values["status"] == "succeeded"

@@ -733,8 +733,12 @@ async def create_run(
             request.task_type,
             estimate.cohort_size,
         )
-        run.status = "running"
         run.started_at = datetime.utcnow()
+        if enqueued == 0:
+            run.status = "succeeded"
+            run.finished_at = run.started_at
+        else:
+            run.status = "running"
         await db.commit()
         await db.refresh(run)
 

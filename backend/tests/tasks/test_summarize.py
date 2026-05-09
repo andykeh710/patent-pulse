@@ -103,6 +103,7 @@ async def test_summarize_patent_async_links_summary_artifact_to_run(
         "confidence_note": "High",
         "source_spans": [],
     }
+    completion_calls: list[str] = []
     recompute_calls: list[str] = []
 
     async def fake_cached_summarize(session_arg, patent_arg, *, run_id: str):
@@ -114,6 +115,10 @@ async def test_summarize_patent_async_links_summary_artifact_to_run(
     async def fake_recompute(session_arg, run_id_arg):
         assert session_arg is session
         recompute_calls.append(str(run_id_arg))
+
+    async def fake_record_completion(session_arg, run_id_arg):
+        assert session_arg is session
+        completion_calls.append(str(run_id_arg))
 
     monkeypatch.setattr(
         summarize_tasks,
@@ -131,6 +136,11 @@ async def test_summarize_patent_async_links_summary_artifact_to_run(
         fake_recompute,
         raising=False,
     )
+    monkeypatch.setattr(
+        summarize_tasks,
+        "record_run_task_completion",
+        fake_record_completion,
+    )
 
     result = await summarize_tasks._summarize_patent_async(
         str(patent_id),
@@ -141,6 +151,7 @@ async def test_summarize_patent_async_links_summary_artifact_to_run(
     assert result["artifact_id"] == str(artifact_id)
     assert patent.latest_summary_artifact_id == artifact_id
     assert session.committed is True
+    assert completion_calls == [str(run_uuid)]
     assert recompute_calls == [str(run_uuid)]
 
 
@@ -162,11 +173,16 @@ async def test_summarize_patent_async_recomputes_run_when_summary_skips(
         summarized_at=datetime.utcnow(),
     )
     session = _SummarySession(patent)
+    completion_calls: list[str] = []
     recompute_calls: list[str] = []
 
     async def fake_recompute(session_arg, run_id_arg):
         assert session_arg is session
         recompute_calls.append(str(run_id_arg))
+
+    async def fake_record_completion(session_arg, run_id_arg):
+        assert session_arg is session
+        completion_calls.append(str(run_id_arg))
 
     monkeypatch.setattr(
         summarize_tasks,
@@ -178,6 +194,11 @@ async def test_summarize_patent_async_recomputes_run_when_summary_skips(
         "recompute_run_aggregates",
         fake_recompute,
     )
+    monkeypatch.setattr(
+        summarize_tasks,
+        "record_run_task_completion",
+        fake_record_completion,
+    )
 
     result = await summarize_tasks._summarize_patent_async(
         str(patent_id),
@@ -185,4 +206,5 @@ async def test_summarize_patent_async_recomputes_run_when_summary_skips(
     )
 
     assert result == {"status": "skipped", "reason": "already_summarized"}
+    assert completion_calls == [str(run_uuid)]
     assert recompute_calls == [str(run_uuid)]
