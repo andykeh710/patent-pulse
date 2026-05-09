@@ -12,7 +12,10 @@ const mockPatent: PatentListItem = {
   publication_date: "2024-03-15",
   grant_date: "2024-03-15",
   legal_status: "GRANTED",
+  legal_status_confidence: "high",
   interesting_score: 0.75,
+  opportunity_score: 82,
+  tags: null,
   summary_what_it_is: "A test invention for testing purposes",
   estimated_expiry_date: "2044-01-15",
 };
