@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 
@@ -77,7 +77,16 @@ from app.core.ai_models import (
 )
 from app.core.models import PatentPublication
 
-router = APIRouter()
+
+def _require_non_production_ai_runs(settings: AppSettings) -> None:
+    if settings.environment == "production":
+        raise HTTPException(
+            status_code=403,
+            detail="AI run administration is not available in production without authentication.",
+        )
+
+
+router = APIRouter(dependencies=[Depends(_require_non_production_ai_runs)])
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------

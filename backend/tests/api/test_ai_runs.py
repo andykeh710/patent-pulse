@@ -5,11 +5,14 @@ from datetime import date
 from uuid import uuid4
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_db, get_settings
+from app.config import Settings
 from app.core.ai_models import AIRun
 from app.core.models import PatentPublication
+from app.main import app
 
 
 async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublication]:
@@ -146,6 +149,32 @@ async def test_full_batch_requires_confirmation_phrase(
     r = await client.post("/api/v1/ai-runs", json=body)
     assert r.status_code == 400
     assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_run_rejects_production_without_admin_auth() -> None:
+    async def override_get_db():
+        yield None
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_settings] = lambda: Settings(environment="production")
+    body = {
+        "task_type": "summary",
+        "run_mode": "dev_fixture",
+        "cohort": {},
+        "enqueue": True,
+    }
+
+    try:
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            r = await client.post("/api/v1/ai-runs", json=body)
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_settings, None)
+
+    assert r.status_code == 403
+    assert "not available in production" in r.json()["detail"]
 
 
 @pytest.mark.asyncio
