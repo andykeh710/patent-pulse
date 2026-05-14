@@ -39,6 +39,37 @@ async def test_list_patents_with_data(client: AsyncClient, db_session) -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_patents_sort_by_opportunity_score(
+    client: AsyncClient, db_session
+) -> None:
+    low_score = PatentPublication(
+        doc_id="USPTO:OPPLOW",
+        office="USPTO",
+        publication_number="OPPLOW",
+        title="Lower opportunity patent",
+        opportunity_score=25.0,
+    )
+    high_score = PatentPublication(
+        doc_id="USPTO:OPPHIGH",
+        office="USPTO",
+        publication_number="OPPHIGH",
+        title="Higher opportunity patent",
+        opportunity_score=90.0,
+    )
+    db_session.add_all([low_score, high_score])
+    await db_session.commit()
+
+    response = await client.get("/api/v1/patents?sort_by=opportunity_score")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [item["doc_id"] for item in data["items"]] == [
+        "USPTO:OPPHIGH",
+        "USPTO:OPPLOW",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_list_patents_filter_by_office(client: AsyncClient, db_session) -> None:
     patents = [
         PatentPublication(

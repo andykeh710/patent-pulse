@@ -220,7 +220,7 @@ export default function DashboardPage() {
               <PatentCardSkeleton key={i} />
             ))}
           </div>
-        ) : patents?.items.length === 0 ? (
+        ) : patents?.items?.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <p className="text-gray-500">No patents found</p>
             <p className="text-sm text-gray-400 mt-1">

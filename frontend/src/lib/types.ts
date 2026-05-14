@@ -161,7 +161,7 @@ export interface PatentListParams {
   date_from?: string;
   date_to?: string;
   min_score?: number;
-  sort_by?: "publication_date" | "interesting_score" | "created_at";
+  sort_by?: "publication_date" | "interesting_score" | "opportunity_score" | "created_at";
   sort_order?: "asc" | "desc";
   page?: number;
   page_size?: number;

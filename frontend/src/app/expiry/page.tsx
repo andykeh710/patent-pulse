@@ -145,7 +145,7 @@ export default function ExpiryPage() {
             </tbody>
           </table>
         </div>
-      ) : data?.items.length === 0 ? (
+      ) : data?.items?.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-500">No patents expiring in this timeframe</p>
         </div>
