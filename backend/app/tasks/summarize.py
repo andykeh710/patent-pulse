@@ -178,10 +178,8 @@ async def _summarize_patent_async(
             logger.warning(f"Patent {patent_id} not found")
             return {"status": "failed", "error": "Patent not found"}
 
-        if patent.summarized_at and not force:
+        if patent.summarized_at and not force and not run_id:
             logger.debug(f"Patent {patent_id} already summarized")
-            if run_id:
-                await recompute_run_aggregates(session, run_id)
             return {"status": "skipped", "reason": "already_summarized"}
 
         if not patent.title and not patent.abstract:
