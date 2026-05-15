@@ -8,8 +8,11 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_models import AIRun
+from app.api.deps import get_settings
+from app.config import Settings
+from app.core.ai_models import AIRun, User
 from app.core.models import PatentPublication
+from app.main import app
 
 
 async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublication]:
@@ -146,6 +149,65 @@ async def test_full_batch_requires_confirmation_phrase(
     r = await client.post("/api/v1/ai-runs", json=body)
     assert r.status_code == 400
     assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_expensive_cohort_requires_full_batch_confirmation_phrase(
+    db_session: AsyncSession,
+    client: AsyncClient,
+    test_settings: Settings,
+) -> None:
+    db_session.add(
+        User(
+            id=test_settings.default_user_id,
+            display_name=test_settings.default_user_display_name,
+            email=None,
+        )
+    )
+    await _seed_patents(db_session, n=1)
+    strict_settings = test_settings.model_copy(
+        update={
+            "llm_run_auto_approve_usd": 0.0,
+            "llm_run_full_batch_threshold_usd": 0.0,
+        }
+    )
+    app.dependency_overrides[get_settings] = lambda: strict_settings
+    try:
+        body = {
+            "task_type": "summary",
+            "run_mode": "cohort",
+            "cohort": {"has_abstract": True},
+            "enqueue": False,
+        }
+        r = await client.post("/api/v1/ai-runs", json=body)
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+
+    assert r.status_code == 400
+    assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+def test_summary_dispatch_passes_run_id_to_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.v1.ai_runs import _dispatch_celery_per_patent
+    from app.tasks import summarize as summarize_tasks
+
+    patent_id = uuid4()
+    run_id = str(uuid4())
+    calls: list[tuple[str, str]] = []
+
+    def fake_delay(*args: str) -> None:
+        calls.append(args)
+
+    monkeypatch.setattr(summarize_tasks.summarize_patent, "delay", fake_delay)
+
+    enqueued = _dispatch_celery_per_patent(
+        task_type="summary",
+        patent_ids=[patent_id],
+        run_id=run_id,
+    )
+
+    assert enqueued == 1
+    assert calls == [(str(patent_id), run_id)]
 
 
 @pytest.mark.asyncio
