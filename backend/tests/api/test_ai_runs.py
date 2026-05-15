@@ -193,10 +193,10 @@ def test_summary_dispatch_passes_run_id_to_worker(monkeypatch: pytest.MonkeyPatc
 
     patent_id = uuid4()
     run_id = str(uuid4())
-    calls: list[tuple[str, str]] = []
+    calls: list[tuple[tuple[str, ...], dict[str, str]]] = []
 
-    def fake_delay(*args: str) -> None:
-        calls.append(args)
+    def fake_delay(*args: str, **kwargs: str) -> None:
+        calls.append((args, kwargs))
 
     monkeypatch.setattr(summarize_tasks.summarize_patent, "delay", fake_delay)
 
@@ -207,7 +207,7 @@ def test_summary_dispatch_passes_run_id_to_worker(monkeypatch: pytest.MonkeyPatc
     )
 
     assert enqueued == 1
-    assert calls == [(str(patent_id), run_id)]
+    assert calls == [((str(patent_id),), {"run_id": run_id})]
 
 
 @pytest.mark.asyncio

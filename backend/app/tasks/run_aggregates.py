@@ -30,7 +30,7 @@ async def recompute_run_aggregates(
     """Recompute counters + finalize status for one AIRun.
 
     Safe to call after every per-patent task completion. Will:
-      - SUM artifact counts grouped by status into completed/failed
+      - SUM linked artifact counts plus estimate-time cache hits into completed/failed
       - SUM tokens + cost
       - Mark the run ``succeeded`` (or ``failed`` if every artifact failed)
         once ``completed + failed >= cohort_size``, setting ``finished_at``.
@@ -63,7 +63,7 @@ async def recompute_run_aggregates(
         )
     ).all()
 
-    completed = 0
+    completed = int(run.cached_count or 0)
     failed = 0
     in_tokens = 0
     out_tokens = 0

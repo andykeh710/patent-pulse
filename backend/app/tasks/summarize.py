@@ -12,6 +12,7 @@ from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.ingestion.dedup import get_unsummarized_patents
 from app.tasks.celery_app import celery_app
+from app.tasks.run_aggregates import recompute_run_aggregates
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +24,34 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
     autoretry_for=(SummarizationError,),
 )
-def summarize_patent(self, patent_id: str, force: bool = False) -> dict:
+def summarize_patent(
+    self,
+    patent_id: str,
+    force: bool = False,
+    run_id: str | None = None,
+) -> dict:
     """
     Generate AI summary for a single patent.
 
     Args:
         patent_id: UUID of the patent to summarize
         force: If True, re-summarize even if already summarized
+        run_id: Optional AIRun parent for aggregate accounting
 
     Returns:
         Dict with status and summary keys
     """
-    logger.info(f"Starting summarization for patent {patent_id} (force={force})")
+    logger.info(
+        "Starting summarization for patent %s (force=%s, run_id=%s)",
+        patent_id,
+        force,
+        run_id,
+    )
 
     try:
-        result = asyncio.run(_summarize_patent_async(patent_id, force=force))
+        result = asyncio.run(
+            _summarize_patent_async(patent_id, force=force, run_id=run_id)
+        )
         return result
     except SummarizationError as e:
         logger.warning(f"Summarization failed for {patent_id}, retrying: {e}")
@@ -143,7 +157,11 @@ async def _get_enriched_resummarize_candidates(limit: int) -> list[PatentPublica
         return list(result.scalars().all())
 
 
-async def _summarize_patent_async(patent_id: str, force: bool = False) -> dict:
+async def _summarize_patent_async(
+    patent_id: str,
+    force: bool = False,
+    run_id: str | None = None,
+) -> dict:
     """Async helper for patent summarization.
 
     Routes through :func:`app.ai.summarizer.summarize_patent` so every
@@ -162,13 +180,19 @@ async def _summarize_patent_async(patent_id: str, force: bool = False) -> dict:
 
         if patent.summarized_at and not force:
             logger.debug(f"Patent {patent_id} already summarized")
+            if run_id:
+                await recompute_run_aggregates(session, run_id)
             return {"status": "skipped", "reason": "already_summarized"}
 
         if not patent.title and not patent.abstract:
             logger.warning(f"Patent {patent_id} has no title or abstract")
             return {"status": "skipped", "reason": "no_content"}
 
-        summary, artifact_id = await cached_summarize_patent(session, patent)
+        summary, artifact_id = await cached_summarize_patent(
+            session,
+            patent,
+            run_id=UUID(run_id) if run_id else None,
+        )
 
         patent.summary = summary
         patent.novel_applications = [
@@ -178,6 +202,8 @@ async def _summarize_patent_async(patent_id: str, force: bool = False) -> dict:
         patent.latest_summary_artifact_id = artifact_id
 
         await session.commit()
+        if run_id:
+            await recompute_run_aggregates(session, run_id)
 
         logger.info(f"Successfully summarized patent {patent_id}")
         return {

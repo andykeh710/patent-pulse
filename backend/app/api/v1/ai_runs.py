@@ -79,6 +79,7 @@ from app.core.models import PatentPublication
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+FULL_BATCH_CONFIRMATION_PHRASE = "RUN FULL BATCH"
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -153,7 +154,7 @@ class CreateRunRequest(BaseModel):
     task_type: str
     run_mode: Literal["dev_fixture", "sample", "cohort", "full_batch"]
     cohort: CohortFilter = Field(default_factory=CohortFilter)
-    confirmation_phrase: str | None = None  # required when run_mode=full_batch
+    confirmation_phrase: str | None = None
     enqueue: bool = True  # if False, create the run row but do not kick off Celery
     tier: Literal["summary", "tag", "narrative", "rerank"] = "summary"
 
@@ -582,15 +583,6 @@ async def create_run(
             ),
         )
 
-    if (
-        request.run_mode == "full_batch"
-        and request.confirmation_phrase != "RUN FULL BATCH"
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Full-batch runs require confirmation_phrase='RUN FULL BATCH'.",
-        )
-
     # Resolve cohort + run estimator identically to the /estimate endpoint.
     estimate = await estimate_run(
         EstimateRequest(
@@ -602,6 +594,18 @@ async def create_run(
         db,
         settings,
     )
+
+    if (
+        estimate.requires_full_batch_phrase
+        and request.confirmation_phrase != FULL_BATCH_CONFIRMATION_PHRASE
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Runs above the full-batch threshold require "
+                f"confirmation_phrase='{FULL_BATCH_CONFIRMATION_PHRASE}'."
+            ),
+        )
 
     run = AIRun(
         task_type=request.task_type,
@@ -662,7 +666,7 @@ def _dispatch_celery_per_patent(
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), run_id=run_id)
         return len(patent_ids)
 
     if task_type == "tags":
