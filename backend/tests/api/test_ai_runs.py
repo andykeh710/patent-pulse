@@ -182,4 +182,4 @@ def test_summary_dispatch_passes_run_id_to_celery_task() -> None:
         )
 
     assert enqueued == 1
-    delay.assert_called_once_with(str(patent_id), run_id)
+    delay.assert_called_once_with(str(patent_id), run_id=run_id)

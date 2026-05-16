@@ -662,7 +662,7 @@ def _dispatch_celery_per_patent(
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), run_id=run_id)
         return len(patent_ids)
 
     if task_type == "tags":
