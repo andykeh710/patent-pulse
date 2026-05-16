@@ -52,9 +52,23 @@ def summarize_patent(
         return result
     except SummarizationError as e:
         logger.warning(f"Summarization failed for {patent_id}, retrying: {e}")
+        max_retries = getattr(self, "max_retries", 0) or 0
+        retries = getattr(getattr(self, "request", None), "retries", 0)
+        if run_id and retries >= max_retries:
+            asyncio.run(
+                _record_summary_task_failure_async(
+                    patent_id=patent_id, run_id=run_id, reason=str(e)
+                )
+            )
         raise
     except Exception as e:
         logger.error(f"Summarization failed for {patent_id}: {e}")
+        if run_id:
+            asyncio.run(
+                _record_summary_task_failure_async(
+                    patent_id=patent_id, run_id=run_id, reason=str(e)
+                )
+            )
         return {"status": "failed", "error": str(e)}
 
 
@@ -220,6 +234,24 @@ async def _summarize_patent_async(
             "summary": summary,
             "artifact_id": str(artifact_id),
         }
+
+
+async def _record_summary_task_failure_async(
+    *, patent_id: str, run_id: str, reason: str
+) -> None:
+    async with async_session_maker() as session:
+        patent = (
+            await session.execute(
+                select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
+            )
+        ).scalar_one_or_none()
+        await _record_summary_run_failure(
+            session,
+            run_id=run_id,
+            patent_id=patent_id,
+            patent=patent,
+            reason=reason,
+        )
 
 
 async def _record_summary_run_failure(

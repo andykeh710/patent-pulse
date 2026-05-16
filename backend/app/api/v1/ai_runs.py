@@ -452,16 +452,15 @@ async def _count_cached_artifacts(
         return 0
 
     stmt = (
-        select(func.count(func.distinct(AIArtifact.patent_publication_id)))
-        .select_from(AIArtifact)
+        select(AIArtifact.input_hash)
         .where(AIArtifact.artifact_type == task_type)
         .where(AIArtifact.prompt_hash == prompt_hash)
         .where(AIArtifact.input_hash.in_(input_hashes))
         .where(AIArtifact.status == "complete")
-        .where(AIArtifact.patent_publication_id.in_(patent_ids))
+        .distinct()
     )
-    result = await db.execute(stmt)
-    return int(result.scalar_one() or 0)
+    cached_hashes = {row[0] for row in (await db.execute(stmt)).all()}
+    return sum(1 for input_hash in input_hashes if input_hash in cached_hashes)
 
 
 def _input_hash_for_task(
