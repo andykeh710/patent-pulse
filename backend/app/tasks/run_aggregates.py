@@ -16,7 +16,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ai_models import AIArtifact, AIRun
@@ -53,30 +53,33 @@ async def recompute_run_aggregates(
         await session.execute(
             select(
                 AIArtifact.status,
-                func.count(AIArtifact.id),
-                func.coalesce(func.sum(AIArtifact.input_tokens), 0),
-                func.coalesce(func.sum(AIArtifact.output_tokens), 0),
-                func.coalesce(func.sum(AIArtifact.actual_cost_usd), 0.0),
-            )
-            .where(AIArtifact.run_id == run_id)
-            .group_by(AIArtifact.status)
+                AIArtifact.patent_publication_id,
+                AIArtifact.input_hash,
+                AIArtifact.input_tokens,
+                AIArtifact.output_tokens,
+                AIArtifact.actual_cost_usd,
+            ).where(AIArtifact.run_id == run_id)
         )
     ).all()
 
     cached = max(int(run.cached_count or 0), 0)
-    completed = cached
-    failed = 0
+    complete_keys = set()
+    failed_keys = set()
     in_tokens = 0
     out_tokens = 0
     cost = 0.0
-    for status, count, itok, otok, c in rows:
+    for status, patent_id, input_hash, itok, otok, c in rows:
+        item_key = str(patent_id) if patent_id else input_hash
         if status == "complete":
-            completed += int(count)
+            complete_keys.add(item_key)
         elif status == "failed":
-            failed += int(count)
+            failed_keys.add(item_key)
         in_tokens += int(itok or 0)
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
+
+    completed = cached + len(complete_keys)
+    failed = len(failed_keys - complete_keys)
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status
     finished_at = run.finished_at
