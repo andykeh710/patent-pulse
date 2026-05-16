@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 from uuid import uuid4
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -165,3 +166,20 @@ async def test_runs_metadata_options(client: AsyncClient) -> None:
     assert "summary" in data["task_types"]
     assert "dev_fixture" in data["run_modes"]
     assert data["auto_approve_threshold_usd"] > 0
+
+
+def test_summary_dispatch_passes_run_id_to_celery_task() -> None:
+    from app.api.v1.ai_runs import _dispatch_celery_per_patent
+
+    patent_id = uuid4()
+    run_id = str(uuid4())
+
+    with patch("app.tasks.summarize.summarize_patent.delay", MagicMock()) as delay:
+        enqueued = _dispatch_celery_per_patent(
+            task_type="summary",
+            patent_ids=[patent_id],
+            run_id=run_id,
+        )
+
+    assert enqueued == 1
+    delay.assert_called_once_with(str(patent_id), run_id)
