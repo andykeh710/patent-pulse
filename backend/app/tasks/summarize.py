@@ -12,7 +12,7 @@ from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.ingestion.dedup import get_unsummarized_patents
 from app.tasks.celery_app import celery_app
-from app.tasks.run_aggregates import recompute_run_aggregates
+from app.tasks.run_aggregates import recompute_run_aggregates, record_run_item_failed
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +165,8 @@ async def _summarize_patent_async(
 
         if not patent:
             logger.warning(f"Patent {patent_id} not found")
+            if run_id:
+                await record_run_item_failed(session, run_id)
             return {"status": "failed", "error": "Patent not found"}
 
         if patent.summarized_at and not force and not run_id:
@@ -173,6 +175,8 @@ async def _summarize_patent_async(
 
         if not patent.title and not patent.abstract:
             logger.warning(f"Patent {patent_id} has no title or abstract")
+            if run_id:
+                await record_run_item_failed(session, run_id)
             return {"status": "skipped", "reason": "no_content"}
 
         summary, artifact_id = await cached_summarize_patent(

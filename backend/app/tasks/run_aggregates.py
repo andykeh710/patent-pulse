@@ -65,6 +65,7 @@ async def recompute_run_aggregates(
 
     cached = max(int(run.cached_count or 0), 0)
     completed = cached
+    manual_failed = max(int(run.failed_count or 0), 0)
     failed = 0
     in_tokens = 0
     out_tokens = 0
@@ -77,6 +78,7 @@ async def recompute_run_aggregates(
         in_tokens += int(itok or 0)
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
+    failed = max(failed, manual_failed)
 
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status
@@ -94,6 +96,42 @@ async def recompute_run_aggregates(
             actual_input_tokens=in_tokens,
             actual_output_tokens=out_tokens,
             actual_cost_usd=cost,
+            status=new_status,
+            finished_at=finished_at,
+        )
+    )
+    await session.commit()
+
+
+async def record_run_item_failed(session: AsyncSession, run_id: UUID | str) -> None:
+    """Record a per-item failure that did not produce an AIArtifact row."""
+    if isinstance(run_id, str):
+        run_id = UUID(run_id)
+
+    run = (
+        await session.execute(select(AIRun).where(AIRun.id == run_id))
+    ).scalar_one_or_none()
+    if run is None:
+        logger.warning("record_run_item_failed: run %s not found", run_id)
+        return
+    if run.status in ("succeeded", "failed", "cancelled"):
+        return
+
+    completed = max(int(run.completed_count or 0), int(run.cached_count or 0), 0)
+    failed = max(int(run.failed_count or 0), 0) + 1
+    finished = completed + failed >= max(run.cohort_size, 1)
+    new_status = run.status
+    finished_at = run.finished_at
+    if finished:
+        new_status = "succeeded" if completed > 0 else "failed"
+        finished_at = finished_at or datetime.utcnow()
+
+    await session.execute(
+        update(AIRun)
+        .where(AIRun.id == run_id)
+        .values(
+            completed_count=completed,
+            failed_count=failed,
             status=new_status,
             finished_at=finished_at,
         )
