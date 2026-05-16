@@ -72,10 +72,35 @@ async def test_record_run_item_failed_finishes_uncached_run(
     db_session.add(run)
     await db_session.commit()
 
-    await record_run_item_failed(db_session, run.id)
+    await record_run_item_failed(
+        db_session,
+        run_id=run.id,
+        artifact_type="summary",
+        model="claude-sonnet-4-20250514",
+        prompt_name="summarize",
+        prompt_version=1,
+        prompt_hash="prompt-hash",
+        input_hash="failed-input-hash",
+        error_message="Patent has no title or abstract",
+    )
     await db_session.refresh(run)
 
     assert run.completed_count == 0
     assert run.failed_count == 1
     assert run.status == "failed"
     assert run.finished_at is not None
+
+    await record_run_item_failed(
+        db_session,
+        run_id=run.id,
+        artifact_type="summary",
+        model="claude-sonnet-4-20250514",
+        prompt_name="summarize",
+        prompt_version=1,
+        prompt_hash="prompt-hash",
+        input_hash="failed-input-hash",
+        error_message="Patent has no title or abstract",
+    )
+    await db_session.refresh(run)
+
+    assert run.failed_count == 1

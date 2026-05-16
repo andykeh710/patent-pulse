@@ -5,7 +5,13 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.ai.summarizer import summarize_patent as cached_summarize_patent
+from app.ai.llm_client import _model_for_tier, compute_input_hash
+from app.ai.prompts import get_prompt
+from app.ai.summarizer import (
+    SUMMARY_PROMPT_NAME,
+    SUMMARY_PROMPT_VERSION,
+    summarize_patent as cached_summarize_patent,
+)
 from app.config import settings
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
@@ -166,7 +172,13 @@ async def _summarize_patent_async(
         if not patent:
             logger.warning(f"Patent {patent_id} not found")
             if run_id:
-                await record_run_item_failed(session, run_id)
+                await _record_summary_run_failure(
+                    session,
+                    run_id=run_id,
+                    patent_id=patent_id,
+                    patent=None,
+                    reason="Patent not found",
+                )
             return {"status": "failed", "error": "Patent not found"}
 
         if patent.summarized_at and not force and not run_id:
@@ -176,7 +188,13 @@ async def _summarize_patent_async(
         if not patent.title and not patent.abstract:
             logger.warning(f"Patent {patent_id} has no title or abstract")
             if run_id:
-                await record_run_item_failed(session, run_id)
+                await _record_summary_run_failure(
+                    session,
+                    run_id=run_id,
+                    patent_id=patent_id,
+                    patent=patent,
+                    reason="Patent has no title or abstract",
+                )
             return {"status": "skipped", "reason": "no_content"}
 
         summary, artifact_id = await cached_summarize_patent(
@@ -202,6 +220,37 @@ async def _summarize_patent_async(
             "summary": summary,
             "artifact_id": str(artifact_id),
         }
+
+
+async def _record_summary_run_failure(
+    session,
+    *,
+    run_id: str,
+    patent_id: str,
+    patent: PatentPublication | None,
+    reason: str,
+) -> None:
+    prompt = get_prompt(SUMMARY_PROMPT_NAME, SUMMARY_PROMPT_VERSION)
+    model = _model_for_tier("summary")
+    input_hash = compute_input_hash(
+        {
+            "payload": {"patent_id": patent_id, "reason": reason},
+            "subject_key": None,
+            "model": model,
+        }
+    )
+    await record_run_item_failed(
+        session,
+        run_id=run_id,
+        artifact_type="summary",
+        model=model,
+        prompt_name=prompt.name,
+        prompt_version=prompt.version,
+        prompt_hash=prompt.prompt_hash,
+        input_hash=input_hash,
+        error_message=reason,
+        patent_publication_id=patent.id if patent else None,
+    )
 
 
 async def _get_pending_patents(limit: int) -> list[PatentPublication]:

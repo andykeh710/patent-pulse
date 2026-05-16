@@ -65,7 +65,6 @@ async def recompute_run_aggregates(
 
     cached = max(int(run.cached_count or 0), 0)
     completed = cached
-    manual_failed = max(int(run.failed_count or 0), 0)
     failed = 0
     in_tokens = 0
     out_tokens = 0
@@ -78,8 +77,6 @@ async def recompute_run_aggregates(
         in_tokens += int(itok or 0)
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
-    failed = max(failed, manual_failed)
-
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status
     finished_at = run.finished_at
@@ -103,37 +100,57 @@ async def recompute_run_aggregates(
     await session.commit()
 
 
-async def record_run_item_failed(session: AsyncSession, run_id: UUID | str) -> None:
-    """Record a per-item failure that did not produce an AIArtifact row."""
+async def record_run_item_failed(
+    session: AsyncSession,
+    *,
+    run_id: UUID | str,
+    artifact_type: str,
+    model: str,
+    prompt_name: str,
+    prompt_version: int,
+    prompt_hash: str,
+    input_hash: str,
+    error_message: str,
+    patent_publication_id: UUID | None = None,
+    subject_key: str | None = None,
+) -> None:
+    """Record an idempotent failed AIArtifact, then recompute the parent run."""
     if isinstance(run_id, str):
         run_id = UUID(run_id)
 
-    run = (
-        await session.execute(select(AIRun).where(AIRun.id == run_id))
-    ).scalar_one_or_none()
-    if run is None:
-        logger.warning("record_run_item_failed: run %s not found", run_id)
-        return
-    if run.status in ("succeeded", "failed", "cancelled"):
-        return
-
-    completed = max(int(run.completed_count or 0), int(run.cached_count or 0), 0)
-    failed = max(int(run.failed_count or 0), 0) + 1
-    finished = completed + failed >= max(run.cohort_size, 1)
-    new_status = run.status
-    finished_at = run.finished_at
-    if finished:
-        new_status = "succeeded" if completed > 0 else "failed"
-        finished_at = finished_at or datetime.utcnow()
-
-    await session.execute(
-        update(AIRun)
-        .where(AIRun.id == run_id)
-        .values(
-            completed_count=completed,
-            failed_count=failed,
-            status=new_status,
-            finished_at=finished_at,
+    existing = (
+        await session.execute(
+            select(AIArtifact.id)
+            .where(AIArtifact.run_id == run_id)
+            .where(AIArtifact.artifact_type == artifact_type)
+            .where(AIArtifact.input_hash == input_hash)
+            .where(AIArtifact.status == "failed")
+            .limit(1)
         )
-    )
-    await session.commit()
+    ).scalar_one_or_none()
+    if existing is None:
+        session.add(
+            AIArtifact(
+                patent_publication_id=patent_publication_id,
+                run_id=run_id,
+                artifact_type=artifact_type,
+                artifact_version=1,
+                model=model,
+                prompt_name=prompt_name,
+                prompt_version=prompt_version,
+                prompt_hash=prompt_hash,
+                input_hash=input_hash,
+                subject_key=subject_key,
+                content_json=None,
+                content_text=None,
+                input_tokens=0,
+                output_tokens=0,
+                estimated_cost_usd=0.0,
+                actual_cost_usd=0.0,
+                status="failed",
+                error_message=error_message,
+            )
+        )
+        await session.flush()
+
+    await recompute_run_aggregates(session, run_id)
