@@ -63,7 +63,8 @@ async def recompute_run_aggregates(
         )
     ).all()
 
-    completed = 0
+    cached = max(int(run.cached_count or 0), 0)
+    completed = cached
     failed = 0
     in_tokens = 0
     out_tokens = 0
