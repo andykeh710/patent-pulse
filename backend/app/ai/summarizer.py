@@ -22,11 +22,13 @@ from typing import Any
 from uuid import UUID
 
 import anthropic
+from sqlalchemy import func, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm_client import LLMRequest, get_llm_client
+from app.ai.llm_client import LLMRequest, LLMResponse, get_llm_client
+from app.core.ai_models import AIRun
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -160,12 +162,45 @@ async def summarize_patent(
     if content is None:
         # The model returned plain text; surface it as a parse error so
         # the caller can choose to retry with a stricter prompt version.
+        await _mark_summary_artifact_failed(
+            session,
+            response,
+            "Summary artifact did not parse as JSON.",
+            run_id=request.run_id,
+        )
         raise SummarizationError(
             "Summary artifact did not parse as JSON; see artifact "
             f"{response.artifact_id} for raw text."
         )
-    validated = validate_summary(content)
+    try:
+        validated = validate_summary(content)
+    except SummarizationError as e:
+        await _mark_summary_artifact_failed(
+            session,
+            response,
+            str(e),
+            run_id=request.run_id,
+        )
+        raise
     return validated, response.artifact_id
+
+
+async def _mark_summary_artifact_failed(
+    session: AsyncSession,
+    response: LLMResponse,
+    error_message: str,
+    *,
+    run_id: UUID | None,
+) -> None:
+    response.artifact.status = "failed"
+    response.artifact.error_message = error_message[:4000]
+    if response.cache_hit and run_id:
+        await session.execute(
+            update(AIRun)
+            .where(AIRun.id == run_id)
+            .values(cached_count=func.greatest(AIRun.cached_count - 1, 0))
+        )
+    await session.commit()
 
 
 # ---------------------------------------------------------------------------

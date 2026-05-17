@@ -16,7 +16,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ai_models import AIArtifact, AIRun
@@ -35,7 +35,8 @@ async def recompute_run_aggregates(
       - Mark the run ``succeeded`` (or ``failed`` if every artifact failed)
         once ``completed + failed >= cohort_size``, setting ``finished_at``.
 
-    Does nothing if the run is already in a terminal state.
+    Does nothing for cancelled runs; succeeded/failed runs are still
+    recomputed so cache invalidation and retries can self-correct.
     """
     if isinstance(run_id, str):
         run_id = UUID(run_id)
@@ -46,36 +47,40 @@ async def recompute_run_aggregates(
     if run is None:
         logger.warning("recompute_run_aggregates: run %s not found", run_id)
         return
-    if run.status in ("succeeded", "failed", "cancelled"):
+    if run.status == "cancelled":
         return
 
     rows = (
         await session.execute(
             select(
                 AIArtifact.status,
-                func.count(AIArtifact.id),
-                func.coalesce(func.sum(AIArtifact.input_tokens), 0),
-                func.coalesce(func.sum(AIArtifact.output_tokens), 0),
-                func.coalesce(func.sum(AIArtifact.actual_cost_usd), 0.0),
+                AIArtifact.patent_publication_id,
+                AIArtifact.id,
+                AIArtifact.input_tokens,
+                AIArtifact.output_tokens,
+                AIArtifact.actual_cost_usd,
             )
             .where(AIArtifact.run_id == run_id)
-            .group_by(AIArtifact.status)
         )
     ).all()
 
-    completed = 0
+    completed = int(run.cached_count or 0)
     failed = 0
     in_tokens = 0
     out_tokens = 0
     cost = 0.0
-    for status, count, itok, otok, c in rows:
+    outcomes: dict[str, str] = {}
+    for status, patent_id, artifact_id, itok, otok, c in rows:
+        outcome_key = str(patent_id or artifact_id)
         if status == "complete":
-            completed += int(count)
-        elif status == "failed":
-            failed += int(count)
+            outcomes[outcome_key] = "complete"
+        elif status == "failed" and outcomes.get(outcome_key) != "complete":
+            outcomes[outcome_key] = "failed"
         in_tokens += int(itok or 0)
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
+    completed += sum(1 for status in outcomes.values() if status == "complete")
+    failed = sum(1 for status in outcomes.values() if status == "failed")
 
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status

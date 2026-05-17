@@ -318,6 +318,17 @@ async def _resolve_cohort(
             if cohort.limit:
                 stmt = stmt.limit(cohort.limit)
 
+    if task_type == "summary":
+        stmt = stmt.where(
+            or_(
+                and_(
+                    PatentPublication.abstract.isnot(None),
+                    PatentPublication.abstract != "",
+                ),
+                and_(PatentPublication.title.isnot(None), PatentPublication.title != ""),
+            )
+        )
+
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]
 
@@ -630,11 +641,33 @@ async def create_run(
             cohort=request.cohort,
             task_type=request.task_type,
         )
-        enqueued = _dispatch_celery_per_patent(
-            task_type=request.task_type,
-            patent_ids=patent_ids,
-            run_id=str(run.id),
-        )
+        if not patent_ids:
+            run.status = "succeeded"
+            run.started_at = datetime.utcnow()
+            run.finished_at = run.started_at
+            await db.commit()
+            await db.refresh(run)
+            return RunSummary.model_validate(run, from_attributes=True)
+
+        run.status = "running"
+        run.started_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(run)
+
+        try:
+            enqueued = _dispatch_celery_per_patent(
+                task_type=request.task_type,
+                patent_ids=patent_ids,
+                run_id=str(run.id),
+            )
+        except Exception as e:
+            logger.exception("Failed to enqueue AIRun %s: %s", run.id, e)
+            run.status = "failed"
+            run.finished_at = datetime.utcnow()
+            run.error_message = str(e)[:4000]
+            await db.commit()
+            await db.refresh(run)
+            raise
         logger.info(
             "AIRun %s enqueued %d %s tasks (cohort_size=%d)",
             run.id,
@@ -642,9 +675,6 @@ async def create_run(
             request.task_type,
             estimate.cohort_size,
         )
-        run.status = "running"
-        run.started_at = datetime.utcnow()
-        await db.commit()
         await db.refresh(run)
 
     return RunSummary.model_validate(run, from_attributes=True)
@@ -662,7 +692,7 @@ def _dispatch_celery_per_patent(
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), run_id)
         return len(patent_ids)
 
     if task_type == "tags":

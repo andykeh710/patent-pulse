@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -29,6 +30,25 @@ async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublica
         patents.append(p)
     await session.commit()
     return patents
+
+
+def test_dispatch_summary_forwards_run_id() -> None:
+    from app.api.v1.ai_runs import _dispatch_celery_per_patent
+
+    patent_id = uuid4()
+    run_id = str(uuid4())
+    with patch(
+        "app.tasks.summarize.summarize_patent.delay",
+        MagicMock(),
+    ) as delay:
+        enqueued = _dispatch_celery_per_patent(
+            task_type="summary",
+            patent_ids=[patent_id],
+            run_id=run_id,
+        )
+
+    assert enqueued == 1
+    delay.assert_called_once_with(str(patent_id), run_id)
 
 
 @pytest.mark.asyncio

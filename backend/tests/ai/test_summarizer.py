@@ -1,15 +1,19 @@
 """Tests for app.ai.summarizer (module-level helpers + cached path)."""
 import json
+from datetime import datetime
+from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
+from app.ai.llm_client import LLMResponse
 from app.ai.summarizer import (
     REQUIRED_SUMMARY_FIELDS,
     build_summary_payload,
     extract_independent_claims,
+    summarize_patent,
     validate_summary,
 )
 from app.core.exceptions import SummarizationError
@@ -97,6 +101,94 @@ class TestValidateSummary:
         # Sanity: the constant matches what validate_summary actually enforces.
         assert "what_it_is" in REQUIRED_SUMMARY_FIELDS
         assert "novel_applications" in REQUIRED_SUMMARY_FIELDS
+
+
+class TestCachedSummarizePatent:
+    @pytest.mark.asyncio
+    async def test_marks_plain_text_artifact_failed(
+        self, mock_patent: PatentPublication
+    ) -> None:
+        class FakeSession:
+            def __init__(self) -> None:
+                self.commits = 0
+
+            async def commit(self) -> None:
+                self.commits += 1
+
+        artifact = SimpleNamespace(status="complete", error_message=None)
+        response = LLMResponse(
+            artifact_id=uuid4(),
+            artifact_type="summary",
+            content_json=None,
+            content_text="not json",
+            model="claude-sonnet-4-20250514",
+            prompt_name="summarize",
+            prompt_version=1,
+            prompt_hash="prompt-hash",
+            input_hash="input-hash",
+            input_tokens=1,
+            output_tokens=1,
+            actual_cost_usd=0.01,
+            cache_hit=False,
+            created_at=datetime.utcnow(),
+            artifact=artifact,
+        )
+        client = MagicMock()
+        client.complete = AsyncMock(return_value=response)
+        session = FakeSession()
+
+        with patch("app.ai.summarizer.get_llm_client", return_value=client):
+            with pytest.raises(SummarizationError, match="did not parse as JSON"):
+                await summarize_patent(session, mock_patent)
+
+        assert artifact.status == "failed"
+        assert artifact.error_message == "Summary artifact did not parse as JSON."
+        assert session.commits == 1
+
+    @pytest.mark.asyncio
+    async def test_invalid_cached_artifact_decrements_run_cached_count(
+        self, mock_patent: PatentPublication
+    ) -> None:
+        class FakeSession:
+            def __init__(self) -> None:
+                self.commits = 0
+                self.run = SimpleNamespace(cached_count=1)
+
+            async def commit(self) -> None:
+                self.commits += 1
+
+            async def execute(self, statement):
+                self.run.cached_count = max(0, self.run.cached_count - 1)
+
+        run_id = uuid4()
+        artifact = SimpleNamespace(status="complete", error_message=None)
+        response = LLMResponse(
+            artifact_id=uuid4(),
+            artifact_type="summary",
+            content_json=None,
+            content_text="not json",
+            model="claude-sonnet-4-20250514",
+            prompt_name="summarize",
+            prompt_version=1,
+            prompt_hash="prompt-hash",
+            input_hash="input-hash",
+            input_tokens=1,
+            output_tokens=1,
+            actual_cost_usd=0.01,
+            cache_hit=True,
+            created_at=datetime.utcnow(),
+            artifact=artifact,
+        )
+        client = MagicMock()
+        client.complete = AsyncMock(return_value=response)
+        session = FakeSession()
+
+        with patch("app.ai.summarizer.get_llm_client", return_value=client):
+            with pytest.raises(SummarizationError, match="did not parse as JSON"):
+                await summarize_patent(session, mock_patent, run_id=run_id)
+
+        assert session.run.cached_count == 0
+        assert session.commits == 1
 
 
 class TestIndependentClaimsExtraction:
