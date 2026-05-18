@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.ai_models import AIRun
 from app.core.models import PatentPublication
 
@@ -144,6 +145,25 @@ async def test_full_batch_requires_confirmation_phrase(
         "enqueue": False,
     }
     r = await client.post("/api/v1/ai-runs", json=body)
+    assert r.status_code == 400
+    assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_high_cost_cohort_requires_full_batch_confirmation_phrase(
+    db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _seed_patents(db_session, n=2)
+    monkeypatch.setattr(settings, "llm_run_full_batch_threshold_usd", 0.0)
+    body = {
+        "task_type": "summary",
+        "run_mode": "cohort",
+        "cohort": {"has_abstract": True},
+        "enqueue": False,
+    }
+
+    r = await client.post("/api/v1/ai-runs", json=body)
+
     assert r.status_code == 400
     assert "RUN FULL BATCH" in r.json()["detail"]
 
