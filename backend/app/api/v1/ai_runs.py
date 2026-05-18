@@ -79,6 +79,7 @@ from app.core.models import PatentPublication
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+FULL_BATCH_CONFIRMATION_PHRASE = "RUN FULL BATCH"
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -584,11 +585,11 @@ async def create_run(
 
     if (
         request.run_mode == "full_batch"
-        and request.confirmation_phrase != "RUN FULL BATCH"
+        and request.confirmation_phrase != FULL_BATCH_CONFIRMATION_PHRASE
     ):
         raise HTTPException(
             status_code=400,
-            detail="Full-batch runs require confirmation_phrase='RUN FULL BATCH'.",
+            detail=f"Full-batch runs require confirmation_phrase='{FULL_BATCH_CONFIRMATION_PHRASE}'.",
         )
 
     # Resolve cohort + run estimator identically to the /estimate endpoint.
@@ -602,6 +603,18 @@ async def create_run(
         db,
         settings,
     )
+
+    if (
+        estimate.requires_full_batch_phrase
+        and request.confirmation_phrase != FULL_BATCH_CONFIRMATION_PHRASE
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Runs above the full-batch threshold require "
+                f"confirmation_phrase='{FULL_BATCH_CONFIRMATION_PHRASE}'."
+            ),
+        )
 
     run = AIRun(
         task_type=request.task_type,
