@@ -5,12 +5,14 @@ from datetime import date
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.ai_models import AIRun
 from app.core.models import PatentPublication
+from app.api.v1 import ai_runs
 
 
 async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublication]:
@@ -151,21 +153,46 @@ async def test_full_batch_requires_confirmation_phrase(
 
 @pytest.mark.asyncio
 async def test_high_cost_cohort_requires_full_batch_confirmation_phrase(
-    db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    await _seed_patents(db_session, n=2)
-    monkeypatch.setattr(settings, "llm_run_full_batch_threshold_usd", 0.0)
-    body = {
-        "task_type": "summary",
-        "run_mode": "cohort",
-        "cohort": {"has_abstract": True},
-        "enqueue": False,
-    }
+    async def estimate_requires_full_batch_phrase(*args, **kwargs) -> ai_runs.EstimateResponse:
+        return ai_runs.EstimateResponse(
+            task_type="summary",
+            run_mode="cohort",
+            cohort_size=10_000,
+            cached_count=0,
+            uncached_count=10_000,
+            est_input_tokens=10_000_000,
+            est_output_tokens=1_000_000,
+            est_cost_usd=settings.llm_run_full_batch_threshold_usd + 1,
+            model="claude-sonnet-test",
+            prompt_name="summarize",
+            prompt_version=1,
+            prompt_hash="hash",
+            expected_cache_hit_rate_7d=0.0,
+            auto_approve_threshold_usd=settings.llm_run_auto_approve_usd,
+            full_batch_threshold_usd=settings.llm_run_full_batch_threshold_usd,
+            requires_confirmation=True,
+            requires_full_batch_phrase=True,
+        )
 
-    r = await client.post("/api/v1/ai-runs", json=body)
+    class GuardOnlyDb:
+        def add(self, *args, **kwargs) -> None:
+            raise AssertionError("create_run persisted a run without full-batch confirmation")
 
-    assert r.status_code == 400
-    assert "RUN FULL BATCH" in r.json()["detail"]
+    monkeypatch.setattr(ai_runs, "estimate_run", estimate_requires_full_batch_phrase)
+    request = ai_runs.CreateRunRequest(
+        task_type="summary",
+        run_mode="cohort",
+        cohort=ai_runs.CohortFilter(),
+        enqueue=False,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await ai_runs.create_run(request, GuardOnlyDb(), settings)
+
+    assert exc.value.status_code == 400
+    assert "RUN FULL BATCH" in str(exc.value.detail)
 
 
 @pytest.mark.asyncio
