@@ -9,10 +9,9 @@ from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.core.ai_models import AIRun
-from app.core.models import PatentPublication
 from app.api.v1 import ai_runs
+from app.config import settings
+from app.core.models import PatentPublication
 
 
 async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublication]:
