@@ -223,7 +223,7 @@ def test_dispatch_summary_tasks_include_run_id(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_recompute_run_aggregates_counts_estimated_cache_hits(
+async def test_recompute_run_aggregates_ignores_estimated_cache_hits_without_artifact(
     db_session: AsyncSession,
 ) -> None:
     user = User(
@@ -265,9 +265,9 @@ async def test_recompute_run_aggregates_counts_estimated_cache_hits(
     await recompute_run_aggregates(db_session, run.id)
     await db_session.refresh(run)
 
-    assert run.completed_count == 2
+    assert run.completed_count == 1
     assert run.failed_count == 0
-    assert run.status == "succeeded"
+    assert run.status == "running"
 
 
 @pytest.mark.asyncio

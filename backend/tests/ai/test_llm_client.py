@@ -17,7 +17,7 @@ from app.ai.llm_client import (
     estimate_cost_usd,
     estimate_tokens,
 )
-from app.core.ai_models import AIArtifact
+from app.core.ai_models import AIArtifact, AIRun, User
 from app.core.models import PatentPublication
 
 
@@ -152,6 +152,75 @@ async def test_cache_hit_returns_existing_artifact(
     response = await client.complete(db_session, request)
     assert response.cache_hit is True
     assert response.content_json == {"what_it_is": "cached"}
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_with_run_id_records_run_linked_marker(
+    db_session: AsyncSession, patent_with_summary: PatentPublication
+) -> None:
+    from app.ai.prompts import get_prompt
+
+    spec = get_prompt("summarize", 1)
+    payload = {
+        "title": "x",
+        "abstract": "y",
+        "claims_text": "z",
+        "description_excerpt": "",
+        "cpc_codes": "G06F",
+    }
+    input_hash = compute_input_hash(
+        {"payload": payload, "subject_key": None, "model": "claude-sonnet-4-20250514"}
+    )
+    cached = AIArtifact(
+        patent_publication_id=patent_with_summary.id,
+        artifact_type="summary",
+        artifact_version=1,
+        model="claude-sonnet-4-20250514",
+        prompt_name=spec.name,
+        prompt_version=spec.version,
+        prompt_hash=spec.prompt_hash,
+        input_hash=input_hash,
+        content_json={"what_it_is": "cached"},
+        status="complete",
+    )
+    user = User(
+        id="test-user",
+        display_name="Test User",
+        email=None,
+        preferences={},
+    )
+    run = AIRun(
+        id=uuid4(),
+        task_type="summary",
+        run_mode="cohort",
+        cohort_filter={},
+        cohort_size=1,
+        cached_count=1,
+        uncached_count=0,
+        model="claude-sonnet-4-20250514",
+        prompt_name=spec.name,
+        prompt_version=spec.version,
+        status="running",
+        created_by=user.id,
+    )
+    db_session.add_all([cached, user, run])
+    await db_session.commit()
+
+    client = LLMClient(api_key="test-key", mode="replay")
+    request = LLMRequest(
+        artifact_type="summary",
+        prompt_name="summarize",
+        prompt_version=1,
+        input_payload=payload,
+        patent_publication_id=patent_with_summary.id,
+        run_id=run.id,
+    )
+    response = await client.complete(db_session, request)
+
+    assert response.cache_hit is True
+    assert response.artifact_id != cached.id
+    assert response.artifact.run_id == run.id
+    assert response.actual_cost_usd == 0.0
 
 
 @pytest.mark.asyncio

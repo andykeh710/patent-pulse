@@ -238,6 +238,12 @@ class LLMClient:
                     "input_hash": input_hash[:12],
                 },
             )
+            if request.run_id:
+                cached = await self._record_run_cache_hit(
+                    session=session,
+                    request=request,
+                    cached=cached,
+                )
             return self._response_from_cache(cached)
 
         if mode == "replay":
@@ -420,6 +426,57 @@ class LLMClient:
             artifact=artifact,
         )
 
+    async def _record_run_cache_hit(
+        self,
+        *,
+        session: AsyncSession,
+        request: LLMRequest,
+        cached: AIArtifact,
+    ) -> AIArtifact:
+        marker_hash = compute_input_hash(
+            {
+                "cache_hit_artifact_id": cached.id,
+                "run_id": request.run_id,
+            }
+        )
+        existing = await self._find_cached(
+            session=session,
+            prompt_hash=cached.prompt_hash,
+            input_hash=marker_hash,
+            artifact_type=cached.artifact_type,
+        )
+        if existing is not None:
+            return existing
+
+        artifact = AIArtifact(
+            patent_publication_id=cached.patent_publication_id,
+            run_id=request.run_id,
+            artifact_type=cached.artifact_type,
+            artifact_version=await self._next_artifact_version(
+                session=session,
+                artifact_type=cached.artifact_type,
+                patent_publication_id=cached.patent_publication_id,
+                subject_key=cached.subject_key,
+            ),
+            model=cached.model,
+            prompt_name=cached.prompt_name,
+            prompt_version=cached.prompt_version,
+            prompt_hash=cached.prompt_hash,
+            input_hash=marker_hash,
+            subject_key=cached.subject_key,
+            content_json=cached.content_json,
+            content_text=cached.content_text,
+            input_tokens=0,
+            output_tokens=0,
+            estimated_cost_usd=0.0,
+            actual_cost_usd=0.0,
+            status="complete",
+        )
+        session.add(artifact)
+        await session.commit()
+        await session.refresh(artifact)
+        return artifact
+
     async def _next_artifact_version(
         self,
         *,
@@ -551,6 +608,51 @@ async def record_rules_artifact(
                 "rules_version": request.rules_version,
             },
         )
+        if request.run_id:
+            marker_hash = compute_input_hash(
+                {
+                    "cache_hit_artifact_id": cached.id,
+                    "run_id": request.run_id,
+                }
+            )
+            marker_stmt = (
+                select(AIArtifact)
+                .where(AIArtifact.prompt_hash == cached.prompt_hash)
+                .where(AIArtifact.input_hash == marker_hash)
+                .where(AIArtifact.artifact_type == cached.artifact_type)
+                .where(AIArtifact.status == "complete")
+                .limit(1)
+            )
+            marker = (await session.execute(marker_stmt)).scalar_one_or_none()
+            if marker is None:
+                marker = AIArtifact(
+                    patent_publication_id=cached.patent_publication_id,
+                    run_id=request.run_id,
+                    artifact_type=cached.artifact_type,
+                    artifact_version=await _next_rules_artifact_version(
+                        session=session,
+                        artifact_type=cached.artifact_type,
+                        patent_publication_id=cached.patent_publication_id,
+                        subject_key=cached.subject_key,
+                    ),
+                    model=cached.model,
+                    prompt_name=cached.prompt_name,
+                    prompt_version=cached.prompt_version,
+                    prompt_hash=cached.prompt_hash,
+                    input_hash=marker_hash,
+                    subject_key=cached.subject_key,
+                    content_json=cached.content_json,
+                    content_text=cached.content_text,
+                    input_tokens=0,
+                    output_tokens=0,
+                    estimated_cost_usd=0.0,
+                    actual_cost_usd=0.0,
+                    status="complete",
+                )
+                session.add(marker)
+                await session.commit()
+                await session.refresh(marker)
+            cached = marker
         return LLMResponse(
             artifact_id=cached.id,
             artifact_type=cached.artifact_type,
@@ -635,6 +737,29 @@ async def record_rules_artifact(
         created_at=artifact.created_at,
         artifact=artifact,
     )
+
+
+async def _next_rules_artifact_version(
+    *,
+    session: AsyncSession,
+    artifact_type: str,
+    patent_publication_id: UUID | None,
+    subject_key: str | None,
+) -> int:
+    version_stmt = (
+        select(AIArtifact.artifact_version)
+        .where(AIArtifact.artifact_type == artifact_type)
+        .order_by(AIArtifact.artifact_version.desc())
+        .limit(1)
+    )
+    if patent_publication_id is not None:
+        version_stmt = version_stmt.where(
+            AIArtifact.patent_publication_id == patent_publication_id
+        )
+    elif subject_key is not None:
+        version_stmt = version_stmt.where(AIArtifact.subject_key == subject_key)
+    latest = (await session.execute(version_stmt)).scalar_one_or_none()
+    return (latest or 0) + 1
 
 
 def hash_rules(rules_id: str, version: int, payload: dict[str, Any]) -> str:
