@@ -437,6 +437,8 @@ class LLMClient:
             {
                 "cache_hit_artifact_id": cached.id,
                 "run_id": request.run_id,
+                "patent_publication_id": request.patent_publication_id,
+                "subject_key": request.subject_key,
             }
         )
         existing = await self._find_cached(
@@ -449,21 +451,21 @@ class LLMClient:
             return existing
 
         artifact = AIArtifact(
-            patent_publication_id=cached.patent_publication_id,
+            patent_publication_id=request.patent_publication_id,
             run_id=request.run_id,
             artifact_type=cached.artifact_type,
             artifact_version=await self._next_artifact_version(
                 session=session,
                 artifact_type=cached.artifact_type,
-                patent_publication_id=cached.patent_publication_id,
-                subject_key=cached.subject_key,
+                patent_publication_id=request.patent_publication_id,
+                subject_key=request.subject_key,
             ),
             model=cached.model,
             prompt_name=cached.prompt_name,
             prompt_version=cached.prompt_version,
             prompt_hash=cached.prompt_hash,
             input_hash=marker_hash,
-            subject_key=cached.subject_key,
+            subject_key=request.subject_key,
             content_json=cached.content_json,
             content_text=cached.content_text,
             input_tokens=0,
@@ -613,6 +615,8 @@ async def record_rules_artifact(
                 {
                     "cache_hit_artifact_id": cached.id,
                     "run_id": request.run_id,
+                    "patent_publication_id": request.patent_publication_id,
+                    "subject_key": request.subject_key,
                 }
             )
             marker_stmt = (
@@ -626,21 +630,21 @@ async def record_rules_artifact(
             marker = (await session.execute(marker_stmt)).scalar_one_or_none()
             if marker is None:
                 marker = AIArtifact(
-                    patent_publication_id=cached.patent_publication_id,
+                    patent_publication_id=request.patent_publication_id,
                     run_id=request.run_id,
                     artifact_type=cached.artifact_type,
                     artifact_version=await _next_rules_artifact_version(
                         session=session,
                         artifact_type=cached.artifact_type,
-                        patent_publication_id=cached.patent_publication_id,
-                        subject_key=cached.subject_key,
+                        patent_publication_id=request.patent_publication_id,
+                        subject_key=request.subject_key,
                     ),
                     model=cached.model,
                     prompt_name=cached.prompt_name,
                     prompt_version=cached.prompt_version,
                     prompt_hash=cached.prompt_hash,
                     input_hash=marker_hash,
-                    subject_key=cached.subject_key,
+                    subject_key=request.subject_key,
                     content_json=cached.content_json,
                     content_text=cached.content_text,
                     input_tokens=0,

@@ -13,6 +13,7 @@ from app.api.v1.ai_runs import (
     CreateRunRequest,
     EstimateResponse,
     _dispatch_celery_per_patent,
+    _count_cached_artifacts,
     _require_full_batch_confirmation,
 )
 from app.core.ai_models import AIArtifact, AIRun, User
@@ -268,6 +269,52 @@ async def test_recompute_run_aggregates_ignores_estimated_cache_hits_without_art
     assert run.completed_count == 1
     assert run.failed_count == 0
     assert run.status == "running"
+
+
+@pytest.mark.asyncio
+async def test_cached_artifact_count_uses_exact_input_hash(
+    db_session: AsyncSession,
+) -> None:
+    exact_hash = "exact-input"
+    marker_hash = "marker-input"
+    db_session.add_all(
+        [
+            AIArtifact(
+                id=uuid4(),
+                artifact_type="summary",
+                artifact_version=1,
+                model="claude-sonnet-4-20250514",
+                prompt_name="summarize",
+                prompt_version=1,
+                prompt_hash="prompt",
+                input_hash=exact_hash,
+                content_json={"what_it_is": "cached"},
+                status="complete",
+            ),
+            AIArtifact(
+                id=uuid4(),
+                artifact_type="summary",
+                artifact_version=2,
+                model="claude-sonnet-4-20250514",
+                prompt_name="summarize",
+                prompt_version=1,
+                prompt_hash="prompt",
+                input_hash=marker_hash,
+                content_json={"what_it_is": "marker"},
+                status="complete",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    cached = await _count_cached_artifacts(
+        db_session,
+        task_type="summary",
+        prompt_hash="prompt",
+        input_hashes=[exact_hash],
+    )
+
+    assert cached == 1
 
 
 @pytest.mark.asyncio
