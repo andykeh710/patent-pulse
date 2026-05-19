@@ -39,9 +39,9 @@ export function humanizeTag(value: string): string {
 }
 
 export function getScoreLabel(score: number): string {
-  if (score >= 0.8) return "High";
-  if (score >= 0.5) return "Medium";
-  return "Low";
+  if (score >= 0.8) return "high";
+  if (score >= 0.5) return "medium";
+  return "low";
 }
 
 export function getScoreBgClass(score: number): string {
@@ -51,9 +51,9 @@ export function getScoreBgClass(score: number): string {
 }
 
 export function getOpportunityLabel(score: number): string {
-  if (score >= 75) return "High";
-  if (score >= 50) return "Medium";
-  return "Low";
+  if (score >= 75) return "high";
+  if (score >= 50) return "medium";
+  return "low";
 }
 
 export function getOpportunityBgClass(score: number): string {
