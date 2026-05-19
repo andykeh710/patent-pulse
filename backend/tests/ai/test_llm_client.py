@@ -304,6 +304,75 @@ async def test_cache_hit_marker_uses_request_patent_identity(
 
 
 @pytest.mark.asyncio
+async def test_cache_hit_for_same_run_returns_existing_artifact(
+    db_session: AsyncSession, patent_with_summary: PatentPublication
+) -> None:
+    from app.ai.prompts import get_prompt
+
+    spec = get_prompt("summarize", 1)
+    payload = {
+        "title": "x",
+        "abstract": "y",
+        "claims_text": "z",
+        "description_excerpt": "",
+        "cpc_codes": "G06F",
+    }
+    input_hash = compute_input_hash(
+        {"payload": payload, "subject_key": None, "model": "claude-sonnet-4-20250514"}
+    )
+    user = User(
+        id="test-user",
+        display_name="Test User",
+        email=None,
+        preferences={},
+    )
+    run = AIRun(
+        id=uuid4(),
+        task_type="summary",
+        run_mode="cohort",
+        cohort_filter={},
+        cohort_size=1,
+        cached_count=0,
+        uncached_count=1,
+        model="claude-sonnet-4-20250514",
+        prompt_name=spec.name,
+        prompt_version=spec.version,
+        status="running",
+        created_by=user.id,
+    )
+    artifact = AIArtifact(
+        patent_publication_id=patent_with_summary.id,
+        run_id=run.id,
+        artifact_type="summary",
+        artifact_version=1,
+        model="claude-sonnet-4-20250514",
+        prompt_name=spec.name,
+        prompt_version=spec.version,
+        prompt_hash=spec.prompt_hash,
+        input_hash=input_hash,
+        content_json={"what_it_is": "cached"},
+        status="complete",
+    )
+    db_session.add_all([user, run, artifact])
+    await db_session.commit()
+
+    response = await LLMClient(api_key="test-key", mode="replay").complete(
+        db_session,
+        LLMRequest(
+            artifact_type="summary",
+            prompt_name="summarize",
+            prompt_version=1,
+            input_payload=payload,
+            patent_publication_id=patent_with_summary.id,
+            run_id=run.id,
+        ),
+    )
+
+    assert response.cache_hit is True
+    assert response.artifact_id == artifact.id
+
+
+@pytest.mark.asyncio
 async def test_record_mode_writes_artifact_on_success(
     db_session: AsyncSession, patent_with_summary: PatentPublication
 ) -> None:

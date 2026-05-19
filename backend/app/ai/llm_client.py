@@ -433,6 +433,13 @@ class LLMClient:
         request: LLMRequest,
         cached: AIArtifact,
     ) -> AIArtifact:
+        if (
+            cached.run_id == request.run_id
+            and cached.patent_publication_id == request.patent_publication_id
+            and cached.subject_key == request.subject_key
+        ):
+            return cached
+
         marker_hash = compute_input_hash(
             {
                 "cache_hit_artifact_id": cached.id,
@@ -611,52 +618,57 @@ async def record_rules_artifact(
             },
         )
         if request.run_id:
-            marker_hash = compute_input_hash(
-                {
-                    "cache_hit_artifact_id": cached.id,
-                    "run_id": request.run_id,
-                    "patent_publication_id": request.patent_publication_id,
-                    "subject_key": request.subject_key,
-                }
-            )
-            marker_stmt = (
-                select(AIArtifact)
-                .where(AIArtifact.prompt_hash == cached.prompt_hash)
-                .where(AIArtifact.input_hash == marker_hash)
-                .where(AIArtifact.artifact_type == cached.artifact_type)
-                .where(AIArtifact.status == "complete")
-                .limit(1)
-            )
-            marker = (await session.execute(marker_stmt)).scalar_one_or_none()
-            if marker is None:
-                marker = AIArtifact(
-                    patent_publication_id=request.patent_publication_id,
-                    run_id=request.run_id,
-                    artifact_type=cached.artifact_type,
-                    artifact_version=await _next_rules_artifact_version(
-                        session=session,
-                        artifact_type=cached.artifact_type,
-                        patent_publication_id=request.patent_publication_id,
-                        subject_key=request.subject_key,
-                    ),
-                    model=cached.model,
-                    prompt_name=cached.prompt_name,
-                    prompt_version=cached.prompt_version,
-                    prompt_hash=cached.prompt_hash,
-                    input_hash=marker_hash,
-                    subject_key=request.subject_key,
-                    content_json=cached.content_json,
-                    content_text=cached.content_text,
-                    input_tokens=0,
-                    output_tokens=0,
-                    estimated_cost_usd=0.0,
-                    actual_cost_usd=0.0,
-                    status="complete",
+            if (
+                cached.run_id != request.run_id
+                or cached.patent_publication_id != request.patent_publication_id
+                or cached.subject_key != request.subject_key
+            ):
+                marker_hash = compute_input_hash(
+                    {
+                        "cache_hit_artifact_id": cached.id,
+                        "run_id": request.run_id,
+                        "patent_publication_id": request.patent_publication_id,
+                        "subject_key": request.subject_key,
+                    }
                 )
-                session.add(marker)
-                await session.commit()
-                await session.refresh(marker)
-            cached = marker
+                marker_stmt = (
+                    select(AIArtifact)
+                    .where(AIArtifact.prompt_hash == cached.prompt_hash)
+                    .where(AIArtifact.input_hash == marker_hash)
+                    .where(AIArtifact.artifact_type == cached.artifact_type)
+                    .where(AIArtifact.status == "complete")
+                    .limit(1)
+                )
+                marker = (await session.execute(marker_stmt)).scalar_one_or_none()
+                if marker is None:
+                    marker = AIArtifact(
+                        patent_publication_id=request.patent_publication_id,
+                        run_id=request.run_id,
+                        artifact_type=cached.artifact_type,
+                        artifact_version=await _next_rules_artifact_version(
+                            session=session,
+                            artifact_type=cached.artifact_type,
+                            patent_publication_id=request.patent_publication_id,
+                            subject_key=request.subject_key,
+                        ),
+                        model=cached.model,
+                        prompt_name=cached.prompt_name,
+                        prompt_version=cached.prompt_version,
+                        prompt_hash=cached.prompt_hash,
+                        input_hash=marker_hash,
+                        subject_key=request.subject_key,
+                        content_json=cached.content_json,
+                        content_text=cached.content_text,
+                        input_tokens=0,
+                        output_tokens=0,
+                        estimated_cost_usd=0.0,
+                        actual_cost_usd=0.0,
+                        status="complete",
+                    )
+                    session.add(marker)
+                    await session.commit()
+                    await session.refresh(marker)
+                cached = marker
         return LLMResponse(
             artifact_id=cached.id,
             artifact_type=cached.artifact_type,
