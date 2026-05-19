@@ -39,6 +39,34 @@ async def test_upsert_updates_existing_patent(
 
 
 @pytest.mark.asyncio
+async def test_upsert_preserves_enriched_text_when_update_has_empty_string(
+    db_session: AsyncSession, sample_patent_data: dict
+) -> None:
+    enriched_data = {
+        **sample_patent_data,
+        "abstract": "Enriched abstract",
+        "claims_text": "1. An enriched independent claim.",
+        "description_text": "Detailed enriched description.",
+    }
+    await upsert_patent(db_session, enriched_data)
+
+    record, created = await upsert_patent(
+        db_session,
+        {
+            **sample_patent_data,
+            "abstract": "",
+            "claims_text": "",
+            "description_text": "",
+        },
+    )
+
+    assert created is False
+    assert record.abstract == "Enriched abstract"
+    assert record.claims_text == "1. An enriched independent claim."
+    assert record.description_text == "Detailed enriched description."
+
+
+@pytest.mark.asyncio
 async def test_upsert_is_idempotent(
     db_session: AsyncSession, sample_patent_data: dict
 ) -> None:

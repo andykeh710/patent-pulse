@@ -5,11 +5,19 @@ from datetime import date
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_models import AIRun
+from app.api.v1.ai_runs import (
+    CreateRunRequest,
+    EstimateResponse,
+    _dispatch_celery_per_patent,
+    _require_full_batch_confirmation,
+)
+from app.core.ai_models import AIArtifact, AIRun, User
 from app.core.models import PatentPublication
+from app.tasks.run_aggregates import recompute_run_aggregates
 
 
 async def _seed_patents(session: AsyncSession, n: int = 5) -> list[PatentPublication]:
@@ -146,6 +154,120 @@ async def test_full_batch_requires_confirmation_phrase(
     r = await client.post("/api/v1/ai-runs", json=body)
     assert r.status_code == 400
     assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+def _estimate_response(
+    *,
+    requires_full_batch_phrase: bool,
+    requires_confirmation: bool = False,
+) -> EstimateResponse:
+    return EstimateResponse(
+        task_type="summary",
+        run_mode="cohort",
+        cohort_size=10,
+        cached_count=0,
+        uncached_count=10,
+        est_input_tokens=10_000,
+        est_output_tokens=5_000,
+        est_cost_usd=30.0,
+        model="claude-sonnet-4-20250514",
+        prompt_name="summarize",
+        prompt_version=1,
+        prompt_hash="abc123",
+        expected_cache_hit_rate_7d=0.0,
+        auto_approve_threshold_usd=5.0,
+        full_batch_threshold_usd=25.0,
+        requires_confirmation=requires_confirmation,
+        requires_full_batch_phrase=requires_full_batch_phrase,
+    )
+
+
+def test_estimated_full_batch_risk_requires_confirmation_phrase() -> None:
+    request = CreateRunRequest(
+        task_type="summary",
+        run_mode="cohort",
+        cohort={},
+        enqueue=False,
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        _require_full_batch_confirmation(
+            request,
+            _estimate_response(requires_full_batch_phrase=True),
+        )
+
+    assert exc.value.status_code == 400
+    assert "RUN FULL BATCH" in exc.value.detail
+
+
+def test_dispatch_summary_tasks_include_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.tasks import summarize as summarize_tasks
+
+    patent_id = uuid4()
+    calls: list[tuple[str, ...]] = []
+
+    monkeypatch.setattr(
+        summarize_tasks.summarize_patent,
+        "delay",
+        lambda *args: calls.append(args),
+    )
+
+    enqueued = _dispatch_celery_per_patent(
+        task_type="summary",
+        patent_ids=[patent_id],
+        run_id="run-123",
+    )
+
+    assert enqueued == 1
+    assert calls == [(str(patent_id), "run-123", True)]
+
+
+@pytest.mark.asyncio
+async def test_recompute_run_aggregates_counts_estimated_cache_hits(
+    db_session: AsyncSession,
+) -> None:
+    user = User(
+        id="test-user",
+        display_name="Test User",
+        email=None,
+        preferences={},
+    )
+    run = AIRun(
+        id=uuid4(),
+        task_type="tags",
+        run_mode="cohort",
+        cohort_filter={},
+        cohort_size=2,
+        cached_count=1,
+        uncached_count=1,
+        model="claude-haiku-4-5",
+        prompt_name="tag_patent",
+        prompt_version=1,
+        status="running",
+        created_by=user.id,
+    )
+    artifact = AIArtifact(
+        id=uuid4(),
+        run_id=run.id,
+        artifact_type="tags",
+        artifact_version=1,
+        model="claude-haiku-4-5",
+        prompt_name="tag_patent",
+        prompt_version=1,
+        prompt_hash="prompt",
+        input_hash="input",
+        content_json={"industries": []},
+        status="complete",
+    )
+    db_session.add_all([user, run, artifact])
+    await db_session.commit()
+
+    await recompute_run_aggregates(db_session, run.id)
+    await db_session.refresh(run)
+
+    assert run.completed_count == 2
+    assert run.failed_count == 0
+    assert run.status == "succeeded"
 
 
 @pytest.mark.asyncio

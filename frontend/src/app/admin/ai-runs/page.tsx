@@ -76,7 +76,7 @@ export default function AIRunsPage() {
         run_mode: runMode,
         cohort,
         confirmation_phrase:
-          runMode === "full_batch" ? confirmPhrase : undefined,
+          estimate.requires_full_batch_phrase ? confirmPhrase : undefined,
         enqueue: true,
       });
       setConfirmPhrase("");
@@ -90,7 +90,7 @@ export default function AIRunsPage() {
   }
 
   const fullBatchOk =
-    runMode !== "full_batch" || confirmPhrase === FULL_BATCH_PHRASE;
+    !estimate?.requires_full_batch_phrase || confirmPhrase === FULL_BATCH_PHRASE;
   const phaseUnsupported = !TASK_TYPES.find((t) => t.value === taskType)
     ?.supported;
 

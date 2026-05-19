@@ -65,8 +65,8 @@ async def upsert_patent(
     for k, v in patent_data.items():
         if k in _EXCLUDED_FROM_UPDATE:
             continue
-        # Never overwrite an enriched column with NULL or empty-list/dict.
-        if k in _ENRICHED_CONTENT_FIELDS and (v is None or v == [] or v == {}):
+        # Never overwrite an enriched column with empty source data.
+        if k in _ENRICHED_CONTENT_FIELDS and (v is None or v == "" or v == [] or v == {}):
             continue
         update_data[k] = v
     update_data["updated_at"] = datetime.utcnow()

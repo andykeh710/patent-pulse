@@ -31,6 +31,8 @@ async def recompute_run_aggregates(
 
     Safe to call after every per-patent task completion. Will:
       - SUM artifact counts grouped by status into completed/failed
+      - Add run.cached_count to completed because cache hits reuse existing
+        artifacts that cannot be linked to the new run under the cache key.
       - SUM tokens + cost
       - Mark the run ``succeeded`` (or ``failed`` if every artifact failed)
         once ``completed + failed >= cohort_size``, setting ``finished_at``.
@@ -77,6 +79,7 @@ async def recompute_run_aggregates(
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
 
+    completed += max(int(run.cached_count or 0), 0)
     finished = completed + failed >= max(run.cohort_size, 1)
     new_status = run.status
     finished_at = run.finished_at

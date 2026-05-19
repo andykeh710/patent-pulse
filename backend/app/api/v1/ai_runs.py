@@ -79,6 +79,7 @@ from app.core.models import PatentPublication
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+FULL_BATCH_CONFIRMATION_PHRASE = "RUN FULL BATCH"
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -181,6 +182,22 @@ class RunSummary(BaseModel):
 class RunListResponse(BaseModel):
     items: list[RunSummary]
     total: int
+
+
+def _require_full_batch_confirmation(
+    request: CreateRunRequest, estimate: EstimateResponse
+) -> None:
+    if (
+        estimate.requires_full_batch_phrase
+        and request.confirmation_phrase != FULL_BATCH_CONFIRMATION_PHRASE
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This run requires "
+                f"confirmation_phrase='{FULL_BATCH_CONFIRMATION_PHRASE}'."
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -582,15 +599,6 @@ async def create_run(
             ),
         )
 
-    if (
-        request.run_mode == "full_batch"
-        and request.confirmation_phrase != "RUN FULL BATCH"
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Full-batch runs require confirmation_phrase='RUN FULL BATCH'.",
-        )
-
     # Resolve cohort + run estimator identically to the /estimate endpoint.
     estimate = await estimate_run(
         EstimateRequest(
@@ -602,6 +610,7 @@ async def create_run(
         db,
         settings,
     )
+    _require_full_batch_confirmation(request, estimate)
 
     run = AIRun(
         task_type=request.task_type,
@@ -662,7 +671,7 @@ def _dispatch_celery_per_patent(
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), run_id, True)
         return len(patent_ids)
 
     if task_type == "tags":
