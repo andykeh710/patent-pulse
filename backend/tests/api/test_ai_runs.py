@@ -149,6 +149,26 @@ async def test_full_batch_requires_confirmation_phrase(
 
 
 @pytest.mark.asyncio
+async def test_high_cost_cohort_requires_full_batch_confirmation_phrase(
+    db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.config import settings
+
+    await _seed_patents(db_session, n=2)
+    monkeypatch.setattr(settings, "llm_run_full_batch_threshold_usd", -1.0)
+
+    body = {
+        "task_type": "summary",
+        "run_mode": "cohort",
+        "cohort": {"has_abstract": True},
+        "enqueue": False,
+    }
+    r = await client.post("/api/v1/ai-runs", json=body)
+    assert r.status_code == 400
+    assert "RUN FULL BATCH" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_runs_list_initially_empty(client: AsyncClient) -> None:
     r = await client.get("/api/v1/ai-runs")
     assert r.status_code == 200
