@@ -190,6 +190,20 @@ class RunListResponse(BaseModel):
 
 DEV_FIXTURE_SIZE = 50
 SAMPLE_SIZE = 100
+FULL_BATCH_CONFIRMATION_PHRASE = "RUN FULL BATCH"
+
+
+def _enforce_full_batch_confirmation(
+    *, requires_full_batch_phrase: bool, confirmation_phrase: str | None
+) -> None:
+    if requires_full_batch_phrase and confirmation_phrase != FULL_BATCH_CONFIRMATION_PHRASE:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This run requires confirmation_phrase="
+                f"'{FULL_BATCH_CONFIRMATION_PHRASE}'."
+            ),
+        )
 
 
 async def _resolve_cohort(
@@ -582,14 +596,10 @@ async def create_run(
             ),
         )
 
-    if (
-        request.run_mode == "full_batch"
-        and request.confirmation_phrase != "RUN FULL BATCH"
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Full-batch runs require confirmation_phrase='RUN FULL BATCH'.",
-        )
+    _enforce_full_batch_confirmation(
+        requires_full_batch_phrase=request.run_mode == "full_batch",
+        confirmation_phrase=request.confirmation_phrase,
+    )
 
     # Resolve cohort + run estimator identically to the /estimate endpoint.
     estimate = await estimate_run(
@@ -601,6 +611,10 @@ async def create_run(
         ),
         db,
         settings,
+    )
+    _enforce_full_batch_confirmation(
+        requires_full_batch_phrase=estimate.requires_full_batch_phrase,
+        confirmation_phrase=request.confirmation_phrase,
     )
 
     run = AIRun(
