@@ -2,6 +2,7 @@ import type {
   CreateRunRequest,
   EstimateRequest,
   EstimateResponse,
+  ArtifactListResponse,
   ExpiryItem,
   ExpiryParams,
   ExpirySummary,
