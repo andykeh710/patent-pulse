@@ -153,7 +153,7 @@ class CreateRunRequest(BaseModel):
     task_type: str
     run_mode: Literal["dev_fixture", "sample", "cohort", "full_batch"]
     cohort: CohortFilter = Field(default_factory=CohortFilter)
-    confirmation_phrase: str | None = None  # required when run_mode=full_batch
+    confirmation_phrase: str | None = None  # required when estimate requests it
     enqueue: bool = True  # if False, create the run row but do not kick off Celery
     tier: Literal["summary", "tag", "narrative", "rerank"] = "summary"
 
