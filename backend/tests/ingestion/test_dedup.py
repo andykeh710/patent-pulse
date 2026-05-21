@@ -4,12 +4,29 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import PatentPublication
+from app.ingestion import dedup
 from app.ingestion.dedup import (
     bulk_upsert_patents,
     get_patent_by_doc_id,
     get_unsummarized_patents,
     upsert_patent,
 )
+
+
+def test_build_update_values_preserves_authoritative_fields_on_sparse_reingest() -> None:
+    update_values = dedup._build_update_values(
+        {
+            "doc_id": "USPTO:12345678",
+            "family_id": None,
+            "priority_date": None,
+            "estimated_expiry_date": date(2042, 1, 15),
+        }
+    )
+
+    assert "doc_id" not in update_values
+    assert "family_id" not in update_values
+    assert "priority_date" not in update_values
+    assert "estimated_expiry_date" not in update_values
 
 
 @pytest.mark.asyncio
@@ -36,6 +53,32 @@ async def test_upsert_updates_existing_patent(
     assert created2 is False
     assert record2.id == record1.id
     assert record2.title == "Updated Title"
+
+
+@pytest.mark.asyncio
+async def test_upsert_preserves_existing_authoritative_fields_on_sparse_reingest(
+    db_session: AsyncSession, sample_patent_data: dict
+) -> None:
+    original_data = {
+        **sample_patent_data,
+        "family_id": "INPADOC-FAMILY-1",
+        "priority_date": date(2020, 1, 15),
+        "estimated_expiry_date": date(2040, 1, 15),
+    }
+    await upsert_patent(db_session, original_data)
+
+    sparse_reingest = {
+        **sample_patent_data,
+        "family_id": None,
+        "priority_date": None,
+        "estimated_expiry_date": date(2042, 1, 15),
+    }
+    record, created = await upsert_patent(db_session, sparse_reingest)
+
+    assert created is False
+    assert record.family_id == "INPADOC-FAMILY-1"
+    assert record.priority_date == date(2020, 1, 15)
+    assert record.estimated_expiry_date == date(2040, 1, 15)
 
 
 @pytest.mark.asyncio

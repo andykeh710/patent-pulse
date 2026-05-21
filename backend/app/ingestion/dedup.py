@@ -10,6 +10,61 @@ from app.core.models import PatentPublication
 logger = logging.getLogger(__name__)
 
 
+_EXCLUDED_FROM_UPDATE = {"id", "created_at", "doc_id"}
+_ENRICHED_CONTENT_FIELDS = {
+    "abstract",
+    "claims_text",
+    "description_text",
+    "citations_backward",
+    "family_members",
+    "summary",
+    "novel_applications",
+    "interesting_score",
+    "score_breakdown",
+    "embedding",
+    "summarized_at",
+}
+_SPARSE_UPDATE_PROTECTED_FIELDS = _ENRICHED_CONTENT_FIELDS | {
+    "family_id",
+    "application_number",
+    "kind_code",
+    "filing_date",
+    "priority_date",
+    "publication_date",
+    "grant_date",
+    "assignees",
+    "inventors",
+    "cpc",
+    "ipc",
+    "title",
+    "legal_status",
+    "maintenance_status",
+    "estimated_expiry_date",
+    "legal_status_confidence",
+}
+
+
+def _is_sparse_value(value: object) -> bool:
+    return value is None or value == "" or value == [] or value == {}
+
+
+def _build_update_values(patent_data: dict) -> dict:
+    update_data: dict = {}
+
+    for key, value in patent_data.items():
+        if key in _EXCLUDED_FROM_UPDATE:
+            continue
+        if key == "estimated_expiry_date" and "priority_date" in patent_data:
+            if _is_sparse_value(patent_data["priority_date"]):
+                continue
+        if key in _SPARSE_UPDATE_PROTECTED_FIELDS and _is_sparse_value(value):
+            continue
+        update_data[key] = value
+
+    update_data["updated_at"] = datetime.utcnow()
+    return update_data
+
+
 async def upsert_patent(
     session: AsyncSession,
     patent_data: dict,
@@ -39,37 +94,7 @@ async def upsert_patent(
     existing_row = existing.first()
     was_existing = existing_row is not None
 
-    # Build update_data carefully:
-    #  - Never overwrite 'id', 'created_at', or 'doc_id' (identity / audit fields)
-    #  - Never overwrite enriched content fields with NULL. These columns are
-    #    populated by downstream enrichment tasks (EPO OPS, Google Patents,
-    #    summarizer). USPTO's initial ingest has abstract=None, claims=None, etc.,
-    #    so blindly setting them on re-ingestion wipes out all enrichment.
-    #  - Never overwrite AI-generated fields from ingestion; those come from
-    #    the summarizer/scorer/embedder pipeline.
-    _EXCLUDED_FROM_UPDATE = {"id", "created_at", "doc_id"}
-    _ENRICHED_CONTENT_FIELDS = {
-        "abstract",
-        "claims_text",
-        "description_text",
-        "citations_backward",
-        "family_members",
-        "summary",
-        "novel_applications",
-        "interesting_score",
-        "score_breakdown",
-        "embedding",
-        "summarized_at",
-    }
-    update_data: dict = {}
-    for k, v in patent_data.items():
-        if k in _EXCLUDED_FROM_UPDATE:
-            continue
-        # Never overwrite an enriched column with NULL or empty-list/dict.
-        if k in _ENRICHED_CONTENT_FIELDS and (v is None or v == [] or v == {}):
-            continue
-        update_data[k] = v
-    update_data["updated_at"] = datetime.utcnow()
+    update_data = _build_update_values(patent_data)
 
     stmt = (
         insert(PatentPublication)
