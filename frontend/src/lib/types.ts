@@ -248,6 +248,12 @@ export interface SemanticSearchResponse {
   total: number;
 }
 
+export interface SimilarPatentsResponse {
+  source_patent_id: string;
+  results: SemanticSearchResult[];
+  total: number;
+}
+
 // ---------------------------------------------------------------------------
 // AI Runs (Phase 0 admin console)
 // ---------------------------------------------------------------------------
@@ -571,4 +577,18 @@ export interface SupplierMapCountry {
   patent_count: number;
   average_supplier_score: number;
   top_suppliers: { name: string; patent_count: number; supplier_score: number }[];
+}
+
+export interface CompanyProfile {
+  name: string;
+  country: string | null;
+  entity_type: string | null;
+  patent_count: number;
+  active_patent_count: number;
+  expiring_soon_count: number;
+  technology_area_count: number;
+  average_signal_score: number | null;
+  supplier_score: number;
+  top_cpc: { cpc: string; count: number }[];
+  recent_patents: { id: string; doc_id: string; title: string | null; publication_date: string | null; opportunity_score: number | null }[];
 }

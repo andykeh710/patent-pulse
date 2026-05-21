@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { AISourceFooter } from "@/components/patents/AISourceFooter";
 import type { PatentDetail } from "@/lib/types";
 
 interface OpportunityNarrativeArtifact {
@@ -154,6 +155,8 @@ export function OpportunityNarrativePanel({
           </ul>
         </div>
       )}
+
+      <AISourceFooter />
     </div>
   );
 }

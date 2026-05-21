@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -283,3 +283,116 @@ async def supplier_map(db: DbSession) -> list[SupplierMapCountry]:
         )
 
     return sorted(result, key=lambda item: item.patent_count, reverse=True)
+
+
+class CompanyProfile(BaseModel):
+    name: str
+    country: str | None
+    entity_type: str | None
+    patent_count: int
+    active_patent_count: int
+    expiring_soon_count: int
+    technology_area_count: int
+    average_signal_score: float | None
+    supplier_score: float
+    top_cpc: list[dict[str, int | str]]
+    recent_patents: list[dict[str, str | float | None]]
+
+
+@router.get("/profile/{name}", response_model=CompanyProfile)
+async def company_profile(
+    db: DbSession,
+    name: str,
+) -> CompanyProfile:
+    """Get profile for a specific company/assignee by name."""
+    today = date.today()
+    five_years = today + timedelta(days=5 * 365)
+
+    # Get aggregates for this assignee
+    row = (await db.execute(
+        text(
+            """
+            WITH supplier_row AS (
+                SELECT
+                    assignee_val AS supplier_name,
+                    MAX(a.country) AS country,
+                    MAX(a.entity_type) AS entity_type,
+                    COUNT(DISTINCT p.id) AS patent_count,
+                    COUNT(DISTINCT p.id) FILTER (WHERE p.legal_status = 'GRANTED') AS active_patent_count,
+                    COUNT(DISTINCT p.id) FILTER (
+                        WHERE p.legal_status = 'GRANTED'
+                          AND p.estimated_expiry_date >= :today
+                          AND p.estimated_expiry_date <= :five_years
+                    ) AS expiring_soon_count,
+                    COUNT(DISTINCT LEFT(cpc_val, 1)) FILTER (WHERE cpc_val IS NOT NULL AND cpc_val != '') AS technology_area_count,
+                    AVG(COALESCE(p.opportunity_score, p.interesting_score)) AS average_signal_score
+                FROM patent_publications p
+                JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
+                LEFT JOIN LATERAL jsonb_array_elements_text(p.cpc) AS cpc_val ON true
+                LEFT JOIN assignees a
+                    ON lower(a.display_name) = lower(assignee_val)
+                    OR lower(a.normalized_name) = lower(assignee_val)
+                WHERE lower(assignee_val) = lower(:name)
+                GROUP BY assignee_val
+            )
+            SELECT * FROM supplier_row
+            """
+        ).bindparams(today=today, five_years=five_years, name=name)
+    )).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Company '{name}' not found")
+
+    # Top CPC codes
+    cpc_rows = (await db.execute(
+        text(
+            """
+            SELECT LEFT(cpc_val, 4) AS cpc, COUNT(*) AS count
+            FROM patent_publications p
+            JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
+            JOIN LATERAL jsonb_array_elements_text(p.cpc) AS cpc_val ON true
+            WHERE lower(assignee_val) = lower(:name)
+              AND cpc_val IS NOT NULL AND cpc_val != ''
+            GROUP BY LEFT(cpc_val, 4)
+            ORDER BY count DESC
+            LIMIT 10
+            """
+        ).bindparams(name=name)
+    )).fetchall()
+
+    # Recent patents
+    recent_rows = (await db.execute(
+        text(
+            """
+            SELECT p.id, p.doc_id, p.title, p.publication_date, p.opportunity_score
+            FROM patent_publications p
+            JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
+            WHERE lower(assignee_val) = lower(:name)
+            ORDER BY p.publication_date DESC NULLS LAST
+            LIMIT 10
+            """
+        ).bindparams(name=name)
+    )).fetchall()
+
+    return CompanyProfile(
+        name=row["supplier_name"],
+        country=row["country"],
+        entity_type=row["entity_type"],
+        patent_count=int(row["patent_count"] or 0),
+        active_patent_count=int(row["active_patent_count"] or 0),
+        expiring_soon_count=int(row["expiring_soon_count"] or 0),
+        technology_area_count=int(row["technology_area_count"] or 0),
+        average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+        supplier_score=_score_supplier(
+            int(row["patent_count"] or 0),
+            int(row["active_patent_count"] or 0),
+            int(row["expiring_soon_count"] or 0),
+            int(row["technology_area_count"] or 0),
+            float(row["average_signal_score"]) if row["average_signal_score"] is not None else None,
+        ),
+        top_cpc=[{"cpc": r.cpc, "count": r.count} for r in cpc_rows],
+        recent_patents=[
+            {"id": str(r.id), "doc_id": r.doc_id, "title": r.title, "publication_date": str(r.publication_date) if r.publication_date else None, "opportunity_score": float(r.opportunity_score) if r.opportunity_score else None}
+            for r in recent_rows
+        ],
+    )

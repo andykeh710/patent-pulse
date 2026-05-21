@@ -19,10 +19,12 @@ import type {
   RunMetadata,
   RunSummary,
   SearchParams,
+  SimilarPatentsResponse,
   Stats,
   SupplierListParams,
   SupplierListResponse,
   SupplierMapCountry,
+  CompanyProfile,
   SupplierSummary,
   Summary,
   TabCounts,
@@ -153,6 +155,11 @@ export const semanticApi = {
       `/api/v1/semantic/query?query=${encodeURIComponent(query)}&limit=${limit}`,
       { method: "POST" }
     ),
+
+  similar: (patentId: string, limit = 10) =>
+    apiFetch<SimilarPatentsResponse>(
+      `/api/v1/semantic/similar/${patentId}?limit=${limit}`
+    ),
 };
 
 export const adminApi = {
@@ -239,9 +246,16 @@ export const trendsApi = {
 
 export const suppliersApi = {
   summary: () => apiFetch<SupplierSummary>(`/api/v1/suppliers/summary`),
+
   list: (params: SupplierListParams = {}) =>
-    apiFetch<SupplierListResponse>(`/api/v1/suppliers?${toQueryString(params)}`),
+    apiFetch<SupplierListResponse>(
+      `/api/v1/suppliers?${toQueryString(params)}`
+    ),
+
   map: () => apiFetch<SupplierMapCountry[]>(`/api/v1/suppliers/map`),
+
+  profile: (name: string) =>
+    apiFetch<CompanyProfile>(`/api/v1/suppliers/profile/${encodeURIComponent(name)}`),
 };
 
 export const healthApi = {

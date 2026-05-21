@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { AISourceFooter } from "@/components/patents/AISourceFooter";
 import type { PatentDetail } from "@/lib/types";
 
 interface WhyNowSignal {
@@ -99,6 +100,8 @@ export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowP
           ))}
         </div>
       )}
+
+      <AISourceFooter />
 
       {artifact.limitations.length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-100">
