@@ -14,11 +14,13 @@ import { WhyNowPanel } from "@/components/patents/WhyNowPanel";
 import { OpportunityNarrativePanel } from "@/components/patents/OpportunityNarrativePanel";
 import { TrendSnapshotPanel } from "@/components/patents/TrendSnapshotPanel";
 import { AssigneeIntelligencePanel } from "@/components/patents/AssigneeIntelligencePanel";
+import { ClaimsPanel } from "@/components/patents/ClaimsPanel";
+import { ExternalPatentLinks } from "@/components/patents/ExternalPatentLinks";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/lib/utils";
 import { patentsApi } from "@/lib/api";
-import useSWR from "swr";
+import { useWatchlistCheck, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
 import { useState } from "react";
 
 export default function PatentDetailPage({
@@ -122,6 +124,24 @@ export default function PatentDetailPage({
     }
   };
 
+  const { data: watchlistStatus, mutate: mutateWatchlist } = useWatchlistCheck(patent ? id : null);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  const handleToggleWatchlist = async () => {
+    if (!patent) return;
+    setWatchlistLoading(true);
+    try {
+      if (watchlistStatus?.in_watchlist && watchlistStatus.watchlist_item_id) {
+        await removeFromWatchlist(watchlistStatus.watchlist_item_id, id);
+      } else {
+        await addToWatchlist(id);
+      }
+      mutateWatchlist();
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div>
@@ -177,9 +197,25 @@ export default function PatentDetailPage({
           <h1 className="text-2xl font-bold text-gray-900">
             {patent.title || "Untitled Patent"}
           </h1>
-          <div className="flex flex-col items-end gap-1.5">
-            <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
-            <ScoreBadge score={patent.interesting_score} />
+          <div className="flex items-start gap-3">
+            <button
+              onClick={handleToggleWatchlist}
+              disabled={watchlistLoading}
+              className={`p-2 rounded-lg border transition-colors ${
+                watchlistStatus?.in_watchlist
+                  ? "bg-primary-50 border-primary-300 text-primary-700"
+                  : "border-gray-300 text-gray-400 hover:text-primary-600 hover:border-primary-300"
+              } disabled:opacity-50`}
+              title={watchlistStatus?.in_watchlist ? "Remove from watchlist" : "Save to watchlist"}
+            >
+              <svg className="w-5 h-5" fill={watchlistStatus?.in_watchlist ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
+              <ScoreBadge score={patent.interesting_score} />
+            </div>
           </div>
         </div>
 
@@ -203,6 +239,13 @@ export default function PatentDetailPage({
             <RiskFlagsBadge flags={patent.tags.risk_flags} />
           </div>
         )}
+        <div className="mt-3">
+          <ExternalPatentLinks
+            publicationNumber={patent.publication_number}
+            office={patent.office}
+            docId={patent.doc_id}
+          />
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -253,6 +296,8 @@ export default function PatentDetailPage({
               <p className="text-gray-700 leading-relaxed">{patent.abstract}</p>
             </div>
           )}
+
+          <ClaimsPanel claimsText={patent.claims_text} />
         </div>
 
         <div className="space-y-6">

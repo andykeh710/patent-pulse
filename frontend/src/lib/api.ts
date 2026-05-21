@@ -1,10 +1,14 @@
 import type {
+  ArtifactListResponse,
+  CliffListResponse,
+  ConvergenceItem,
   CreateRunRequest,
   EstimateRequest,
   EstimateResponse,
   ExpiryItem,
   ExpiryParams,
   ExpirySummary,
+  Freshness,
   OpportunityItem,
   OpportunityListParams,
   PaginatedResponse,
@@ -16,11 +20,18 @@ import type {
   RunSummary,
   SearchParams,
   Stats,
+  SupplierListParams,
+  SupplierListResponse,
+  SupplierMapCountry,
+  SupplierSummary,
   Summary,
   TabCounts,
   Theme,
   ThemeStats,
+  TrendListResponse,
   TrendResponse,
+  TrendsSummary,
+  WatchlistItemResponse,
   SemanticSearchResponse,
 } from "./types";
 
@@ -75,6 +86,8 @@ export const patentsApi = {
     apiFetch<Summary | null>(`/api/v1/patents/${id}/summary`),
 
   getStats: () => apiFetch<Stats>(`/api/v1/patents/stats`),
+
+  getFreshness: () => apiFetch<Freshness>(`/api/v1/patents/freshness`),
 
   getExpirySummary: () => apiFetch<ExpirySummary>(`/api/v1/patents/expiry-summary`),
 
@@ -181,6 +194,54 @@ export const opportunityApi = {
       `/api/v1/opportunity?${toQueryString(params)}`
     ),
   tabCounts: () => apiFetch<TabCounts>(`/api/v1/opportunity/tab-counts`),
+};
+
+export const watchlistApi = {
+  list: (tag?: string) => {
+    const params = tag ? `?tag=${encodeURIComponent(tag)}` : "";
+    return apiFetch<WatchlistItemResponse[]>(`/api/v1/watchlist${params}`);
+  },
+  add: (patent_id: string, note?: string) =>
+    apiFetch<WatchlistItemResponse>(`/api/v1/watchlist`, {
+      method: "POST",
+      body: JSON.stringify({ patent_id, note }),
+    }),
+  remove: (item_id: string) =>
+    apiFetch<{ deleted: boolean }>(`/api/v1/watchlist/${item_id}`, {
+      method: "DELETE",
+    }),
+  check: (patent_id: string) =>
+    apiFetch<{ in_watchlist: boolean; watchlist_item_id: string | null }>(
+      `/api/v1/watchlist/check/${patent_id}`
+    ),
+};
+
+export const trendsApi = {
+  summary: () => apiFetch<TrendsSummary>(`/api/v1/trends/summary`),
+  hot: (surface?: string, limit = 20) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (surface) params.set("surface", surface);
+    return apiFetch<TrendListResponse>(`/api/v1/trends/hot?${params}`);
+  },
+  growing: (surface?: string, limit = 20) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (surface) params.set("surface", surface);
+    return apiFetch<TrendListResponse>(`/api/v1/trends/growing?${params}`);
+  },
+  convergence: (limit = 30) =>
+    apiFetch<ConvergenceItem[]>(`/api/v1/trends/convergence?limit=${limit}`),
+  cliffs: (windowMonths?: number, minPatents = 5, limit = 30) => {
+    const params = new URLSearchParams({ min_patents: String(minPatents), limit: String(limit) });
+    if (windowMonths) params.set("window_months", String(windowMonths));
+    return apiFetch<CliffListResponse>(`/api/v1/trends/cliffs?${params}`);
+  },
+};
+
+export const suppliersApi = {
+  summary: () => apiFetch<SupplierSummary>(`/api/v1/suppliers/summary`),
+  list: (params: SupplierListParams = {}) =>
+    apiFetch<SupplierListResponse>(`/api/v1/suppliers?${toQueryString(params)}`),
+  map: () => apiFetch<SupplierMapCountry[]>(`/api/v1/suppliers/map`),
 };
 
 export const healthApi = {

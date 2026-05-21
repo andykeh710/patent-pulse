@@ -99,6 +99,7 @@ export interface PatentDetail {
   ipc: string[];
   title: string | null;
   abstract: string | null;
+  claims_text: string | null;
   legal_status: string | null;
   legal_status_confidence: LegalStatusConfidence;
   maintenance_status: string | null;
@@ -151,6 +152,17 @@ export interface Stats {
   patents_this_week: number;
   top_cpc_sections: { section: string; count: number }[];
   top_assignees: { assignee: string; count: number }[];
+}
+
+export interface Freshness {
+  latest_patent_created_at: string | null;
+  latest_patent_publication_date: string | null;
+  latest_summarized_at: string | null;
+  latest_trend_snapshot_at: string | null;
+  latest_ai_run_at: string | null;
+  total_patents: number;
+  total_summarized: number;
+  total_trend_snapshots: number;
 }
 
 export interface PatentListParams {
@@ -212,8 +224,9 @@ export interface Theme {
   assignee_keywords: string[];
   title_keywords: string[];
   is_active: boolean;
+  patent_count: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface ThemeStats {
@@ -449,3 +462,113 @@ export const RISK_FLAG_VALUES = [
 
 export type OpportunityTagValue = (typeof OPPORTUNITY_TAG_VALUES)[number];
 export type RiskFlagValue = (typeof RISK_FLAG_VALUES)[number];
+
+// ---------------------------------------------------------------------------
+// Trends (Phase A/B)
+// ---------------------------------------------------------------------------
+
+export interface TrendItem {
+  surface: string;
+  key: string;
+  week_start: string;
+  count_4w: number;
+  count_12w: number;
+  baseline_12mo: number;
+  z_score: number;
+  growth_pct: number;
+  assignee_diversity: number;
+  cpc_diversity: number;
+  top_patent_ids: string[];
+}
+
+export interface TrendListResponse {
+  items: TrendItem[];
+  total: number;
+}
+
+export interface ConvergenceItem {
+  cpc_a: string;
+  cpc_b: string;
+  joint_count: number;
+  baseline_count: number;
+  growth_ratio: number;
+}
+
+export interface CliffClusterItem {
+  id: string;
+  key_type: string;
+  key_value: string;
+  window_months: number;
+  patent_count: number;
+  representative_patent_ids: string[];
+}
+
+export interface CliffListResponse {
+  items: CliffClusterItem[];
+  total: number;
+}
+
+export interface WatchlistItemResponse {
+  id: string;
+  patent: PatentListItem;
+  note: string | null;
+  tags: string[];
+  added_at: string;
+}
+
+export interface TrendsSummary {
+  total_trend_rows: number;
+  surfaces: Record<string, number>;
+  convergence_signals: number;
+  cliff_clusters: number;
+  last_computed: string | null;
+}
+
+export interface SupplierSummary {
+  total_suppliers: number;
+  suppliers_with_country: number;
+  suppliers_with_entity_type: number;
+  total_supplier_patents: number;
+  average_patents_per_supplier: number;
+  high_opportunity_suppliers: number;
+  countries: { country: string; count: number }[];
+  entity_types: { entity_type: string; count: number }[];
+}
+
+export interface SupplierItem {
+  name: string;
+  country: string | null;
+  entity_type: string | null;
+  patent_count: number;
+  active_patent_count: number;
+  expiring_soon_count: number;
+  technology_area_count: number;
+  average_signal_score: number | null;
+  supplier_score: number;
+}
+
+export interface SupplierListParams {
+  country?: string;
+  entity_type?: string;
+  min_patent_count?: number;
+  sort_by?: "supplier_score" | "patent_count" | "active_patent_count" | "average_signal_score";
+  sort_order?: "asc" | "desc";
+  page?: number;
+  page_size?: number;
+}
+
+export interface SupplierListResponse {
+  items: SupplierItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export interface SupplierMapCountry {
+  country: string;
+  supplier_count: number;
+  patent_count: number;
+  average_supplier_score: number;
+  top_suppliers: { name: string; patent_count: number; supplier_score: number }[];
+}

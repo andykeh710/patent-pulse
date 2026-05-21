@@ -8,8 +8,10 @@ from sqlalchemy.orm import load_only
 from app.api.deps import DbSession
 from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
+from app.core.ai_models import AIRun, TrendSnapshot
 from app.core.schemas import (
     ExpirySummary,
+    FreshnessResponse,
     PaginatedResponse,
     PatentDetailResponse,
     PatentListItem,
@@ -36,8 +38,8 @@ async def list_patents(
     date_from: date | None = None,
     date_to: date | None = None,
     min_score: float | None = None,
-    sort_by: str = Query(default="publication_date", regex="^(publication_date|interesting_score|created_at)$"),
-    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+    sort_by: str = Query(default="publication_date", pattern="^(publication_date|interesting_score|opportunity_score|created_at)$"),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedResponse[PatentListItem]:
@@ -168,6 +170,65 @@ async def get_stats(db: DbSession) -> StatsResponse:
     )
 
 
+@router.get("/freshness", response_model=FreshnessResponse)
+async def get_freshness(db: DbSession) -> FreshnessResponse:
+    """Return data freshness timestamps for UI indicators."""
+    # Latest patent ingested
+    latest_created = await db.execute(
+        select(func.max(PatentPublication.created_at))
+    )
+    latest_patent_created_at = latest_created.scalar()
+
+    # Latest publication date in the data
+    latest_pub = await db.execute(
+        select(func.max(PatentPublication.publication_date))
+    )
+    latest_pub_date = latest_pub.scalar()
+
+    # Latest summarization
+    latest_summ = await db.execute(
+        select(func.max(PatentPublication.summarized_at))
+    )
+    latest_summarized_at = latest_summ.scalar()
+
+    # Total counts
+    total_result = await db.execute(select(func.count(PatentPublication.id)))
+    total_patents = total_result.scalar() or 0
+
+    summarized_result = await db.execute(
+        select(func.count(PatentPublication.id)).where(
+            PatentPublication.summarized_at.isnot(None)
+        )
+    )
+    total_summarized = summarized_result.scalar() or 0
+
+    # Latest trend snapshot
+    latest_trend = await db.execute(
+        select(func.max(TrendSnapshot.week_start))
+    )
+    latest_trend_val = latest_trend.scalar()
+
+    trend_count = await db.execute(select(func.count(TrendSnapshot.id)))
+    total_trend_snapshots = trend_count.scalar() or 0
+
+    # Latest AI run
+    latest_run = await db.execute(
+        select(func.max(AIRun.created_at))
+    )
+    latest_ai_run_at = latest_run.scalar()
+
+    return FreshnessResponse(
+        latest_patent_created_at=latest_patent_created_at,
+        latest_patent_publication_date=str(latest_pub_date) if latest_pub_date else None,
+        latest_summarized_at=latest_summarized_at,
+        latest_trend_snapshot_at=latest_trend_val,
+        latest_ai_run_at=latest_ai_run_at,
+        total_patents=total_patents,
+        total_summarized=total_summarized,
+        total_trend_snapshots=total_trend_snapshots,
+    )
+
+
 @router.get("/expiry-summary", response_model=ExpirySummary)
 async def get_expiry_summary(db: DbSession) -> ExpirySummary:
     """Get count of expiring patents within 5, 10, and 20 years."""
@@ -242,7 +303,7 @@ async def get_trend(db: DbSession) -> TrendResponse:
 @router.get("/priority-watch", response_model=PaginatedResponse[PatentListItem])
 async def priority_watch(
     db: DbSession,
-    bucket: str = Query(default="expiring_soon", regex="^(expiring_soon|recent|all)$"),
+    bucket: str = Query(default="expiring_soon", pattern="^(expiring_soon|recent|all)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=12, ge=1, le=50),
 ) -> PaginatedResponse[PatentListItem]:

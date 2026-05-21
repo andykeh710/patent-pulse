@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import type { PatentDetail } from "@/lib/types";
 
 interface OpportunityNarrativeArtifact {
@@ -52,16 +52,7 @@ export function OpportunityNarrativePanel({
   isLoading,
   onGenerate,
 }: OpportunityNarrativePanelProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      await onGenerate();
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {
     return (
@@ -83,7 +74,7 @@ export function OpportunityNarrativePanel({
         <p className="text-sm text-gray-500 mb-4">
           Generate a commercialization narrative: target customers, possible products, risks, and timing.
         </p>
-        <Button onClick={handleGenerate} variant="default" size="sm">
+        <Button onClick={handleGenerate} variant="default" size="sm" disabled={isGenerating}>
           Generate Opportunity Narrative
         </Button>
       </div>
@@ -98,7 +89,7 @@ export function OpportunityNarrativePanel({
           <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary-100 text-primary-700">
             {typeLabels[artifact.opportunity_type] || artifact.opportunity_type}
           </span>
-          <Button onClick={handleGenerate} variant="outline" size="sm">
+          <Button onClick={handleGenerate} variant="outline" size="sm" disabled={isGenerating}>
             Regenerate
           </Button>
         </div>

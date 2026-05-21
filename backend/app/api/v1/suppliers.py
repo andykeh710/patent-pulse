@@ -1,0 +1,285 @@
+from __future__ import annotations
+
+from datetime import date, timedelta
+from typing import Literal
+
+from fastapi import APIRouter, Query
+from pydantic import BaseModel
+from sqlalchemy import text
+
+from app.api.deps import DbSession
+
+router = APIRouter()
+
+
+class SupplierSummary(BaseModel):
+    total_suppliers: int
+    suppliers_with_country: int
+    suppliers_with_entity_type: int
+    total_supplier_patents: int
+    average_patents_per_supplier: float
+    high_opportunity_suppliers: int
+    countries: list[dict[str, int | str]]
+    entity_types: list[dict[str, int | str]]
+
+
+class SupplierItem(BaseModel):
+    name: str
+    country: str | None
+    entity_type: str | None
+    patent_count: int
+    active_patent_count: int
+    expiring_soon_count: int
+    technology_area_count: int
+    average_signal_score: float | None
+    supplier_score: float
+
+
+class SupplierListResponse(BaseModel):
+    items: list[SupplierItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class SupplierMapCountry(BaseModel):
+    country: str
+    supplier_count: int
+    patent_count: int
+    average_supplier_score: float
+    top_suppliers: list[dict[str, int | str | float]]
+
+
+def _score_supplier(
+    patent_count: int,
+    active_patent_count: int,
+    expiring_soon_count: int,
+    technology_area_count: int,
+    average_signal_score: float | None,
+) -> float:
+    score = min(patent_count, 20) * 2.0
+    score += min(active_patent_count, 20) * 1.5
+    score += min(technology_area_count, 8) * 4.0
+    if average_signal_score is not None:
+        score += max(0.0, min(average_signal_score, 100.0)) * 0.25
+    score -= min(expiring_soon_count, 10) * 1.5
+    return round(max(0.0, min(score, 100.0)), 2)
+
+
+def _supplier_filters(country: str | None, entity_type: str | None) -> str:
+    filters = ["supplier_name IS NOT NULL", "supplier_name != ''"]
+    if country:
+        filters.append("lower(country) = lower(:country)")
+    if entity_type:
+        filters.append("lower(entity_type) = lower(:entity_type)")
+    return " AND ".join(filters)
+
+
+@router.get("/summary", response_model=SupplierSummary)
+async def supplier_summary(db: DbSession) -> SupplierSummary:
+    today = date.today()
+    five_years = today + timedelta(days=5 * 365)
+
+    rows = (await db.execute(
+        text(
+            """
+            WITH supplier_rows AS (
+                SELECT
+                    assignee_val AS supplier_name,
+                    MAX(a.country) AS country,
+                    MAX(a.entity_type) AS entity_type,
+                    COUNT(DISTINCT p.id) AS patent_count,
+                    COUNT(DISTINCT p.id) FILTER (WHERE p.legal_status = 'GRANTED') AS active_patent_count,
+                    COUNT(DISTINCT p.id) FILTER (
+                        WHERE p.legal_status = 'GRANTED'
+                          AND p.estimated_expiry_date >= :today
+                          AND p.estimated_expiry_date <= :five_years
+                    ) AS expiring_soon_count,
+                    COUNT(DISTINCT LEFT(cpc_val, 1)) FILTER (WHERE cpc_val IS NOT NULL AND cpc_val != '') AS technology_area_count,
+                    AVG(COALESCE(p.opportunity_score, p.interesting_score)) AS average_signal_score
+                FROM patent_publications p
+                JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
+                LEFT JOIN LATERAL jsonb_array_elements_text(p.cpc) AS cpc_val ON true
+                LEFT JOIN assignees a
+                    ON lower(a.display_name) = lower(assignee_val)
+                    OR lower(a.normalized_name) = lower(assignee_val)
+                WHERE assignee_val IS NOT NULL AND assignee_val != ''
+                GROUP BY assignee_val
+            )
+            SELECT * FROM supplier_rows
+            """
+        ).bindparams(today=today, five_years=five_years)
+    )).mappings().all()
+
+    items = [
+        SupplierItem(
+            name=row["supplier_name"],
+            country=row["country"],
+            entity_type=row["entity_type"],
+            patent_count=int(row["patent_count"] or 0),
+            active_patent_count=int(row["active_patent_count"] or 0),
+            expiring_soon_count=int(row["expiring_soon_count"] or 0),
+            technology_area_count=int(row["technology_area_count"] or 0),
+            average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+            supplier_score=_score_supplier(
+                int(row["patent_count"] or 0),
+                int(row["active_patent_count"] or 0),
+                int(row["expiring_soon_count"] or 0),
+                int(row["technology_area_count"] or 0),
+                float(row["average_signal_score"]) if row["average_signal_score"] is not None else None,
+            ),
+        )
+        for row in rows
+    ]
+
+    country_counts: dict[str, int] = {}
+    entity_counts: dict[str, int] = {}
+    for item in items:
+        if item.country:
+            country_counts[item.country] = country_counts.get(item.country, 0) + 1
+        if item.entity_type:
+            entity_counts[item.entity_type] = entity_counts.get(item.entity_type, 0) + 1
+
+    total_patents = sum(item.patent_count for item in items)
+    total = len(items)
+
+    return SupplierSummary(
+        total_suppliers=total,
+        suppliers_with_country=sum(1 for item in items if item.country),
+        suppliers_with_entity_type=sum(1 for item in items if item.entity_type),
+        total_supplier_patents=total_patents,
+        average_patents_per_supplier=round(total_patents / total, 2) if total else 0.0,
+        high_opportunity_suppliers=sum(1 for item in items if item.supplier_score >= 60),
+        countries=[
+            {"country": country, "count": count}
+            for country, count in sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        ],
+        entity_types=[
+            {"entity_type": entity_type, "count": count}
+            for entity_type, count in sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        ],
+    )
+
+
+@router.get("", response_model=SupplierListResponse)
+async def list_suppliers(
+    db: DbSession,
+    country: str | None = None,
+    entity_type: str | None = None,
+    min_patent_count: int = Query(default=1, ge=1, le=10000),
+    sort_by: Literal["supplier_score", "patent_count", "active_patent_count", "average_signal_score"] = "supplier_score",
+    sort_order: Literal["asc", "desc"] = "desc",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> SupplierListResponse:
+    today = date.today()
+    five_years = today + timedelta(days=5 * 365)
+    where_clause = _supplier_filters(country, entity_type)
+    params = {
+        "today": today,
+        "five_years": five_years,
+        "min_patent_count": min_patent_count,
+    }
+    if country:
+        params["country"] = country
+    if entity_type:
+        params["entity_type"] = entity_type
+
+    rows = (await db.execute(
+        text(
+            f"""
+            WITH supplier_rows AS (
+                SELECT
+                    assignee_val AS supplier_name,
+                    MAX(a.country) AS country,
+                    MAX(a.entity_type) AS entity_type,
+                    COUNT(DISTINCT p.id) AS patent_count,
+                    COUNT(DISTINCT p.id) FILTER (WHERE p.legal_status = 'GRANTED') AS active_patent_count,
+                    COUNT(DISTINCT p.id) FILTER (
+                        WHERE p.legal_status = 'GRANTED'
+                          AND p.estimated_expiry_date >= :today
+                          AND p.estimated_expiry_date <= :five_years
+                    ) AS expiring_soon_count,
+                    COUNT(DISTINCT LEFT(cpc_val, 1)) FILTER (WHERE cpc_val IS NOT NULL AND cpc_val != '') AS technology_area_count,
+                    AVG(COALESCE(p.opportunity_score, p.interesting_score)) AS average_signal_score
+                FROM patent_publications p
+                JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
+                LEFT JOIN LATERAL jsonb_array_elements_text(p.cpc) AS cpc_val ON true
+                LEFT JOIN assignees a
+                    ON lower(a.display_name) = lower(assignee_val)
+                    OR lower(a.normalized_name) = lower(assignee_val)
+                GROUP BY assignee_val
+            )
+            SELECT * FROM supplier_rows
+            WHERE {where_clause}
+              AND patent_count >= :min_patent_count
+            """
+        ).bindparams(**params)
+    )).mappings().all()
+
+    items = [
+        SupplierItem(
+            name=row["supplier_name"],
+            country=row["country"],
+            entity_type=row["entity_type"],
+            patent_count=int(row["patent_count"] or 0),
+            active_patent_count=int(row["active_patent_count"] or 0),
+            expiring_soon_count=int(row["expiring_soon_count"] or 0),
+            technology_area_count=int(row["technology_area_count"] or 0),
+            average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+            supplier_score=_score_supplier(
+                int(row["patent_count"] or 0),
+                int(row["active_patent_count"] or 0),
+                int(row["expiring_soon_count"] or 0),
+                int(row["technology_area_count"] or 0),
+                float(row["average_signal_score"]) if row["average_signal_score"] is not None else None,
+            ),
+        )
+        for row in rows
+    ]
+
+    reverse = sort_order == "desc"
+    items.sort(key=lambda item: getattr(item, sort_by) or 0, reverse=reverse)
+    total = len(items)
+    offset = (page - 1) * page_size
+    paged = items[offset:offset + page_size]
+    pages = (total + page_size - 1) // page_size
+
+    return SupplierListResponse(items=paged, total=total, page=page, page_size=page_size, pages=pages)
+
+
+@router.get("/map", response_model=list[SupplierMapCountry])
+async def supplier_map(db: DbSession) -> list[SupplierMapCountry]:
+    data = await list_suppliers(
+        db=db,
+        country=None,
+        entity_type=None,
+        min_patent_count=1,
+        sort_by="supplier_score",
+        sort_order="desc",
+        page=1,
+        page_size=10000,
+    )
+    countries: dict[str, list[SupplierItem]] = {}
+    for item in data.items:
+        key = item.country or "Unknown"
+        countries.setdefault(key, []).append(item)
+
+    result: list[SupplierMapCountry] = []
+    for country, items in countries.items():
+        top = sorted(items, key=lambda item: item.supplier_score, reverse=True)[:5]
+        result.append(
+            SupplierMapCountry(
+                country=country,
+                supplier_count=len(items),
+                patent_count=sum(item.patent_count for item in items),
+                average_supplier_score=round(sum(item.supplier_score for item in items) / len(items), 2),
+                top_suppliers=[
+                    {"name": item.name, "patent_count": item.patent_count, "supplier_score": item.supplier_score}
+                    for item in top
+                ],
+            )
+        )
+
+    return sorted(result, key=lambda item: item.patent_count, reverse=True)

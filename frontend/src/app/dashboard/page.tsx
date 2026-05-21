@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePatents, usePatentStats, useExpirySummary, usePatentTrend, usePriorityWatch } from "@/hooks/usePatents";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
+import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { formatNumber } from "@/lib/utils";
 import type { TrendPoint } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <FreshnessBanner className="mt-2" />
         <p className="text-gray-600 mt-1">
           Patent intelligence at a glance
         </p>

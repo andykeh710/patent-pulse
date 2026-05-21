@@ -90,6 +90,7 @@ class PatentDetailResponse(BaseModel):
     ipc: list[str] = []
     title: str | None = None
     abstract: str | None = None
+    claims_text: str | None = None
     legal_status: str | None = None
     legal_status_confidence: str = "estimated"
     maintenance_status: str | None = None
@@ -142,6 +143,7 @@ class PatentDetailResponse(BaseModel):
             ipc=patent.ipc or [],
             title=patent.title,
             abstract=patent.abstract,
+            claims_text=patent.claims_text,
             legal_status=patent.legal_status,
             legal_status_confidence=getattr(
                 patent, "legal_status_confidence", None
@@ -257,3 +259,14 @@ class TrendPoint(BaseModel):
 
 class TrendResponse(BaseModel):
     points: list[TrendPoint]
+
+
+class FreshnessResponse(BaseModel):
+    latest_patent_created_at: datetime | None
+    latest_patent_publication_date: str | None
+    latest_summarized_at: datetime | None
+    latest_trend_snapshot_at: datetime | None
+    latest_ai_run_at: datetime | None
+    total_patents: int
+    total_summarized: int
+    total_trend_snapshots: int

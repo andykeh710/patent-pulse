@@ -1,20 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { usePatents } from "@/hooks/usePatents";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import type { PatentListParams } from "@/lib/types";
 
 export default function PatentsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+      <PatentsContent />
+    </Suspense>
+  );
+}
+
+function PatentsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [params, setParams] = useState<PatentListParams>({
-    sort_by: "publication_date",
-    sort_order: "desc",
-    page: 1,
+    sort_by: (searchParams.get("sort_by") as PatentListParams["sort_by"]) || "publication_date",
+    sort_order: (searchParams.get("sort_order") as PatentListParams["sort_order"]) || "desc",
+    page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
     page_size: 20,
   });
 
-  const { data, isLoading } = usePatents(params);
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (params.sort_by !== "publication_date") sp.set("sort_by", params.sort_by!);
+    if (params.sort_order !== "desc") sp.set("sort_order", params.sort_order!);
+    if ((params.page ?? 1) > 1) sp.set("page", String(params.page));
+    const qs = sp.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [params, pathname, router]);
+
+  const { data, isLoading, error, mutate } = usePatents(params);
 
   const handleSortChange = (sortBy: string) => {
     setParams((prev) => ({
@@ -52,16 +75,20 @@ export default function PatentsPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <ErrorState message="Failed to load patents." onRetry={() => mutate()} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(9)].map((_, i) => (
             <PatentCardSkeleton key={i} />
           ))}
         </div>
       ) : data?.items.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No patents found</p>
-        </div>
+        <EmptyState
+          icon="patent"
+          title="No patents found"
+          message="Try adjusting your sort or check back after the next ingestion run."
+        />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">

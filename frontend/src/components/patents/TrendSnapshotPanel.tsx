@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import type { PatentDetail } from "@/lib/types";
 
 interface TrendComponent {
@@ -24,16 +24,7 @@ interface TrendSnapshotPanelProps {
 }
 
 export function TrendSnapshotPanel({ patent, artifact, isLoading, onGenerate }: TrendSnapshotPanelProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      await onGenerate();
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {
     return (
@@ -55,7 +46,7 @@ export function TrendSnapshotPanel({ patent, artifact, isLoading, onGenerate }: 
         <p className="text-sm text-gray-500 mb-4">
           Technology-momentum signals, cross-industry relevance, and industry diversity analysis.
         </p>
-        <Button onClick={handleGenerate} variant="default" size="sm">
+        <Button onClick={handleGenerate} variant="default" size="sm" disabled={isGenerating}>
           Generate Trend Snapshot
         </Button>
       </div>

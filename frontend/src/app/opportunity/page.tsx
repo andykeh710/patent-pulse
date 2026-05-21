@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge";
 import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
@@ -9,6 +10,7 @@ import { RiskFlagsBadge } from "@/components/patents/RiskFlagsBadge";
 import { ScoreBadge } from "@/components/patents/ScoreBadge";
 import { TagsPanel } from "@/components/patents/TagsPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import {
   useOpportunityList,
   useOpportunityTabCounts,
@@ -54,10 +56,59 @@ interface FiltersState {
 }
 
 export default function OpportunityPage() {
-  const [tab, setTab] = useState<OpportunityTab>("top");
-  const [sort, setSort] = useState<OpportunitySort>("opportunity_score");
-  const [filters, setFilters] = useState<FiltersState>({});
-  const [page, setPage] = useState(1);
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+      <OpportunityContent />
+    </Suspense>
+  );
+}
+
+function OpportunityContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Initialize state from URL params
+  const [tab, setTab] = useState<OpportunityTab>(
+    (searchParams.get("tab") as OpportunityTab) || "top"
+  );
+  const [sort, setSort] = useState<OpportunitySort>(
+    (searchParams.get("sort") as OpportunitySort) || "opportunity_score"
+  );
+  const [filters, setFilters] = useState<FiltersState>({
+    opportunity_tag: searchParams.get("opportunity_tag") || undefined,
+    risk_flag: searchParams.get("risk_flag") || undefined,
+    legal_confidence: (searchParams.get("legal_confidence") as FiltersState["legal_confidence"]) || undefined,
+    industry: searchParams.get("industry") || undefined,
+    cpc_prefix: searchParams.get("cpc_prefix") || undefined,
+    min_score: searchParams.get("min_score") ? Number(searchParams.get("min_score")) : undefined,
+  });
+  const [page, setPage] = useState(
+    searchParams.get("page") ? Number(searchParams.get("page")) : 1
+  );
+
+  // Sync state changes to URL
+  const syncURL = useCallback(
+    (t: string, s: string, f: FiltersState, p: number) => {
+      const params = new URLSearchParams();
+      if (t !== "top") params.set("tab", t);
+      if (s !== "opportunity_score") params.set("sort", s);
+      if (f.opportunity_tag) params.set("opportunity_tag", f.opportunity_tag);
+      if (f.risk_flag) params.set("risk_flag", f.risk_flag);
+      if (f.legal_confidence) params.set("legal_confidence", f.legal_confidence);
+      if (f.industry) params.set("industry", f.industry);
+      if (f.cpc_prefix) params.set("cpc_prefix", f.cpc_prefix);
+      if (f.min_score !== undefined && f.min_score !== "") params.set("min_score", String(f.min_score));
+      if (p > 1) params.set("page", String(p));
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router]
+  );
+
+  useEffect(() => {
+    syncURL(tab, sort, filters, page);
+  }, [tab, sort, filters, page, syncURL]);
 
   const params: OpportunityListParams = useMemo(
     () => ({
@@ -86,6 +137,7 @@ export default function OpportunityPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Opportunity</h1>
+        <FreshnessBanner show={["patents", "summaries"]} className="mt-2" />
         <p className="text-gray-600 mt-1">
           Patents ranked by rules-based opportunity_score. Tabs drill into specific
           opportunity types; combine with filters to narrow further.

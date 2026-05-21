@@ -18,8 +18,8 @@ async def list_expiring_patents(
     office: str | None = None,
     industry: str | None = None,
     time_horizon: str | None = None,
-    sort_by: str = Query(default="expiry_urgency", regex="^(expiry_urgency|expiry_date|opportunity_score)$"),
-    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+    sort_by: str = Query(default="expiry_urgency", pattern="^(expiry_urgency|expiry_date|opportunity_score)$"),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedResponse[ExpiryItem]:

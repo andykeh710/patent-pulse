@@ -12,7 +12,7 @@ from a fixed set of features:
 * market relevance (industries breadth, weighted toward opportunity_tags)
 * assignee type weight (university / SME upweighted)
 * legal confidence
-* trend momentum (TrendSnapshot z-score, 0 until Phase 3 lands)
+* trend momentum (TrendSnapshot z-score from weekly computation)
 
 Every score is recorded as an ``AIArtifact(opportunity_score)`` row via
 :func:`app.ai.llm_client.record_rules_artifact` so we get a per-patent,
@@ -32,6 +32,7 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_client import (
@@ -45,7 +46,7 @@ from app.core.models import PatentPublication
 logger = logging.getLogger(__name__)
 
 RULES_ID = "opportunity_score_rules"
-RULES_VERSION = 1
+RULES_VERSION = 2
 
 # Component weights. Sum to 1.0 by convention (rebalance if you bump
 # RULES_VERSION). Each component returns a 0..1 sub-score; the final
@@ -137,6 +138,7 @@ class OpportunityFeatures:
     assignee_class: str  # university | sme | megacorp | gov | unknown
     family_size: int
     cpc_section_count: int
+    max_cpc_z_score: float = 0.0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -158,6 +160,7 @@ class OpportunityFeatures:
             "assignee_class": self.assignee_class,
             "family_size": self.family_size,
             "cpc_section_count": self.cpc_section_count,
+            "max_cpc_z_score": self.max_cpc_z_score,
         }
 
 
@@ -210,10 +213,29 @@ def _cpc_section_count(cpc: list[str]) -> int:
     return len(sections)
 
 
-def extract_features(patent: PatentPublication) -> OpportunityFeatures:
-    """Pure function: derive the score input fingerprint from a patent row."""
+def extract_features(
+    patent: PatentPublication,
+    cpc_z_scores: dict[str, float] | None = None,
+) -> OpportunityFeatures:
+    """Pure function: derive the score input fingerprint from a patent row.
+
+    Args:
+        cpc_z_scores: Optional map of CPC 4-char prefix -> z_score from
+            the latest TrendSnapshot. When provided, max_cpc_z_score is set
+            to the highest z-score among the patent's CPC codes.
+    """
     tags = patent.tags or {}
     independent_count, avg_claim_len = _claim_features(patent.claims_text)
+    cpc = patent.cpc or []
+
+    max_z = 0.0
+    if cpc_z_scores and cpc:
+        for code in cpc:
+            prefix = code[:4].upper() if len(code) >= 4 else code.upper()
+            z = cpc_z_scores.get(prefix, 0.0)
+            if z > max_z:
+                max_z = z
+
     return OpportunityFeatures(
         interesting_score=patent.interesting_score,
         interesting_score_version=patent.interesting_score_version or 1,
@@ -238,7 +260,8 @@ def extract_features(patent: PatentPublication) -> OpportunityFeatures:
         legal_status_confidence=patent.legal_status_confidence or "estimated",
         assignee_class=_classify_assignee(patent.assignees or []),
         family_size=len(patent.family_members or []),
-        cpc_section_count=_cpc_section_count(patent.cpc or []),
+        cpc_section_count=_cpc_section_count(cpc),
+        max_cpc_z_score=round(max_z, 4),
     )
 
 
@@ -352,9 +375,23 @@ def _score_legal_confidence(f: OpportunityFeatures) -> float:
 
 
 def _score_trend_momentum(f: OpportunityFeatures) -> float:
-    # Phase 3 wires TrendSnapshot lookups in. Until then we return 0.5 as a
-    # neutral baseline so the component contributes its weight evenly.
-    return 0.5
+    """Map the patent's best CPC z-score from TrendSnapshot into 0..1.
+
+    Z-score thresholds calibrated against real data where top CPC prefixes
+    reach z~14 and median active prefixes sit around z~2-4.
+    """
+    z = f.max_cpc_z_score
+    if z <= 0:
+        return 0.1
+    if z < 1.0:
+        return 0.3
+    if z < 3.0:
+        return 0.5
+    if z < 6.0:
+        return 0.7
+    if z < 10.0:
+        return 0.85
+    return 1.0
 
 
 def _score_interestingness_anchor(f: OpportunityFeatures) -> float:
@@ -429,12 +466,29 @@ def compute_score(
     }
 
 
+async def _load_cpc_z_scores(session: AsyncSession) -> dict[str, float]:
+    """Load the latest CPC z-scores from trend_snapshots.
+
+    Returns a dict mapping CPC 4-char prefix -> max z_score.
+    Cached per-session; cheap since there are typically < 500 CPC rows.
+    """
+    from app.core.ai_models import TrendSnapshot
+
+    rows = await session.execute(
+        select(TrendSnapshot.key, func.max(TrendSnapshot.z_score))
+        .where(TrendSnapshot.surface == "cpc")
+        .group_by(TrendSnapshot.key)
+    )
+    return {r[0]: float(r[1]) for r in rows}
+
+
 async def score_patent_opportunity(
     session: AsyncSession,
     patent: PatentPublication,
     *,
     run_id: UUID | None = None,
     weights: dict[str, float] | None = None,
+    cpc_z_scores: dict[str, float] | None = None,
 ) -> tuple[dict[str, Any], UUID]:
     """Compute (or fetch from cache) an opportunity_score artifact.
 
@@ -442,7 +496,10 @@ async def score_patent_opportunity(
     breakdown — either the cached value (if features + rules are
     unchanged) or a freshly persisted one.
     """
-    features = extract_features(patent)
+    if cpc_z_scores is None:
+        cpc_z_scores = await _load_cpc_z_scores(session)
+
+    features = extract_features(patent, cpc_z_scores=cpc_z_scores)
     w = weights or DEFAULT_WEIGHTS
     rules_hash = hash_rules(RULES_ID, RULES_VERSION, w)
     breakdown = compute_score(features, w)
@@ -458,7 +515,4 @@ async def score_patent_opportunity(
         run_id=run_id,
     )
     response = await record_rules_artifact(session, request)
-    # If we hit the cache, response.content_json is the already-stored
-    # breakdown (which may have an older ``computed_at`` than now). That's
-    # fine — the score is deterministic; the cached value is correct.
     return response.content_json, response.artifact_id

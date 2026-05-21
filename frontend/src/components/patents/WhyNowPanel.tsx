@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import type { PatentDetail } from "@/lib/types";
 
 interface WhyNowSignal {
@@ -26,16 +26,7 @@ interface WhyNowPanelProps {
 }
 
 export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowPanelProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      await onGenerate();
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {
     return (
@@ -57,7 +48,7 @@ export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowP
         <p className="text-sm text-gray-500 mb-4">
           Analyze why this patent is relevant today — timing, urgency, and market signals.
         </p>
-        <Button onClick={handleGenerate} variant="default" size="sm">
+        <Button onClick={handleGenerate} variant="default" size="sm" disabled={isGenerating}>
           Generate Why Now
         </Button>
       </div>
@@ -80,7 +71,7 @@ export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowP
           >
             {artifact.confidence.charAt(0).toUpperCase() + artifact.confidence.slice(1)} confidence
           </span>
-          <Button onClick={handleGenerate} variant="outline" size="sm">
+          <Button onClick={handleGenerate} variant="outline" size="sm" disabled={isGenerating}>
             Regenerate
           </Button>
         </div>

@@ -23,6 +23,9 @@ celery_app = Celery(
         "app.tasks.opportunity_narrative",
         "app.tasks.trend_snapshot",
         "app.tasks.assignee_intelligence",
+        "app.tasks.compute_trends",
+        "app.tasks.compute_cliffs",
+        "app.tasks.compute_convergence",
     ],
 )
 
@@ -49,6 +52,9 @@ celery_app.conf.update(
         "app.tasks.opportunity_narrative.*": {"queue": "summarization"},
         "app.tasks.trend_snapshot.*": {"queue": "summarization"},
         "app.tasks.assignee_intelligence.*": {"queue": "summarization"},
+        "app.tasks.compute_trends.*": {"queue": "maintenance"},
+        "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
+        "app.tasks.compute_convergence.*": {"queue": "maintenance"},
     },
     task_default_retry_delay=60,
     task_max_retries=3,
@@ -120,6 +126,24 @@ celery_app.conf.beat_schedule = {
     "expiry-watch-daily": {
         "task": "app.tasks.expiry_watch.update_expiry_flags",
         "schedule": crontab(hour=6, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Trend snapshots - Sunday (after embeddings, before next week)
+    "compute-weekly-trends": {
+        "task": "app.tasks.compute_trends.compute_weekly_trends",
+        "schedule": crontab(hour=7, minute=0, day_of_week=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Cliff clusters - Sunday (after trends)
+    "compute-cliff-clusters": {
+        "task": "app.tasks.compute_cliffs.compute_cliff_clusters",
+        "schedule": crontab(hour=7, minute=30, day_of_week=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Convergence signals - Sunday (after cliffs)
+    "compute-convergence-signals": {
+        "task": "app.tasks.compute_convergence.compute_convergence_signals",
+        "schedule": crontab(hour=8, minute=0, day_of_week=0),
         "options": {"queue": "maintenance"},
     },
 }
