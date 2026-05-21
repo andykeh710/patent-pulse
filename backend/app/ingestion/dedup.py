@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,11 +54,18 @@ def _build_update_values(patent_data: dict) -> dict:
     for key, value in patent_data.items():
         if key in _EXCLUDED_FROM_UPDATE:
             continue
-        if key == "estimated_expiry_date" and "priority_date" in patent_data:
-            if _is_sparse_value(patent_data["priority_date"]):
-                continue
         if key in _SPARSE_UPDATE_PROTECTED_FIELDS and _is_sparse_value(value):
             continue
+        if key == "estimated_expiry_date" and "priority_date" in patent_data:
+            if _is_sparse_value(patent_data["priority_date"]):
+                update_data[key] = case(
+                    (
+                        PatentPublication.priority_date.is_not(None),
+                        PatentPublication.estimated_expiry_date,
+                    ),
+                    else_=value,
+                )
+                continue
         update_data[key] = value
 
     update_data["updated_at"] = datetime.utcnow()

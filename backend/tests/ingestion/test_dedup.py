@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import Case
 
 from app.core.models import PatentPublication
 from app.ingestion import dedup
@@ -26,7 +27,7 @@ def test_build_update_values_preserves_authoritative_fields_on_sparse_reingest()
     assert "doc_id" not in update_values
     assert "family_id" not in update_values
     assert "priority_date" not in update_values
-    assert "estimated_expiry_date" not in update_values
+    assert isinstance(update_values["estimated_expiry_date"], Case)
 
 
 @pytest.mark.asyncio
