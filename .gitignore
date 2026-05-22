@@ -76,3 +76,10 @@ coverage/
 
 # Build
 *.egg-info/
+
+# Celery
+backend/celerybeat-schedule
+
+# Portable distribution (generated)
+patent-pulse-portable.zip
+patent-pulse-portable/

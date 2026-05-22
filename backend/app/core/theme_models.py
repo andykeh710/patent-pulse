@@ -8,7 +8,7 @@ Watchlists: User-saved patents for tracking.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.models import Base
@@ -60,6 +60,9 @@ class ThemeMatch(Base):
     """
 
     __tablename__ = "theme_matches"
+    __table_args__ = (
+        UniqueConstraint("theme_id", "patent_id", name="ix_theme_matches_unique"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     theme_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("themes.id"), index=True)
