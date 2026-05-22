@@ -232,3 +232,82 @@ async def test_theme_matcher_uses_keywords(client, db_session):
     assert match.match_score > 0
     assert any("quantum" in reason.lower() for reason in match.match_reasons), \
         f"Expected keyword reason in {match.match_reasons}"
+
+
+@pytest.mark.asyncio
+async def test_theme_matcher_uses_cpc_prefixes(client, db_session):
+    """A CPC section or subclass prefix matches JSONB CPC codes before scoring."""
+    patent = PatentPublication(
+        doc_id="USPTO:BIOTECH001",
+        office="USPTO",
+        publication_number="BIOTECH001",
+        assignees=["Bio Labs"],
+        cpc=["A61K 31/00"],
+        title="Small molecule treatment",
+        abstract="A pharmaceutical composition.",
+        legal_status="GRANTED",
+    )
+    db_session.add(patent)
+    await db_session.flush()
+
+    theme = Theme(
+        name="Biotech CPC Test",
+        cpc_prefixes=["A61K"],
+        keywords=[],
+        user_id="anonymous",
+    )
+    db_session.add(theme)
+    await db_session.commit()
+
+    stats = await _match_single_theme(db_session, theme, limit=100)
+    assert stats["matched"] == 1
+
+    result = await db_session.execute(
+        select(ThemeMatch).where(
+            ThemeMatch.theme_id == theme.id,
+            ThemeMatch.patent_id == patent.id,
+        )
+    )
+    match = result.scalar_one_or_none()
+    assert match is not None
+    assert any("A61K" in reason for reason in match.match_reasons)
+
+
+@pytest.mark.asyncio
+async def test_theme_matcher_uses_assignee_keywords(client, db_session):
+    """Assignee keyword filters work against JSONB assignee arrays."""
+    patent = PatentPublication(
+        doc_id="USPTO:ASSIGNEE001",
+        office="USPTO",
+        publication_number="ASSIGNEE001",
+        assignees=["Acme Robotics"],
+        cpc=["B25J 9/00"],
+        title="Robot controller",
+        abstract="A controller for industrial robots.",
+        legal_status="GRANTED",
+    )
+    db_session.add(patent)
+    await db_session.flush()
+
+    theme = Theme(
+        name="Assignee Keyword Test",
+        cpc_prefixes=[],
+        assignee_keywords=["Acme"],
+        keywords=[],
+        user_id="anonymous",
+    )
+    db_session.add(theme)
+    await db_session.commit()
+
+    stats = await _match_single_theme(db_session, theme, limit=100)
+    assert stats["matched"] == 1
+
+    result = await db_session.execute(
+        select(ThemeMatch).where(
+            ThemeMatch.theme_id == theme.id,
+            ThemeMatch.patent_id == patent.id,
+        )
+    )
+    match = result.scalar_one_or_none()
+    assert match is not None
+    assert any("Acme" in reason for reason in match.match_reasons)

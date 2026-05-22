@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import Text, and_, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
@@ -19,6 +19,17 @@ from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+LIKE_ESCAPE = "\\"
+
+
+def _escape_like_pattern(value: str) -> str:
+    """Escape user-controlled theme text before using it in LIKE patterns."""
+    return (
+        value.replace(LIKE_ESCAPE, LIKE_ESCAPE + LIKE_ESCAPE)
+        .replace("%", LIKE_ESCAPE + "%")
+        .replace("_", LIKE_ESCAPE + "_")
+    )
 
 
 @celery_app.task(
@@ -112,14 +123,18 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
     if theme.cpc_prefixes:
         for prefix in theme.cpc_prefixes:
             conditions.append(
-                PatentPublication.cpc.op("@>")(func.array([prefix]))
+                PatentPublication.cpc.cast(Text).ilike(
+                    f'%"{_escape_like_pattern(prefix)}%',
+                    escape=LIKE_ESCAPE,
+                )
             )
 
     if theme.assignee_keywords:
         for keyword in theme.assignee_keywords:
             conditions.append(
-                func.array_to_string(PatentPublication.assignees, " ").ilike(
-                    f"%{keyword}%"
+                PatentPublication.assignees.cast(Text).ilike(
+                    f"%{_escape_like_pattern(keyword)}%",
+                    escape=LIKE_ESCAPE,
                 )
             )
 
