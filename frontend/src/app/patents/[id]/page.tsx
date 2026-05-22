@@ -12,6 +12,7 @@ import { TagsPanel } from "@/components/patents/TagsPanel";
 import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge";
 import { RiskFlagsBadge } from "@/components/patents/RiskFlagsBadge";
 import { WhyNowPanel } from "@/components/patents/WhyNowPanel";
+import { LinkedInPostPanel } from "@/components/patents/LinkedInPostPanel";
 import { OpportunityNarrativePanel } from "@/components/patents/OpportunityNarrativePanel";
 import { TrendSnapshotPanel } from "@/components/patents/TrendSnapshotPanel";
 import { AssigneeIntelligencePanel } from "@/components/patents/AssigneeIntelligencePanel";
@@ -363,6 +364,7 @@ function OpportunityTab({
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
+        <LinkedInPostPanel patentId={patent.id} />
         <WhyNowPanel patent={patent} artifact={effectiveWhyNow} isLoading={whyNowLoading} onGenerate={handleGenerateWhyNow} />
         <OpportunityNarrativePanel patent={patent} artifact={oppNarrativeArtifact} isLoading={oppNarrativeLoading} onGenerate={handleGenerateOppNarrative} />
         <TrendSnapshotPanel patent={patent} artifact={trendArtifact} isLoading={trendLoading} onGenerate={handleGenerateTrend} />

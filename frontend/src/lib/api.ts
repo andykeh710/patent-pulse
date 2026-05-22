@@ -35,6 +35,8 @@ import type {
   TrendsSummary,
   WatchlistItemResponse,
   SemanticSearchResponse,
+  LinkedInPostResponse,
+  LinkedInDraftResponse,
 } from "./types";
 
 const API_BASE = "";
@@ -125,6 +127,15 @@ export const patentsApi = {
     apiFetch<{ status: string; artifact_id: string; assignee_intelligence_score: number; components: Record<string, { sub_score: number; weight: number; contribution: number }> }>(
       `/api/v1/patents/${id}/assignee-intelligence`,
       { method: "POST" }
+    ),
+
+  generateLinkedInPost: (patentId: string, tone?: string) =>
+    apiFetch<LinkedInPostResponse>(
+      `/api/v1/content/generate-linkedin`,
+      {
+        method: "POST",
+        body: JSON.stringify({ patent_id: patentId, tone: tone ?? null }),
+      }
     ),
 };
 
@@ -289,4 +300,11 @@ export const suppliersApi = {
 
 export const healthApi = {
   check: () => apiFetch<{ status: string; database: string }>("/health"),
+};
+
+export const contentApi = {
+  getDraft: (patentId: string) =>
+    apiFetch<LinkedInDraftResponse | null>(
+      `/api/v1/content/drafts?patent_id=${patentId}`
+    ),
 };

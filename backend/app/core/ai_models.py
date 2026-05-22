@@ -244,6 +244,47 @@ class AIArtifact(Base):
 
 
 # ---------------------------------------------------------------------------
+# Content drafts (Phase 4)
+# ---------------------------------------------------------------------------
+
+
+class ContentDraft(Base):
+    """User-facing content generated from patents, topics, trends, or companies.
+
+    user_id is a plain string (no FK) matching the WatchlistItem convention.
+    The ``users`` table does not exist in root; auth is deferred to V1.1.
+    """
+
+    __tablename__ = "content_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(
+        String(64), index=True, default="anonymous"
+    )
+    source_type: Mapped[str] = mapped_column(
+        String(16), index=True
+    )  # "patent" | "topic" | "trend" | "company"
+    source_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    content_type: Mapped[str] = mapped_column(
+        String(32), index=True
+    )  # "linkedin_post" | "content_idea"
+    content_text: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        String(16), default="draft", server_default="draft"
+    )
+    prompt_hash: Mapped[str | None] = mapped_column(String(64))
+    artifact_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("ai_artifacts.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default="now()"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, onupdate=datetime.utcnow, server_default="now()"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Side tables for non-LLM creative-intelligence outputs
 # ---------------------------------------------------------------------------
 

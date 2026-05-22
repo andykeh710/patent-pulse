@@ -599,3 +599,29 @@ export interface CompanyProfile {
   top_cpc: { cpc: string; count: number }[];
   recent_patents: { id: string; doc_id: string; title: string | null; publication_date: string | null; opportunity_score: number | null }[];
 }
+
+// ---------------------------------------------------------------------------
+// Content Studio (Phase 4)
+// ---------------------------------------------------------------------------
+
+/** Response from POST /api/v1/content/generate-linkedin */
+export interface LinkedInPostResponse {
+  status: string;
+  artifact_id: string;
+  draft_id: string;
+  post_markdown: string;
+  hook: string;
+  tone: string;
+  caveats: string[];
+  source_citation: string;
+}
+
+/** Response from GET /api/v1/content/drafts?patent_id=X */
+export interface LinkedInDraftResponse {
+  draft_id: string;
+  post_markdown: string;
+  source_citation: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}

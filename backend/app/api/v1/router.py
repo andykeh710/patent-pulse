@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin,
     ai_runs,
+    content,
     expiry,
     families,
     opportunity,
@@ -29,3 +30,4 @@ v1_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 v1_router.include_router(ai_runs.router, prefix="/ai-runs", tags=["ai-runs"])
 v1_router.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
 v1_router.include_router(trends.router, prefix="/trends", tags=["trends"])
+v1_router.include_router(content.router, prefix="/content", tags=["content"])
