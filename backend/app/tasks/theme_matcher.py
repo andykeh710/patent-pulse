@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import Text, and_, func, select
+from sqlalchemy import Text, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
