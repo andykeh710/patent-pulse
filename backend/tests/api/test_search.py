@@ -1,8 +1,6 @@
 import pytest
 from httpx import AsyncClient
 
-from app.core.models import PatentPublication
-
 
 @pytest.mark.asyncio
 async def test_search_patents_empty_db(client: AsyncClient) -> None:

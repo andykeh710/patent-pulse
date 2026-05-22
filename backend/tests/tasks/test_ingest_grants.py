@@ -1,8 +1,6 @@
 from datetime import date
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestIngestWeeklyGrants:
     @patch("app.tasks.ingest_grants.USPTOClient")
@@ -14,7 +12,6 @@ class TestIngestWeeklyGrants:
         mock_upsert: MagicMock,
         mock_client_class: MagicMock,
     ) -> None:
-        from app.tasks.ingest_grants import ingest_weekly_grants
 
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -48,7 +45,6 @@ class TestIngestWeeklyGrants:
 
     @patch("app.tasks.ingest_grants.USPTOClient")
     def test_ingest_handles_empty_results(self, mock_client_class: MagicMock) -> None:
-        from app.tasks.ingest_grants import ingest_weekly_grants
 
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client

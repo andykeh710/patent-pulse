@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.ai.assignee_intelligence import RULES_VERSION, generate_assignee_intelligence
+from app.ai.assignee_intelligence import generate_assignee_intelligence
 from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app

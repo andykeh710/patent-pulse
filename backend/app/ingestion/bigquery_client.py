@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from collections.abc import Iterator
 from datetime import date, timedelta

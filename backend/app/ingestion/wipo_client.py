@@ -18,12 +18,10 @@ import logging
 import time
 from collections.abc import Iterator
 from datetime import date, timedelta
-from typing import Any
 from xml.etree import ElementTree
 
 import httpx
 
-from app.config import settings
 from app.core.exceptions import IngestionError, TransientIngestionError
 
 logger = logging.getLogger(__name__)

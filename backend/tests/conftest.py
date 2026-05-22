@@ -6,14 +6,12 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.api.deps import get_db
 from app.config import Settings
-from app.core.models import Base
 from app.core import ai_models, theme_models  # noqa: F401  -- register tables
+from app.core.models import Base
 from app.main import app
 from tests.fixtures.loader import insert_dev_fixture
 

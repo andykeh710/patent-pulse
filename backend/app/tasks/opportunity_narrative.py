@@ -8,7 +8,9 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.ai.opportunity_narrative import generate_opportunity_narrative as cached_generate_opportunity_narrative
+from app.ai.opportunity_narrative import (
+    generate_opportunity_narrative as cached_generate_opportunity_narrative,
+)
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
 from app.database import async_session_maker

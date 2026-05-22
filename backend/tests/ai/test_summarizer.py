@@ -1,7 +1,5 @@
 """Tests for app.ai.summarizer (module-level helpers + cached path)."""
-import json
 from typing import Any
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest

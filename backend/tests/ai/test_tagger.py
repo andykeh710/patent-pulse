@@ -16,13 +16,14 @@ from app.ai.tagger import (
     REQUIRED_TAG_FIELDS,
     RISK_FLAG_VALUES,
     build_tag_payload,
-    tag_patent as cached_tag_patent,
     validate_tags,
+)
+from app.ai.tagger import (
+    tag_patent as cached_tag_patent,
 )
 from app.core.ai_models import AIArtifact
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
-
 
 # ---------------------------------------------------------------------------
 # Pure helpers

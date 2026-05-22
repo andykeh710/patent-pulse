@@ -6,7 +6,6 @@ for semantic search and novelty scoring.
 """
 
 import logging
-from typing import Any
 
 import httpx
 

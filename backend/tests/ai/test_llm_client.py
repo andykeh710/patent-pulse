@@ -1,7 +1,6 @@
 """Tests for the cached LLM client wrapper."""
 from __future__ import annotations
 
-from datetime import date
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -11,15 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_client import (
     LLMCacheMiss,
-    LLMRequest,
     LLMClient,
+    LLMRequest,
     compute_input_hash,
     estimate_cost_usd,
     estimate_tokens,
 )
 from app.core.ai_models import AIArtifact
 from app.core.models import PatentPublication
-
 
 # ---------------------------------------------------------------------------
 # Pure helpers

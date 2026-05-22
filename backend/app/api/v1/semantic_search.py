@@ -56,7 +56,7 @@ async def semantic_search(
 
     sql = text(
         """
-        SELECT 
+        SELECT
             p.*,
             1 - (p.embedding <=> :embedding::vector) as similarity,
             p.embedding <=> :embedding::vector as distance
@@ -131,7 +131,7 @@ async def find_similar_patents(
 
     sql = text(
         """
-        SELECT 
+        SELECT
             p.*,
             1 - (p.embedding <=> :embedding::vector) as similarity,
             p.embedding <=> :embedding::vector as distance
@@ -207,7 +207,7 @@ async def compute_novelty_score(
 
     sql = text(
         """
-        SELECT 
+        SELECT
             p.embedding <=> :embedding::vector as distance
         FROM patent_publications p
         WHERE p.embedding IS NOT NULL

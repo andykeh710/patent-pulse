@@ -20,7 +20,6 @@ import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_client import LLMRequest, get_llm_client
-from app.ai.summarizer import extract_independent_claims
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
 

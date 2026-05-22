@@ -12,7 +12,6 @@ import logging
 from datetime import date
 
 from app.ai.scorer import PatentScorer
-from app.config import settings
 from app.core.exceptions import TransientIngestionError
 from app.database import async_session_maker
 from app.ingestion.dedup import upsert_patent

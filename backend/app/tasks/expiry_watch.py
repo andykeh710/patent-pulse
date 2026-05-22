@@ -71,7 +71,6 @@ async def _update_expiry_flags_async() -> dict:
     """Update maintenance status flags based on dates."""
     today = date.today()
     grace_cutoff = today + timedelta(days=GRACE_PERIOD_DAYS)
-    warning_cutoff = today + timedelta(days=EXPIRY_WARNING_DAYS)
 
     stats = {"marked_expired": 0, "marked_grace_period": 0, "marked_current": 0}
 

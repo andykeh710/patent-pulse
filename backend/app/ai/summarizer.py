@@ -22,11 +22,11 @@ from typing import Any
 from uuid import UUID
 
 import anthropic
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_client import LLMRequest, get_llm_client
 from app.core.exceptions import SummarizationError
 from app.core.models import PatentPublication
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

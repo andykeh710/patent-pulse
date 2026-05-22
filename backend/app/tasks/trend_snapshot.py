@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.ai.trend_snapshot import RULES_VERSION, generate_trend_snapshot
+from app.ai.trend_snapshot import generate_trend_snapshot
 from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app

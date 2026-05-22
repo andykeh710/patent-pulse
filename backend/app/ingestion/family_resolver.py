@@ -14,10 +14,9 @@ We use INPADOC extended families for broader coverage.
 import logging
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.models import PatentPublication
 from app.ingestion.epo_client import EPOClient
 

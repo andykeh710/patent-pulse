@@ -1,8 +1,6 @@
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestUpdateExpiryFlags:
     @patch("app.tasks.expiry_watch._update_expiry_flags_async")

@@ -5,20 +5,27 @@ import { usePatents, usePatentStats, useExpirySummary, usePatentTrend, usePriori
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { formatNumber } from "@/lib/utils";
 import type { TrendPoint } from "@/lib/types";
 
 export default function DashboardPage() {
   const [priorityBucket, setPriorityBucket] = useState<"expiring_soon" | "recent" | "all">("expiring_soon");
-  const { data: stats, isLoading: statsLoading } = usePatentStats();
-  const { data: patents, isLoading: patentsLoading } = usePatents({
+  const { data: stats, error: statsError, isLoading: statsLoading, mutate: mutateStats } = usePatentStats();
+  const { data: patents, error: patentsError, isLoading: patentsLoading, mutate: mutatePatents } = usePatents({
     sort_by: "interesting_score",
     sort_order: "desc",
     page_size: 12,
   });
-  const { data: expirySummary, isLoading: expiryLoading } = useExpirySummary();
-  const { data: trend, isLoading: trendLoading } = usePatentTrend();
-  const { data: priority, isLoading: priorityLoading } = usePriorityWatch(priorityBucket, 12);
+  const { data: expirySummary, error: expiryError, isLoading: expiryLoading, mutate: mutateExpiry } = useExpirySummary();
+  const { data: trend, error: trendError, isLoading: trendLoading, mutate: mutateTrend } = usePatentTrend();
+  const { data: priority, error: priorityError, isLoading: priorityLoading, mutate: mutatePriority } = usePriorityWatch(priorityBucket, 12);
+
+  if (statsError) return <ErrorDisplay error={statsError} onRetry={() => mutateStats()} />;
+  if (patentsError) return <ErrorDisplay error={patentsError} onRetry={() => mutatePatents()} />;
+  if (expiryError) return <ErrorDisplay error={expiryError} onRetry={() => mutateExpiry()} />;
+  if (trendError) return <ErrorDisplay error={trendError} onRetry={() => mutateTrend()} />;
+  if (priorityError) return <ErrorDisplay error={priorityError} onRetry={() => mutatePriority()} />;
 
   return (
     <div>

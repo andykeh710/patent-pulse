@@ -17,7 +17,6 @@ import base64
 import logging
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta
-from typing import Any
 
 import httpx
 
