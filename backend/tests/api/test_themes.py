@@ -14,7 +14,6 @@ from app.core.models import PatentPublication
 from app.core.theme_models import Theme, ThemeMatch
 from app.tasks.theme_matcher import _match_single_theme
 
-
 # ---------------------------------------------------------------------------
 # List / get
 # ---------------------------------------------------------------------------
