@@ -22,7 +22,7 @@ DEFAULT_USER_ID = "anonymous"
 
 
 class WatchlistAdd(BaseModel):
-    patent_id: str
+    patent_id: UUID
     note: str | None = None
     tags: list[str] = []
 
@@ -75,7 +75,7 @@ async def get_watchlist(
 @router.post("", response_model=WatchlistItemResponse)
 async def add_to_watchlist(db: DbSession, data: WatchlistAdd) -> WatchlistItemResponse:
     """Add a patent to the watchlist."""
-    patent_id = UUID(data.patent_id)
+    patent_id = data.patent_id
 
     patent_result = await db.execute(
         select(PatentPublication).where(PatentPublication.id == patent_id)
@@ -190,7 +190,7 @@ async def get_watchlist_tags(db: DbSession) -> list[str]:
     result = await db.execute(
         select(WatchlistItem.tags)
         .where(WatchlistItem.user_id == DEFAULT_USER_ID)
-        .where(WatchlistItem.tags != None)
+        .where(WatchlistItem.tags.isnot(None))
     )
     rows = result.scalars().all()
 

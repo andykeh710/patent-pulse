@@ -20,6 +20,7 @@ from app.core.schemas import (
     TrendPoint,
     TrendResponse,
 )
+from app.core.validators import validate_cpc_prefix
 from app.ai.why_now import generate_why_now as generate_why_now_cached
 from app.ai.opportunity_narrative import generate_opportunity_narrative as generate_opportunity_narrative_cached
 from app.ai.trend_snapshot import generate_trend_snapshot as generate_trend_snapshot_cached
@@ -51,6 +52,7 @@ async def list_patents(
     if kind_code:
         conditions.append(PatentPublication.kind_code == kind_code)
     if cpc_prefix:
+        cpc_prefix = validate_cpc_prefix(cpc_prefix)
         conditions.append(
             PatentPublication.cpc.cast(Text).like(f'%"{cpc_prefix}%')
         )

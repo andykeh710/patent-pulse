@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import and_, func, select
 
@@ -162,9 +162,16 @@ async def growing_trends(
     stmt = stmt.limit(limit)
     rows = (await db.execute(stmt)).scalars().all()
 
+    count_stmt = select(func.count()).select_from(TrendSnapshot).where(
+        TrendSnapshot.count_4w >= 3
+    )
+    if surface:
+        count_stmt = count_stmt.where(TrendSnapshot.surface == surface)
+    total = (await db.execute(count_stmt)).scalar_one()
+
     return TrendListResponse(
         items=[TrendItem.model_validate(r) for r in rows],
-        total=len(rows),
+        total=total,
     )
 
 
@@ -216,12 +223,12 @@ async def patent_cliffs(
     )
 
 
-@router.get("/detail/{surface}/{key}", response_model=TrendItem | None)
+@router.get("/detail/{surface}/{key}", response_model=TrendItem)
 async def trend_detail(
     db: DbSession,
     surface: str,
     key: str,
-) -> TrendItem | None:
+) -> TrendItem:
     """Get the latest trend snapshot for a specific surface+key."""
     row = (await db.execute(
         select(TrendSnapshot)
@@ -231,5 +238,5 @@ async def trend_detail(
     )).scalar_one_or_none()
 
     if not row:
-        return None
+        raise HTTPException(status_code=404, detail=f"Trend not found for {surface}/{key}")
     return TrendItem.model_validate(row)

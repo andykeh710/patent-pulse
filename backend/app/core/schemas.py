@@ -42,6 +42,7 @@ class PatentListItem(BaseModel):
     tags: dict | None = None
     summary_what_it_is: str | None = None
     estimated_expiry_date: date | None = None
+    days_until_expiry: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,6 +51,11 @@ class PatentListItem(BaseModel):
         summary_what = None
         if patent.summary and isinstance(patent.summary, dict):
             summary_what = patent.summary.get("what_it_is")
+
+        days_until = None
+        if patent.estimated_expiry_date:
+            delta = patent.estimated_expiry_date - date.today()
+            days_until = delta.days
 
         return cls(
             id=patent.id,
@@ -69,6 +75,7 @@ class PatentListItem(BaseModel):
             tags=getattr(patent, "tags", None),
             summary_what_it_is=summary_what,
             estimated_expiry_date=patent.estimated_expiry_date,
+            days_until_expiry=days_until,
         )
 
 

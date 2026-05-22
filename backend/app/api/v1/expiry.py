@@ -7,6 +7,7 @@ from app.api.deps import DbSession
 from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
 from app.core.schemas import ExpiryItem, PaginatedResponse
+from app.core.validators import validate_industry
 
 router = APIRouter()
 
@@ -42,6 +43,7 @@ async def list_expiring_patents(
         conditions.append(PatentPublication.office == office)
 
     if industry:
+        industry = validate_industry(industry)
         conditions.append(
             PatentPublication.tags.op("->")("industries").cast(Text).like(f'%"{industry}"%')
         )

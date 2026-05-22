@@ -73,17 +73,22 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
     """List all themes."""
     query = select(Theme)
     if not include_inactive:
-        query = query.where(Theme.is_active == True)
+        query = query.where(Theme.is_active.is_(True))
 
     result = await db.execute(query.order_by(Theme.name))
     themes = result.scalars().all()
 
+    # Single GROUP BY query to avoid N+1
+    count_query = (
+        select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt"))
+        .group_by(ThemeMatch.theme_id)
+    )
+    count_result = await db.execute(count_query)
+    count_map = {row.theme_id: row.cnt for row in count_result}
+
     responses = []
     for theme in themes:
-        count_result = await db.execute(
-            select(func.count(ThemeMatch.id)).where(ThemeMatch.theme_id == theme.id)
-        )
-        patent_count = count_result.scalar() or 0
+        patent_count = count_map.get(theme.id, 0)
 
         responses.append(
             ThemeResponse(

@@ -1,14 +1,18 @@
-from contextlib import asynccontextmanager
+import logging
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.health import router as health_router
 from app.api.v1.router import v1_router
-from app.config import settings
 from app.database import engine
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -36,6 +40,32 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(v1_router)
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.exception("Database error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal database error. The operation could not be completed."},
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error."},
+    )
 
 
 @app.get("/")

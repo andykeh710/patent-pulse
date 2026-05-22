@@ -23,6 +23,7 @@ from sqlalchemy.dialects.postgresql import JSONB, array
 from app.api.deps import DbSession
 from app.core.models import PatentPublication
 from app.core.schemas import PaginatedResponse, PatentListItem
+from app.core.validators import validate_cpc_prefix
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -305,6 +306,7 @@ async def list_opportunities(
             PatentPublication.legal_status_confidence == legal_confidence
         )
     if cpc_prefix:
+        cpc_prefix = validate_cpc_prefix(cpc_prefix)
         base = base.where(
             func.jsonb_path_exists(
                 PatentPublication.cpc,

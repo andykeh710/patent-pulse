@@ -58,6 +58,7 @@ from app.ai.tagger import (
     TAG_PROMPT_VERSION,
     build_tag_payload,
 )
+from app.core.validators import validate_cpc_prefix
 from app.ai.why_now import (
     WHY_NOW_PROMPT_NAME,
     WHY_NOW_PROMPT_VERSION,
@@ -230,6 +231,7 @@ async def _resolve_cohort(
         else:
             conditions = []
             if cohort.cpc_prefix:
+                cohort.cpc_prefix = validate_cpc_prefix(cohort.cpc_prefix)
                 # Match any CPC prefix in the JSONB array.
                 conditions.append(
                     func.jsonb_path_exists(
