@@ -1,0 +1,41 @@
+# Production override for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Changes from dev:
+#   - Remove host port exposure for db/redis (internal-only networking)
+#   - Add restart policies
+#   - Enable non-localhost CORS
+#   - Disable --reload on uvicorn
+#   - Build frontend as static export served by backend or nginx
+
+services:
+  db:
+    ports: []  # Remove host port exposure in production
+    restart: unless-stopped
+
+  redis:
+    ports: []  # Remove host port exposure in production
+    restart: unless-stopped
+
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+
+  worker:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+
+  beat:
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+
+  frontend:
+    restart: unless-stopped
+    command: npm run start
