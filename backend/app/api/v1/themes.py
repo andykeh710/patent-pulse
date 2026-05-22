@@ -25,6 +25,10 @@ class ThemeCreate(BaseModel):
     cpc_prefixes: list[str] = []
     assignee_keywords: list[str] = []
     title_keywords: list[str] = []
+    keywords: list[str] | None = None
+    opportunity_tags: list[str] | None = None
+    min_opportunity_score: float | None = None
+    user_id: str | None = None
 
 
 class ThemeUpdate(BaseModel):
@@ -33,6 +37,9 @@ class ThemeUpdate(BaseModel):
     cpc_prefixes: list[str] | None = None
     assignee_keywords: list[str] | None = None
     title_keywords: list[str] | None = None
+    keywords: list[str] | None = None
+    opportunity_tags: list[str] | None = None
+    min_opportunity_score: float | None = None
     is_active: bool | None = None
 
 
@@ -43,6 +50,10 @@ class ThemeResponse(BaseModel):
     cpc_prefixes: list[str]
     assignee_keywords: list[str]
     title_keywords: list[str]
+    keywords: list[str] | None
+    opportunity_tags: list[str] | None
+    min_opportunity_score: float | None
+    user_id: str | None
     is_active: bool
     patent_count: int
     created_at: str
@@ -82,6 +93,10 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
                 cpc_prefixes=theme.cpc_prefixes or [],
                 assignee_keywords=theme.assignee_keywords or [],
                 title_keywords=theme.title_keywords or [],
+                keywords=theme.keywords,
+                opportunity_tags=theme.opportunity_tags,
+                min_opportunity_score=theme.min_opportunity_score,
+                user_id=theme.user_id,
                 is_active=theme.is_active,
                 patent_count=patent_count,
                 created_at=theme.created_at.isoformat(),
@@ -104,6 +119,10 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         cpc_prefixes=theme_data.cpc_prefixes,
         assignee_keywords=theme_data.assignee_keywords,
         title_keywords=theme_data.title_keywords,
+        keywords=theme_data.keywords,
+        opportunity_tags=theme_data.opportunity_tags,
+        min_opportunity_score=theme_data.min_opportunity_score,
+        user_id=theme_data.user_id or "anonymous",
     )
     db.add(theme)
     await db.commit()
@@ -116,6 +135,10 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         cpc_prefixes=theme.cpc_prefixes or [],
         assignee_keywords=theme.assignee_keywords or [],
         title_keywords=theme.title_keywords or [],
+        keywords=theme.keywords,
+        opportunity_tags=theme.opportunity_tags,
+        min_opportunity_score=theme.min_opportunity_score,
+        user_id=theme.user_id,
         is_active=theme.is_active,
         patent_count=0,
         created_at=theme.created_at.isoformat(),
@@ -143,6 +166,10 @@ async def get_theme(db: DbSession, theme_id: UUID) -> ThemeResponse:
         cpc_prefixes=theme.cpc_prefixes or [],
         assignee_keywords=theme.assignee_keywords or [],
         title_keywords=theme.title_keywords or [],
+        keywords=theme.keywords,
+        opportunity_tags=theme.opportunity_tags,
+        min_opportunity_score=theme.min_opportunity_score,
+        user_id=theme.user_id,
         is_active=theme.is_active,
         patent_count=patent_count,
         created_at=theme.created_at.isoformat(),
@@ -179,6 +206,10 @@ async def update_theme(
         cpc_prefixes=theme.cpc_prefixes or [],
         assignee_keywords=theme.assignee_keywords or [],
         title_keywords=theme.title_keywords or [],
+        keywords=theme.keywords,
+        opportunity_tags=theme.opportunity_tags,
+        min_opportunity_score=theme.min_opportunity_score,
+        user_id=theme.user_id,
         is_active=theme.is_active,
         patent_count=patent_count,
         created_at=theme.created_at.isoformat(),

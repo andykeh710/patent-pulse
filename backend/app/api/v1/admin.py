@@ -26,6 +26,57 @@ DEFAULT_THEMES = [
     {"name": "Electricity & Electronics", "cpc_prefixes": ["H"], "assignee_keywords": [], "title_keywords": [], "description": "Electronics, communications, energy"},
 ]
 
+DEFAULT_TOPICS = [
+    {
+        "name": "AI Agents & LLMs",
+        "description": "Autonomous agents, large language models, RAG, prompt engineering, multi-agent systems",
+        "cpc_prefixes": ["G06N", "G06F"],
+        "keywords": ["agent", "LLM", "large language model", "prompt", "retrieval augmented", "multi-agent", "autonomous", "reasoning"],
+        "opportunity_tags": ["startup", "enterprise", "cross_industry"],
+        "min_opportunity_score": 30,
+    },
+    {
+        "name": "Robotics & Automation",
+        "description": "Industrial robots, autonomous vehicles, manipulation, perception, human-robot interaction",
+        "cpc_prefixes": ["B25J", "G05D", "G05B"],
+        "keywords": ["robot", "autonomous", "manipulation", "gripper", "end effector", "SLAM", "path planning", "human-robot"],
+        "opportunity_tags": ["enterprise", "revival"],
+        "min_opportunity_score": 25,
+    },
+    {
+        "name": "Climate Tech",
+        "description": "Carbon capture, renewable energy, energy storage, green materials, climate adaptation",
+        "cpc_prefixes": ["Y02E", "Y02C", "Y02P", "B01D"],
+        "keywords": ["carbon capture", "renewable", "solar", "wind", "battery", "energy storage", "hydrogen", "decarbonization"],
+        "opportunity_tags": ["sustainability", "startup"],
+        "min_opportunity_score": 25,
+    },
+    {
+        "name": "Battery Technology",
+        "description": "Lithium-ion, solid-state, sodium-ion, flow batteries, battery management systems",
+        "cpc_prefixes": ["H01M", "H02J"],
+        "keywords": ["lithium", "solid state", "sodium ion", "cathode", "anode", "electrolyte", "BMS", "thermal runaway"],
+        "opportunity_tags": ["enterprise", "sustainability"],
+        "min_opportunity_score": 30,
+    },
+    {
+        "name": "Biotech & Gene Therapy",
+        "description": "CRISPR, mRNA, cell therapy, gene editing, protein engineering, precision medicine",
+        "cpc_prefixes": ["C12N", "C07K", "A61K"],
+        "keywords": ["CRISPR", "mRNA", "gene therapy", "cell therapy", "CAR-T", "protein engineering", "monoclonal antibody"],
+        "opportunity_tags": ["startup", "revival"],
+        "min_opportunity_score": 30,
+    },
+    {
+        "name": "Quantum Computing",
+        "description": "Quantum processors, error correction, quantum algorithms, quantum networking, quantum sensing",
+        "cpc_prefixes": ["G06N", "H01L"],
+        "keywords": ["quantum", "qubit", "superconducting", "trapped ion", "quantum error", "quantum annealing", "entanglement"],
+        "opportunity_tags": ["cross_industry", "startup"],
+        "min_opportunity_score": 25,
+    },
+]
+
 
 class TriggerIngestRequest(BaseModel):
     type: Literal["grants", "applications", "epo", "pct"] = Field(...)
@@ -154,7 +205,8 @@ async def trigger_expiry_backfill(settings: AppSettings) -> TaskStatusResponse:
 @router.post("/seed-themes")
 async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
     """
-    Seed default CPC-section themes if they don't already exist (development only).
+    Seed default CPC-section themes and user topic packs if they don't already exist
+    (development only).
     """
     if settings.environment == "production":
         raise HTTPException(status_code=403, detail="Not available in production")
@@ -178,6 +230,27 @@ async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
                 cpc_prefixes=theme_data["cpc_prefixes"],
                 assignee_keywords=theme_data["assignee_keywords"],
                 title_keywords=theme_data["title_keywords"],
+            )
+            db.add(theme)
+            created += 1
+
+    # Seed default user topic packs
+    for topic_data in DEFAULT_TOPICS:
+        name = topic_data["name"]
+        result = await db.execute(select(Theme).where(Theme.name == name))
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            skipped += 1
+        else:
+            theme = Theme(
+                name=name,
+                description=topic_data["description"],
+                cpc_prefixes=topic_data["cpc_prefixes"],
+                keywords=topic_data.get("keywords"),
+                opportunity_tags=topic_data.get("opportunity_tags"),
+                min_opportunity_score=topic_data.get("min_opportunity_score"),
+                user_id="default_pack",
             )
             db.add(theme)
             created += 1

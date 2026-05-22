@@ -32,6 +32,14 @@ class Theme(Base):
     assignee_keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
     title_keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
 
+    # Topic fields (for user-created topics; NULL for system themes)
+    keywords: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    opportunity_tags: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    min_opportunity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    user_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True, default=None
+    )
+
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

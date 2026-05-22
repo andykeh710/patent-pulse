@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSupplierMap, useSupplierSummary, useSuppliers } from "@/hooks/useSuppliers";
 import { formatNumber, humanizeTag } from "@/lib/utils";
 import type { SupplierItem, SupplierListParams, SupplierMapCountry } from "@/lib/types";
 
-export default function SuppliersPage() {
+export default function CompaniesPage() {
   const [params, setParams] = useState<SupplierListParams>({
     sort_by: "supplier_score",
     sort_order: "desc",
@@ -71,7 +72,7 @@ export default function SuppliersPage() {
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Supplier Rankings</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Company Rankings</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Composite score blends patent volume, active grants, technology breadth, signal score, and near-term expiry exposure.
             </p>
@@ -160,7 +161,7 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
     <div className="xl:col-span-2 bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Supplier Geography</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Company Geography</h2>
           <p className="text-xs text-gray-500 mt-0.5">Country-level company distribution from patent assignee metadata.</p>
         </div>
         <Badge variant="default" size="sm">Map-ready data</Badge>
@@ -250,7 +251,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Patents</th>
@@ -263,7 +264,12 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
             {items.map((item) => (
               <tr key={item.name} className="hover:bg-gray-50">
                 <td className="px-4 py-4">
-                  <p className="text-sm font-medium text-gray-900 max-w-xs truncate">{item.name}</p>
+                  <Link
+                    href={`/companies/${encodeURIComponent(item.name)}`}
+                    className="text-sm font-medium text-primary-700 hover:text-primary-900 hover:underline max-w-xs truncate block"
+                  >
+                    {item.name}
+                  </Link>
                   <p className="text-xs text-gray-500">Avg signal {item.average_signal_score ?? "—"}</p>
                 </td>
                 <td className="px-4 py-4">

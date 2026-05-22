@@ -216,18 +216,24 @@ export interface TrendResponse {
   points: TrendPoint[];
 }
 
-export interface Theme {
+export interface Topic {
   id: string;
   name: string;
   description: string | null;
   cpc_prefixes: string[];
   assignee_keywords: string[];
   title_keywords: string[];
+  keywords: string[] | null;
+  opportunity_tags: string[] | null;
+  min_opportunity_score: number | null;
+  user_id: string | null;
   is_active: boolean;
   patent_count: number;
   created_at: string;
-  updated_at?: string;
 }
+
+/** @deprecated Use Topic instead */
+export type Theme = Topic;
 
 export interface ThemeStats {
   total_matches: number;

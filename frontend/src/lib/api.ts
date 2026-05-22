@@ -28,7 +28,7 @@ import type {
   SupplierSummary,
   Summary,
   TabCounts,
-  Theme,
+  Topic,
   ThemeStats,
   TrendListResponse,
   TrendResponse,
@@ -143,10 +143,39 @@ export const expiryApi = {
 };
 
 export const themesApi = {
-  list: () => apiFetch<Theme[]>(`/api/v1/themes`),
+  list: () => apiFetch<Topic[]>(`/api/v1/themes`),
   getPatents: (id: string, params: { page?: number; page_size?: number; min_score?: number } = {}) =>
     apiFetch<PaginatedResponse<PatentListItem>>(`/api/v1/themes/${id}/patents?${toQueryString(params)}`),
   getStats: (id: string) => apiFetch<ThemeStats>(`/api/v1/themes/${id}/stats`),
+};
+
+export const topicsApi = {
+  ...themesApi,
+  create: (data: {
+    name: string;
+    description?: string;
+    cpc_prefixes?: string[];
+    assignee_keywords?: string[];
+    title_keywords?: string[];
+    keywords?: string[];
+    opportunity_tags?: string[];
+    min_opportunity_score?: number;
+  }) =>
+    apiFetch<Topic>(`/api/v1/themes`, { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<{
+    name: string;
+    description: string;
+    cpc_prefixes: string[];
+    assignee_keywords: string[];
+    title_keywords: string[];
+    keywords: string[];
+    opportunity_tags: string[];
+    min_opportunity_score: number;
+    is_active: boolean;
+  }>) =>
+    apiFetch<Topic>(`/api/v1/themes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    apiFetch<{ deleted: boolean }>(`/api/v1/themes/${id}`, { method: "DELETE" }),
 };
 
 export const semanticApi = {

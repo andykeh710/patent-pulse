@@ -19,6 +19,7 @@ import { ClaimsPanel } from "@/components/patents/ClaimsPanel";
 import { ExternalPatentLinks } from "@/components/patents/ExternalPatentLinks";
 import { PatentDetailTabs } from "@/components/patents/PatentDetailTabs";
 import { Badge } from "@/components/ui/Badge";
+import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/lib/utils";
 import { patentsApi, semanticApi } from "@/lib/api";
@@ -194,6 +195,8 @@ export default function PatentDetailPage({
           <ExternalPatentLinks publicationNumber={patent.publication_number} office={patent.office} docId={patent.doc_id} />
         </div>
       </div>
+
+      <FreshnessBanner show={["patents", "summaries", "trends", "ai_runs"]} className="mb-4" />
 
       {/* --- Tabs --- */}
       <PatentDetailTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />

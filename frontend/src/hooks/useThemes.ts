@@ -1,9 +1,9 @@
 import useSWR from "swr";
 import { themesApi } from "@/lib/api";
-import type { Theme, PaginatedResponse, PatentListItem } from "@/lib/types";
+import type { Topic, PaginatedResponse, PatentListItem } from "@/lib/types";
 
 export function useThemes() {
-  return useSWR<Theme[]>(["themes"], () => themesApi.list());
+  return useSWR<Topic[]>(["themes"], () => themesApi.list());
 }
 
 export function useThemePatents(id: string | null, page = 1, pageSize = 20) {

@@ -38,7 +38,7 @@ export default function CompanyProfilePage({
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Company not found: {decodedName}</p>
-        <Link href="/suppliers" className="text-primary-600 mt-2 inline-block">
+        <Link href="/companies" className="text-primary-600 mt-2 inline-block">
           Back to companies
         </Link>
       </div>
@@ -47,7 +47,7 @@ export default function CompanyProfilePage({
 
   return (
     <div>
-      <Link href="/suppliers" className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-flex items-center gap-1">
+      <Link href="/companies" className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-flex items-center gap-1">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>

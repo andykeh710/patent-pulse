@@ -127,6 +127,13 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
         for keyword in theme.title_keywords:
             conditions.append(PatentPublication.title.ilike(f"%{keyword}%"))
 
+    if theme.keywords:
+        for keyword in theme.keywords:
+            conditions.append(PatentPublication.title.ilike(f"%{keyword}%"))
+            conditions.append(
+                func.coalesce(PatentPublication.abstract, "").ilike(f"%{keyword}%")
+            )
+
     if not conditions:
         return stats
 
@@ -198,6 +205,18 @@ def _calculate_match_score(patent: PatentPublication, theme: Theme) -> tuple[flo
             if keyword.lower() in title_lower:
                 score += 0.3
                 reasons.append(f"Title: {keyword}")
+
+    if theme.keywords and patent.title:
+        title_lower = patent.title.lower()
+        abstract_lower = (patent.abstract or "").lower()
+        for keyword in theme.keywords:
+            kw = keyword.lower()
+            if kw in title_lower:
+                score += 0.3
+                reasons.append(f"Keyword(title): {keyword}")
+            elif kw in abstract_lower:
+                score += 0.15
+                reasons.append(f"Keyword(abstract): {keyword}")
 
     score = min(score, 1.0)
     return score, reasons
