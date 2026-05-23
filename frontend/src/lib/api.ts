@@ -6,8 +6,10 @@ import type {
   EstimateRequest,
   EstimateResponse,
   ExpiryItem,
+  ExpiryOpportunityItem,
   ExpiryParams,
   ExpirySummary,
+  ExpirySummaryResponse,
   Freshness,
   OpportunityItem,
   OpportunityListParams,
@@ -150,6 +152,16 @@ export const expiryApi = {
   list: (params: ExpiryParams = {}) =>
     apiFetch<PaginatedResponse<ExpiryItem>>(
       `/api/v1/expiry?${toQueryString(params)}`
+    ),
+
+  /** Sprint 2B: grouped counts for Expiry Radar summary cards. */
+  getSummary: () =>
+    apiFetch<ExpirySummaryResponse>(`/api/v1/expiry/summary`),
+
+  /** Sprint 2B: high-value expiry opportunity candidates. */
+  getOpportunities: (minScore = 30, limit = 20) =>
+    apiFetch<{ items: ExpiryOpportunityItem[]; total: number }>(
+      `/api/v1/expiry/opportunities?min_score=${minScore}&limit=${limit}`
     ),
 };
 

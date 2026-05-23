@@ -134,6 +134,15 @@ export interface ExpiryItem {
   legal_status_confidence: string;
   opportunity_score: number | null;
   tags: PatentTags | null;
+  // Sprint 2B: assessment-enriched fields from ExpiryAssessment LEFT JOIN.
+  expiry_status: string | null;
+  expiry_status_confidence: string | null;
+  active_family_risk: boolean | null;
+  maintenance_status: string | null;
+  expiry_opportunity_score: number | null;
+  // Sprint 2C: CSV export fields.
+  publication_number: string | null;
+  office: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -195,10 +204,44 @@ export interface ExpiryParams {
   office?: string;
   industry?: string;
   time_horizon?: string;
+  // Sprint 2B filters.
+  expiry_status?: string;
+  confidence?: string;
+  maintenance_status?: string;
+  active_family_risk?: boolean;
+  min_expiry_opportunity_score?: number;
+  // Sprint 2C: backward-looking window.
+  expiry_window_start?: string;
   sort_by?: string;
   sort_order?: string;
   page?: number;
   page_size?: number;
+}
+
+/** Matches GET /api/v1/expiry/summary — Sprint 2B. */
+export interface ExpirySummaryResponse {
+  total_with_expiry: number;
+  by_status: Record<string, number>;
+  by_confidence: Record<string, number>;
+  with_family_risk: number;
+  without_family_risk: number;
+  high_opportunity_count: number;
+  by_maintenance: Record<string, number>;
+}
+
+/** One item in GET /api/v1/expiry/opportunities — Sprint 2B. */
+export interface ExpiryOpportunityItem {
+  id: string;
+  doc_id: string;
+  title: string | null;
+  assignees: string[];
+  estimated_expiry_date: string | null;
+  expiry_status: string;
+  expiry_status_confidence: string;
+  active_family_risk: boolean;
+  expiry_opportunity_score: number | null;
+  opportunity_score: number | null;
+  days_until_expiry: number | null;
 }
 
 export interface ExpirySummary {
