@@ -253,9 +253,10 @@ function TrendList({
     <div className="space-y-2">
       <p className="text-sm text-gray-500 mb-3">{total.toLocaleString()} trends tracked</p>
       {items.map((item, idx) => (
-        <div
+        <Link
           key={`${item.surface}-${item.key}`}
-          className="flex items-center gap-4 bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors"
+          href={`/trends/${item.surface}/${item.key}`}
+          className="flex items-center gap-4 bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer block"
         >
           <div className="text-lg font-bold text-gray-300 w-8 text-right">{idx + 1}</div>
           <div className="flex-1 min-w-0">
@@ -299,7 +300,7 @@ function TrendList({
               </div>
             </div>
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );
@@ -402,9 +403,10 @@ function CliffList({
       </p>
       <div className="space-y-2">
         {items.map((item) => (
-          <div
+          <Link
             key={item.id}
-            className="flex items-center gap-4 bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors"
+            href={`/trends/${item.key_type}/${item.key_value}`}
+            className="flex items-center gap-4 bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 transition-colors cursor-pointer"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -435,7 +437,7 @@ function CliffList({
               <div className="text-2xl font-bold text-primary-700">{item.patent_count}</div>
               <div className="text-xs text-gray-400">patents expiring</div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

@@ -39,6 +39,9 @@ import type {
   SemanticSearchResponse,
   LinkedInPostResponse,
   LinkedInDraftResponse,
+  TrendDrilldownPatentsResponse,
+  TrendDrilldownAssigneesResponse,
+  TrendNarrativeResponse,
 } from "./types";
 
 const API_BASE = "";
@@ -294,6 +297,28 @@ export const trendsApi = {
     if (windowMonths) params.set("window_months", String(windowMonths));
     return apiFetch<CliffListResponse>(`/api/v1/trends/cliffs?${params}`);
   },
+
+  // Sprint 4 — drilldown endpoints.
+  getDrilldownPatents: (surface: string, key: string, page = 1, pageSize = 20) =>
+    apiFetch<TrendDrilldownPatentsResponse>(
+      `/api/v1/trends/${surface}/${key}/patents?page=${page}&page_size=${pageSize}`
+    ),
+
+  getDrilldownAssignees: (surface: string, key: string) =>
+    apiFetch<TrendDrilldownAssigneesResponse>(
+      `/api/v1/trends/${surface}/${key}/assignees`
+    ),
+
+  getNarrative: (surface: string, key: string) =>
+    apiFetch<TrendNarrativeResponse | null>(
+      `/api/v1/trends/${surface}/${key}/narrative`
+    ),
+
+  generateNarrative: (surface: string, key: string) =>
+    apiFetch<TrendNarrativeResponse>(
+      `/api/v1/trends/${surface}/${key}/narrative`,
+      { method: "POST" }
+    ),
 };
 
 export const suppliersApi = {

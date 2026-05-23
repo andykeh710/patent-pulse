@@ -543,6 +543,30 @@ export interface TrendListResponse {
   total: number;
 }
 
+// Sprint 4 — Trend drilldown responses.
+export interface TrendDrilldownPatentsResponse {
+  items: PatentListItem[];
+  total: number;
+}
+
+export interface TrendAssigneeItem {
+  assignee: string;
+  count: number;
+}
+
+export interface TrendDrilldownAssigneesResponse {
+  items: TrendAssigneeItem[];
+  total: number;
+}
+
+export interface TrendNarrativeResponse {
+  summary: string;
+  why_now: string;
+  key_assignees: string[];
+  related_trends: string[];
+  caveats: string[];
+}
+
 export interface ConvergenceItem {
   cpc_a: string;
   cpc_b: string;
