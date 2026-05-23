@@ -47,6 +47,14 @@ function buildLinks(pubNumber: string, office: string, docId?: string) {
     icon: "E",
   });
 
+  // WIPO PATENTSCOPE
+  const wipoQuery = encodeURIComponent(pubNumber);
+  links.push({
+    label: "WIPO",
+    url: `https://patentscope.wipo.int/search/en/result.jsf?query=${wipoQuery}`,
+    icon: "W",
+  });
+
   return links;
 }
 

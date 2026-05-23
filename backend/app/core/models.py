@@ -40,6 +40,7 @@ class PatentPublication(Base):
     description_text: Mapped[str | None] = mapped_column(Text)
 
     citations_backward: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    citations_forward: Mapped[list[str]] = mapped_column(JSONB, default=list)
     family_members: Mapped[list[str]] = mapped_column(JSONB, default=list)
 
     legal_status: Mapped[str | None] = mapped_column(String(32))

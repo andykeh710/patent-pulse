@@ -115,6 +115,7 @@ export interface PatentDetail {
   why_now_text: string | null;
   family_members: string[];
   citations_backward: string[];
+  citations_forward: string[];
   summarized_at: string | null;
   created_at: string;
   updated_at: string;

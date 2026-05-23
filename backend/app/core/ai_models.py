@@ -16,10 +16,11 @@ Design decisions (from the V1 plan):
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -285,8 +286,64 @@ class ContentDraft(Base):
 
 
 # ---------------------------------------------------------------------------
-# Side tables for non-LLM creative-intelligence outputs
+# Expiry assessments (Sprint 2A)
 # ---------------------------------------------------------------------------
+
+
+class ExpiryAssessment(Base):
+    """Deterministic expiry assessment derived from PatentPublication fields.
+
+    This is a derived layer — does not replace the raw source columns
+    (legal_status, estimated_expiry_date, maintenance_status, etc.).
+    Recomputed idempotently by the backfill task.
+    """
+
+    __tablename__ = "expiry_assessments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    patent_publication_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    estimated_expiry_date: Mapped[date | None] = mapped_column(Date)
+
+    expiry_status: Mapped[str] = mapped_column(
+        String(32), default="unknown", server_default="unknown"
+    )
+    expiry_status_confidence: Mapped[str] = mapped_column(
+        String(16), default="low", server_default="low"
+    )
+
+    maintenance_status: Mapped[str] = mapped_column(
+        String(32), default="unknown", server_default="unknown"
+    )
+    maintenance_status_source: Mapped[str | None] = mapped_column(String(64))
+
+    active_family_risk: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    active_family_risk_reason: Mapped[str | None] = mapped_column(Text)
+
+    terminal_disclaimer_flag: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    patent_term_adjustment_days: Mapped[int | None] = mapped_column(Integer)
+
+    legal_caveats: Mapped[list[str]] = mapped_column(JSONB, default=list)
+
+    assessment_json: Mapped[dict | None] = mapped_column(JSONB)
+
+    # Sprint 2B: expiry-specific opportunity scoring (deterministic, not LLM).
+    expiry_opportunity_score: Mapped[float | None] = mapped_column(Float)
+    expiry_opportunity_breakdown: Mapped[dict | None] = mapped_column(JSONB)
+
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default="now()"
+    )
+    source_updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default="now()"
+    )
 
 
 class CrossIndustrySnapshot(Base):

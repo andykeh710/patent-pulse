@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 
 interface ClaimsPanelProps {
   claimsText: string | null;
@@ -20,12 +21,10 @@ interface ParsedClaim {
 function parseClaims(rawText: string): ParsedClaim[] {
   const claims: ParsedClaim[] = [];
 
-  // Split by claim numbers: "1.", "2.", etc. at start of line or after newline
   const claimPattern = /(?:^|\n)\s*(\d+)\.\s+/g;
   const matches = [...rawText.matchAll(claimPattern)];
 
   if (matches.length === 0) {
-    // Fallback: treat the whole text as a single claim block
     return [{ number: 1, text: rawText.trim(), isIndependent: true }];
   }
 
@@ -36,7 +35,6 @@ function parseClaims(rawText: string): ParsedClaim[] {
     const endIdx = i + 1 < matches.length ? matches[i + 1].index! : rawText.length;
     const claimText = rawText.slice(startIdx, endIdx).trim();
 
-    // A dependent claim typically references another claim
     const dependsOnPattern = /\bclaims?\s+\d+/i;
     const isIndependent = !dependsOnPattern.test(claimText);
 
@@ -49,6 +47,56 @@ function parseClaims(rawText: string): ParsedClaim[] {
 
   return claims;
 }
+
+// ── Sprint 3: Key mechanisms extractor ───────────────────────────────
+
+const MECHANISM_PATTERNS = [
+  /\bcomprising\s+(?:a\s+|an\s+|the\s+)?([^,;.]+?)(?=\s*,|\s*;|\s*\.|$)/gi,
+  /\bwherein\s+(?:the\s+)?([^,;.]+?)(?=\s*,|\s*;|\s*\.|$)/gi,
+  /\bconfigured to\s+([^,;.]+?)(?=\s*,|\s*;|\s*\.|$)/gi,
+  /\badapted to\s+([^,;.]+?)(?=\s*,|\s*;|\s*\.|$)/gi,
+];
+
+const MECHANISM_STOPWORDS = new Set([
+  "a", "an", "the", "at", "by", "for", "in", "of", "on", "to",
+  "and", "or", "is", "are", "be", "said", "such", "each",
+]);
+
+function extractMechanisms(claimText: string): string[] {
+  const found = new Set<string>();
+  for (const pattern of MECHANISM_PATTERNS) {
+    // Reset lastIndex since we reuse the regex with the global flag.
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(claimText)) !== null) {
+      const raw = (match[1] || "").trim().toLowerCase();
+      // Filter: skip short fragments and stopwords-only fragments.
+      const words = raw.split(/\s+/).filter((w) => w.length >= 2);
+      const meaningful = words.filter((w) => !MECHANISM_STOPWORDS.has(w));
+      if (meaningful.length >= 2) {
+        // Take first ~6 words for the tag label.
+        const label = meaningful.slice(0, 6).join(" ");
+        if (label.length >= 3) found.add(label);
+      }
+    }
+  }
+  return [...found].slice(0, 5);
+}
+
+// ── Sprint 3: Broadness indicator ────────────────────────────────────
+
+function getBroadness(claimText: string): "Broad" | "Narrow" | "Mixed" | null {
+  const lower = claimText.toLowerCase();
+  const hasOpen = /\bcomprising\b|\bincluding\b/i.test(lower);
+  const hasClosed = /\bconsisting of\b|\bconsists of\b/i.test(lower);
+
+  if (hasOpen && hasClosed) return "Mixed";
+  if (hasOpen) return "Broad";
+  if (hasClosed) return "Narrow";
+  return null;
+}
+
+// ── Component ────────────────────────────────────────────────────────
 
 export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
   const [showAll, setShowAll] = useState(false);
@@ -84,31 +132,70 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
       </div>
 
       <div className="space-y-4">
-        {displayClaims.map((claim) => (
-          <div key={claim.number} className="group">
-            <div className="flex items-start gap-3">
-              <span
-                className={`flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                  claim.isIndependent
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                {claim.number}
-              </span>
-              <div className="flex-1 min-w-0">
-                {claim.isIndependent && (
-                  <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-primary-600 mb-1">
-                    Independent
-                  </span>
-                )}
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {claim.text}
-                </p>
+        {displayClaims.map((claim) => {
+          const mechanisms = extractMechanisms(claim.text);
+          const broadness = getBroadness(claim.text);
+
+          return (
+            <div key={claim.number} className="group">
+              <div className="flex items-start gap-3">
+                <span
+                  className={`flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                    claim.isIndependent
+                      ? "bg-primary-100 text-primary-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {claim.number}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    {claim.isIndependent && (
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-primary-600">
+                        Independent
+                      </span>
+                    )}
+                    {/* Sprint 3: broadness indicator */}
+                    {broadness && (
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          broadness === "Broad"
+                            ? "bg-amber-100 text-amber-700"
+                            : broadness === "Narrow"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                        title={
+                          broadness === "Broad"
+                            ? "Open-ended language (comprising/including) — broader scope"
+                            : broadness === "Narrow"
+                            ? "Closed language (consisting of) — narrower scope"
+                            : "Mixed open and closed language"
+                        }
+                      >
+                        {broadness}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {claim.text}
+                  </p>
+
+                  {/* Sprint 3: key mechanisms */}
+                  {mechanisms.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {mechanisms.map((mech, i) => (
+                        <Badge key={i} variant="default" size="sm">
+                          {mech}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {!showAll && dependentClaims.length > 0 && (
@@ -124,8 +211,9 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
 
       <div className="mt-4 pt-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
-          Claims are extracted from patent filings and may be incomplete. Independent
-          claims are identified heuristically.
+          Claims are extracted from patent filings and may be incomplete.
+          Key mechanisms and broadness indicators are identified heuristically —
+          not a legal determination of claim scope.
         </p>
       </div>
     </div>

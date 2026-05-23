@@ -113,6 +113,7 @@ class PatentDetailResponse(BaseModel):
     why_now_text: str | None = None
     family_members: list[str] = []
     citations_backward: list[str] = []
+    citations_forward: list[str] = []
     summarized_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
@@ -168,6 +169,7 @@ class PatentDetailResponse(BaseModel):
             why_now_text=getattr(patent, "why_now_text", None),
             family_members=patent.family_members or [],
             citations_backward=patent.citations_backward or [],
+            citations_forward=patent.citations_forward or [],
             summarized_at=patent.summarized_at,
             created_at=patent.created_at,
             updated_at=patent.updated_at,

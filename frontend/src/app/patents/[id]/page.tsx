@@ -192,6 +192,21 @@ export default function PatentDetailPage({
         {patent.tags?.risk_flags && patent.tags.risk_flags.length > 0 && (
           <div className="mt-2"><RiskFlagsBadge flags={patent.tags.risk_flags} /></div>
         )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {/* Citation counts — clickable, jumps to Citations tab */}
+          {((patent.citations_backward?.length ?? 0) > 0 || (patent.citations_forward?.length ?? 0) > 0) ? (
+            <button
+              onClick={() => setActiveTab("citations")}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-primary-600 transition-colors"
+            >
+              <span>Citations:</span>
+              <span className="font-medium">{patent.citations_backward?.length ?? 0} ←</span>
+              <span className="font-medium">{patent.citations_forward?.length ?? 0} →</span>
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400">Citations: none</span>
+          )}
+        </div>
         <div className="mt-3">
           <ExternalPatentLinks publicationNumber={patent.publication_number} office={patent.office} docId={patent.doc_id} />
         </div>
@@ -268,6 +283,11 @@ function OverviewTab({
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
+        {/* Sprint 3: Inventors moved to prominent main-column position */}
+        {patent.inventors.length > 0 && (
+          <InventorsPanel inventors={patent.inventors} />
+        )}
+
         <AISummaryPanel summary={displaySummary} isLoading={summaryLoading && !patent.summarized_at} />
 
         {patent.tags && (
@@ -301,17 +321,6 @@ function OverviewTab({
                     {assignee}
                   </Link>
                 </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {patent.inventors.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">Inventors</h2>
-            <ul className="space-y-1">
-              {patent.inventors.map((inventor, i) => (
-                <li key={i} className="text-sm text-gray-700">{inventor}</li>
               ))}
             </ul>
           </div>
@@ -401,64 +410,197 @@ function FamilyTab({ patent }: { patent: PatentDetail }) {
     return (
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
         <p className="text-gray-500">No family members found for this patent.</p>
-        <p className="text-xs text-gray-400 mt-1">Family data depends on INPADOC resolution, which may not cover all patents.</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Family data depends on INPADOC resolution, which may not cover all
+          patents. Absence of family data does not mean no related patents exist —
+          verify with official registers.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">
+      <h2 className="font-semibold text-gray-900 mb-1">
         Patent Family ({patent.family_members.length} members)
       </h2>
-      <div className="space-y-2">
-        {patent.family_members.map((member, i) => (
-          <div key={i} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded text-sm">
-            <span className="text-gray-700 font-medium">{member}</span>
-          </div>
-        ))}
+      <p className="text-xs text-gray-500 mb-4">
+        This patent is part of a family of related filings across jurisdictions.
+        Active family members in other jurisdictions may still be enforceable.
+      </p>
+
+      {/* Family awareness — generic disclaimer, applies to any patent family */}
+      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+        <strong>Family awareness:</strong> A patent&apos;s family may have
+        active members in other jurisdictions. Expired or expiring status in
+        one jurisdiction does not imply global freedom to operate — verify
+        each jurisdiction independently.
       </div>
+
+      <div className="space-y-1.5">
+        {patent.family_members.map((member, i) => {
+          const juris = parseJurisdiction(member);
+          const isSelf = member === patent.publication_number;
+
+          return (
+            <div
+              key={i}
+              className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded text-sm"
+            >
+              <span
+                className={`flex-shrink-0 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                  juris.color
+                }`}
+                title={juris.label}
+              >
+                {juris.code}
+              </span>
+              <span className="text-gray-700 font-mono text-xs flex-1 truncate">
+                {member}
+              </span>
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded ${
+                  isSelf
+                    ? "bg-primary-50 text-primary-700 font-medium"
+                    : "text-gray-400"
+                }`}
+              >
+                {isSelf ? "This patent" : "Unknown"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
       <p className="text-xs text-gray-400 mt-4">
-        Family members may include active patents in other jurisdictions. An expired patent with active
-        family members may still restrict freedom to operate.
+        Per-member legal status is not currently available. Active family risk
+        is assessed at the patent level; individual member status requires
+        verification with each issuing patent office.
       </p>
     </div>
   );
 }
 
+// ── Jurisdiction parser ──────────────────────────────────────────────
+
+const JURISDICTION_MAP: Record<string, { code: string; label: string; color: string }> = {
+  US: { code: "US", label: "United States", color: "bg-blue-100 text-blue-700" },
+  EP: { code: "EP", label: "European Patent Office", color: "bg-indigo-100 text-indigo-700" },
+  WO: { code: "WO", label: "WIPO / PCT", color: "bg-teal-100 text-teal-700" },
+  JP: { code: "JP", label: "Japan", color: "bg-red-100 text-red-700" },
+  CN: { code: "CN", label: "China", color: "bg-orange-100 text-orange-700" },
+  KR: { code: "KR", label: "South Korea", color: "bg-pink-100 text-pink-700" },
+  GB: { code: "GB", label: "United Kingdom", color: "bg-cyan-100 text-cyan-700" },
+  DE: { code: "DE", label: "Germany", color: "bg-yellow-100 text-yellow-700" },
+  FR: { code: "FR", label: "France", color: "bg-purple-100 text-purple-700" },
+  CA: { code: "CA", label: "Canada", color: "bg-red-100 text-red-700" },
+  AU: { code: "AU", label: "Australia", color: "bg-green-100 text-green-700" },
+  IN: { code: "IN", label: "India", color: "bg-amber-100 text-amber-700" },
+};
+
+function parseJurisdiction(pubNumber: string): {
+  code: string;
+  label: string;
+  color: string;
+} {
+  // Extract leading 2 characters that look like a country/office code.
+  const match = pubNumber.match(/^([A-Z]{2})/);
+  if (match && JURISDICTION_MAP[match[1]]) {
+    return JURISDICTION_MAP[match[1]];
+  }
+  const prefix = match ? match[1] : "??";
+  return {
+    code: prefix,
+    label: prefix,
+    color: "bg-gray-100 text-gray-500",
+  };
+}
+
 function CitationsTab({ patent }: { patent: PatentDetail }) {
-  if (!patent.citations_backward || patent.citations_backward.length === 0) {
+  const hasBackward = (patent.citations_backward?.length ?? 0) > 0;
+  const hasForward = (patent.citations_forward?.length ?? 0) > 0;
+
+  if (!hasBackward && !hasForward) {
     return (
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
         <p className="text-gray-500">No citation data available for this patent.</p>
-        <p className="text-xs text-gray-400 mt-1">Citation data is sourced from patent filings and may be incomplete.</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Citation data is sourced from patent filings and may be incomplete.
+          Verify with official registers.
+        </p>
       </div>
     );
   }
 
+  const CitationLink = ({ pubNumber }: { pubNumber: string }) => (
+    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded text-sm">
+      <span className="text-gray-700 font-medium">{pubNumber}</span>
+      <a
+        href={`https://patents.google.com/patent/${pubNumber.replace(/[^A-Za-z0-9]/g, "")}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-primary-600 hover:text-primary-800"
+      >
+        View →
+      </a>
+    </div>
+  );
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">
-        Backward Citations ({patent.citations_backward.length})
-      </h2>
-      <p className="text-sm text-gray-600 mb-4">
-        Patents cited by this application. These represent prior art the applicant disclosed.
-      </p>
-      <div className="space-y-2">
-        {patent.citations_backward.map((citation, i) => (
-          <div key={i} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded text-sm">
-            <span className="text-gray-700 font-medium">{citation}</span>
-            <a
-              href={`https://patents.google.com/patent/${citation.replace(/[^A-Za-z0-9]/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary-600 hover:text-primary-800"
-            >
-              View →
-            </a>
+    <div className="space-y-6">
+      {/* Backward citations */}
+      {hasBackward ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">
+            ← Cited By This Patent ({patent.citations_backward!.length})
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Patents cited by this application. These represent prior art the
+            applicant disclosed.
+          </p>
+          <div className="space-y-2">
+            {patent.citations_backward!.map((citation, i) => (
+              <CitationLink key={i} pubNumber={citation} />
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
+          <p className="text-gray-500 text-sm">No backward citations recorded.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Citation data is sourced from patent filings and may be incomplete.
+          </p>
+        </div>
+      )}
+
+      {/* Forward citations */}
+      {hasForward ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">
+            Citing This Patent → ({patent.citations_forward!.length})
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Patents that cite this one. A high count suggests this invention
+            is actively referenced by newer work.
+          </p>
+          <div className="space-y-2">
+            {patent.citations_forward!.map((citation, i) => (
+              <CitationLink key={i} pubNumber={citation} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
+          <p className="text-gray-500 text-sm">
+            No forward citations recorded yet.
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Patents citing this one may not have been ingested. Forward
+            citation data depends on patent office feeds covering newer
+            filings. Verify with official registers.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -511,6 +653,42 @@ function LegalExpiryTab({ patent }: { patent: PatentDetail }) {
           extension (PTE), or terminal disclaimers. Verify with official registers before making
           decisions based on patent expiry.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Sprint 3: Inventors panel (prominent, main-column, expandable) ──
+
+function InventorsPanel({ inventors }: { inventors: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const displayInventors = expanded ? inventors : inventors.slice(0, 5);
+  const hasMore = inventors.length > 5;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-gray-900">
+          Inventors ({inventors.length})
+        </h2>
+        {hasMore && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+          >
+            {expanded ? "Show fewer" : `+${inventors.length - 5} more`}
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {displayInventors.map((inventor, i) => (
+          <span
+            key={i}
+            className="text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full"
+          >
+            {inventor}
+          </span>
+        ))}
       </div>
     </div>
   );
