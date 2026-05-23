@@ -47,6 +47,9 @@ class PatentPublication(Base):
     maintenance_status: Mapped[str | None] = mapped_column(String(32))
     estimated_expiry_date: Mapped[date | None] = mapped_column(Date, index=True)
 
+    # Sprint 4.5: link-out to Google Patents thumbnails page (not inline image).
+    figure_page_url: Mapped[str | None] = mapped_column(String(512))
+
     # Phase 0: legal-confidence honest. V1 always "estimated"; V1.1 flips to
     # "confirmed" when INPADOC reconciliation lands.
     legal_status_confidence: Mapped[str] = mapped_column(

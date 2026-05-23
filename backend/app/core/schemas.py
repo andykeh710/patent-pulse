@@ -121,6 +121,9 @@ class PatentDetailResponse(BaseModel):
     presentation_rank_reason: str | None = None
     presentation_rank_confidence: str | None = None
 
+    # Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
+    figure_page_url: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -176,6 +179,7 @@ class PatentDetailResponse(BaseModel):
             presentation_rank_score=getattr(patent, "presentation_rank_score", None),
             presentation_rank_reason=getattr(patent, "presentation_rank_reason", None),
             presentation_rank_confidence=getattr(patent, "presentation_rank_confidence", None),
+            figure_page_url=getattr(patent, "figure_page_url", None),
         )
 
 
