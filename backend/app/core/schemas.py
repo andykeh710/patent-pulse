@@ -189,6 +189,17 @@ class ExpiryItem(BaseModel):
     opportunity_score: float | None = None
     tags: dict | None = None
 
+    # Sprint 2B: assessment-enriched fields from ExpiryAssessment LEFT JOIN.
+    expiry_status: str | None = None
+    expiry_status_confidence: str | None = None
+    active_family_risk: bool | None = None
+    maintenance_status: str | None = None
+    expiry_opportunity_score: float | None = None
+
+    # Sprint 2C: CSV export fields.
+    publication_number: str | None = None
+    office: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
