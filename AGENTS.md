@@ -40,6 +40,12 @@ When choosing what to build or improve, prioritize in this order:
   `<img src>` pointing to the originating patent office (USPTO, Google
   Patents, Espacenet). Do not download, cache, or re-serve figure
   images without prior licensing review.
+- **Sprint 4.5: Link-out only.** The `figure_page_url` column stores a
+  link to Google Patents' thumbnails page, not inline image URLs. Inline
+  thumbnails are blocked by Google Patents' content-addressed image hash
+  system (URLs are unpredictable from publication_number alone). Full
+  inline image support requires either scraping (fragile) or a paid
+  patent image API (post-V1).
 - **Attribute the source.** Display "Image © patent office — verify at
   source" on hover or below the figure.
 - **Graceful degradation.** When a figure URL is null or returns an

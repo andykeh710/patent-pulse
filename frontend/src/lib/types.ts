@@ -122,6 +122,8 @@ export interface PatentDetail {
   presentation_rank_score: number | null;
   presentation_rank_reason: string | null;
   presentation_rank_confidence: string | null;
+  // Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
+  figure_page_url: string | null;
 }
 
 export interface ExpiryItem {
