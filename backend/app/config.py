@@ -13,6 +13,17 @@ class Settings(BaseSettings):
     uspto_api_key: str = ""
     google_cloud_project: str | None = None
 
+    # Sprint 6: magic-link auth
+    auth_secret_key: str = ""
+    magic_link_ttl_minutes: int = 15
+    magic_link_base_url: str = "http://localhost:3000"
+
+    # Sprint 6: email
+    resend_api_key: str = ""
+    email_from_address: str = ""
+    email_dev_recipient: str = ""
+    email_send_mode: str = "dev"  # "dev" | "production"
+
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
 

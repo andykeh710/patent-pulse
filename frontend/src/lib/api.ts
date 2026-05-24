@@ -366,3 +366,27 @@ export const contentApi = {
       `/api/v1/content/drafts?patent_id=${patentId}`
     ),
 };
+
+// Sprint 6
+export const authApi = {
+  requestLink: (body: { email: string }) =>
+    apiFetch<{ ok: boolean }>("/api/v1/auth/request-link", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  verify: (token: string) =>
+    fetch(`/api/v1/auth/verify?token=${encodeURIComponent(token)}`, {
+      redirect: "manual",
+    }).then((r) => {
+      if (!r.ok) throw new Error("Invalid token");
+      return r;
+    }),
+
+  me: () =>
+    apiFetch<{ id: string; email: string | null; display_name: string | null }>(
+      "/api/v1/auth/me"
+    ),
+
+  logout: () => apiFetch<{ ok: boolean }>("/api/v1/auth/logout", { method: "POST" }),
+};

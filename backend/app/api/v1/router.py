@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin,
     ai_runs,
+    auth,
     content,
     expiry,
     families,
@@ -10,6 +11,7 @@ from app.api.v1 import (
     patents,
     search,
     semantic_search,
+    subscriptions,
     suppliers,
     themes,
     trends,
@@ -33,3 +35,5 @@ v1_router.include_router(opportunity.router, prefix="/opportunity", tags=["oppor
 v1_router.include_router(trends.router, prefix="/trends", tags=["trends"])
 v1_router.include_router(content.router, prefix="/content", tags=["content"])
 v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["usage-signals"])
+v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+v1_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])

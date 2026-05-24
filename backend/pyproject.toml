@@ -19,7 +19,7 @@ pydantic = "^2.10"
 pydantic-settings = "^2.6"
 anthropic = "^0.40"
 httpx = "^0.27"
-patent-client = "^5.0"
+pyjwt = "^2.9"
 google-cloud-bigquery = "^3.25"
 structlog = "^24.4"
 
