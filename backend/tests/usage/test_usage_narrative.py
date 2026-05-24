@@ -102,11 +102,6 @@ def test_validate_output_adds_disclaimer():
 # ── integration tests (mocked LLM) ───────────────────────────────────
 
 
-@pytest.mark.xfail(
-    reason="event_loop fixture contention in full suite. Passes in isolation. "
-           "Fix post-Sprint-6.",
-    strict=False,
-)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_generate_writes_artifact(db_session):
     """generate_usage_narrative writes AIArtifact with validated content."""
@@ -172,11 +167,6 @@ async def test_generate_writes_artifact(db_session):
     assert artifact.content_json is not None
 
 
-@pytest.mark.xfail(
-    reason="event_loop fixture contention in full suite. Passes in isolation. "
-           "Fix post-Sprint-6.",
-    strict=False,
-)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_generate_falls_back_on_retry_exhaustion(db_session):
     """Forbidden phrases + retries exhausted → fallback narrative."""

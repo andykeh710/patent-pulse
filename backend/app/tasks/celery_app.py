@@ -26,6 +26,7 @@ celery_app = Celery(
         "app.tasks.compute_trends",
         "app.tasks.compute_cliffs",
         "app.tasks.compute_convergence",
+        "app.tasks.backfill_usage_signals",
     ],
 )
 
@@ -55,6 +56,7 @@ celery_app.conf.update(
         "app.tasks.compute_trends.*": {"queue": "maintenance"},
         "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
         "app.tasks.compute_convergence.*": {"queue": "maintenance"},
+        "app.tasks.backfill_usage_signals.*": {"queue": "maintenance"},
     },
     task_default_retry_delay=60,
     task_max_retries=3,
@@ -152,5 +154,58 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/2"),
         "args": (1000,),
         "options": {"queue": "maintenance"},
+    },
+    # Sprint 5 follow-up (O2) — embed the expiring-patent cohort so usage
+    # signals become visible on the Expiry Radar. Newest-first ordering on
+    # the main backfill leaves these patents perpetually unembedded.
+    # Runs every 10 min on the :05 mark with limit=200, prioritized by
+    # soonest expiry.
+    "embeddings-backfill-expiring": {
+        "task": "app.tasks.embeddings.batch_generate_embeddings",
+        "schedule": crontab(minute="5,15,25,35,45,55"),
+        "kwargs": {"limit": 200, "prioritize_expiring": True},
+        "options": {"queue": "maintenance"},
+    },
+    # Sprint 5 — usage signals backfill (hourly, 200/batch).
+    # Idempotent: skips signal rows refreshed within STALENESS_DAYS (7).
+    # The signal collectors depend on embeddings, so this runs after the
+    # embedding backfill has had time to populate.
+    "usage-signals-backfill": {
+        "task": "app.tasks.backfill_usage_signals.batch_backfill_usage_signals",
+        "schedule": crontab(minute=15),
+        "kwargs": {"limit": 200, "offset": 0},
+        "options": {"queue": "maintenance"},
+    },
+    # Post-Sprint-5 audit (A5) — Phase 1/2/4 batch tasks that were written
+    # but never scheduled. Currently >99% of the 54K-patent corpus has
+    # tags=[], opportunity_score=NULL, why_now_text=NULL despite the task
+    # code existing. Adding modest hourly schedules so the gap closes
+    # gradually without flooding the LLM budget.
+    "batch-tag-patents": {
+        "task": "app.tasks.tag.batch_tag_patents",
+        "schedule": crontab(minute=20),  # hourly, offset from usage-signals
+        "kwargs": {"limit": 100},
+        "options": {"queue": "summarization"},
+    },
+    "batch-score-opportunity": {
+        "task": "app.tasks.opportunity.batch_score_opportunity",
+        # Deterministic compute (no LLM cost) — run every 15 min, larger batch.
+        "schedule": crontab(minute="*/15"),
+        "kwargs": {"limit": 500},
+        "options": {"queue": "summarization"},
+    },
+    "batch-why-now": {
+        "task": "app.tasks.why_now.batch_why_now",
+        # Sonnet-tier LLM (per A3) — modest cadence.
+        "schedule": crontab(minute=25),
+        "kwargs": {"limit": 50},
+        "options": {"queue": "summarization"},
+    },
+    "batch-opportunity-narrative": {
+        "task": "app.tasks.opportunity_narrative.batch_opportunity_narrative",
+        # Sonnet-tier LLM (per A3) — modest cadence.
+        "schedule": crontab(minute=35),
+        "kwargs": {"limit": 50},
+        "options": {"queue": "summarization"},
     },
 }

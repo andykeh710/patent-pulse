@@ -53,7 +53,8 @@ export interface ExpiryRadarCardProps {
   expiryOpportunityScore: number | null;
   legalStatus: string | null;
   legalStatusConfidence: string;
-  usageSignalCount?: number;
+  usageSignalCount?: number | null;
+  usageHasSelfCitationRisk?: boolean | null;
 }
 
 export function ExpiryRadarCard({
@@ -70,7 +71,8 @@ export function ExpiryRadarCard({
   expiryOpportunityScore,
   legalStatus,
   legalStatusConfidence,
-  usageSignalCount = 0,
+  usageSignalCount,  // keep undefined (null check) — render "assessed" empty state
+  usageHasSelfCitationRisk,
 }: ExpiryRadarCardProps) {
   const statusLabel = STATUS_LABELS[expiryStatus] || expiryStatus;
   const statusColor = STATUS_COLORS[expiryStatus] || "bg-gray-100 text-gray-500";
@@ -164,10 +166,20 @@ export function ExpiryRadarCard({
         )}
       </div>
 
-      {/* Usage signals (Sprint 5 placeholder) */}
-      <div className="mt-2 text-xs text-gray-400">
-        Usage signals: {usageSignalCount > 0 ? usageSignalCount : (
-          <span title="Usage signals coming in Sprint 5">0</span>
+      {/* Usage signals (Sprint 5) */}
+      <div className="mt-2 text-xs">
+        {usageSignalCount != null && usageSignalCount > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="text-gray-400">Usage signals:</span>
+            <span className="font-medium text-gray-700">{usageSignalCount}</span>
+          </span>
+        ) : usageSignalCount != null && usageSignalCount === 0 ? (
+          <span className="text-gray-400">Usage signals: none detected</span>
+        ) : (
+          <span className="text-gray-400" title="Usage signals assessed — check patent detail">Usage signals assessed — check patent detail</span>
+        )}
+        {usageHasSelfCitationRisk && (
+          <span className="text-xs text-amber-600 ml-2" title="Some evidence shares assignee with source patent">⚠ Self-cite</span>
         )}
       </div>
 

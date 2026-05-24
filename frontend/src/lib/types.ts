@@ -146,6 +146,10 @@ export interface ExpiryItem {
   // Sprint 2C: CSV export fields.
   publication_number: string | null;
   office: string | null;
+  // Sprint 5: usage signal enrichment.
+  usage_signal_score: number | null;
+  usage_signal_evidence_count: number | null;
+  usage_has_self_citation_risk: boolean | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -245,6 +249,9 @@ export interface ExpiryOpportunityItem {
   expiry_opportunity_score: number | null;
   opportunity_score: number | null;
   days_until_expiry: number | null;
+  usage_signal_score: number | null;
+  usage_signal_evidence_count: number | null;
+  usage_has_self_citation_risk: boolean | null;
 }
 
 export interface ExpirySummary {
@@ -323,6 +330,56 @@ export type AITaskType =
   | "score_rerank";
 
 export type AIRunMode = "dev_fixture" | "sample" | "cohort" | "full_batch";
+
+// Sprint 5 — Usage Signals
+export interface UsageEvidenceItem {
+  id: string;
+  source_type: string;
+  source_patent_title: string | null;
+  source_patent_assignee: string | null;
+  source_patent_filing_date: string | null;
+  evidence_tier: "strong" | "medium" | "weak";
+  similarity_score: number | null;
+  cpc_overlap_count: number;
+  matched_cpc: string[];
+}
+
+export interface UsageSignalResponse {
+  patent_id: string;
+  score: number;
+  confidence: "high" | "medium" | "low";
+  breakdown: Record<string, number> | null;
+  evidence_count: number;
+  strong_count: number;
+  medium_count: number;
+  weak_count: number;
+  has_self_citation_risk: boolean;
+  top_companies: string[];
+  market_categories: string[];
+  most_recent_evidence_date: string | null;
+  narrative_summary: string | null;
+  narrative_generated_at: string | null;
+  evidence: UsageEvidenceItem[];
+}
+
+export interface UsageGenerateResponse {
+  patent_id: string;
+  score: number;
+  confidence: string;
+  evidence_count: number;
+  evidence_added: number;
+}
+
+export interface UsageNarrativeResponse {
+  patent_id: string;
+  summary: string;
+  evidence_summary: string;
+  market_categories: string[];
+  related_companies: string[];
+  limitations: string[];
+  cached: boolean;
+  stale: boolean;
+}
 
 export interface CohortFilter {
   patent_ids?: string[];

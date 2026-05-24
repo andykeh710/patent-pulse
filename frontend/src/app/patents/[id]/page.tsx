@@ -13,6 +13,7 @@ import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge"
 import { RiskFlagsBadge } from "@/components/patents/RiskFlagsBadge";
 import { WhyNowPanel } from "@/components/patents/WhyNowPanel";
 import { LinkedInPostPanel } from "@/components/patents/LinkedInPostPanel";
+import { UsageSignalsPanel } from "@/components/patents/UsageSignalsPanel";
 import { OpportunityNarrativePanel } from "@/components/patents/OpportunityNarrativePanel";
 import { TrendSnapshotPanel } from "@/components/patents/TrendSnapshotPanel";
 import { AssigneeIntelligencePanel } from "@/components/patents/AssigneeIntelligencePanel";
@@ -144,6 +145,7 @@ export default function PatentDetailPage({
     { id: "family", label: "Family", count: patent.family_members?.length || 0 },
     { id: "citations", label: "Citations", count: patent.citations_backward?.length || 0 },
     { id: "legal", label: "Legal / Expiry" },
+    { id: "usage", label: "Usage Signals" },
   ];
 
   return (
@@ -283,6 +285,9 @@ export default function PatentDetailPage({
 
       {activeTab === "legal" && (
         <LegalExpiryTab patent={patent} />
+      )}
+      {activeTab === "usage" && (
+        <UsageSignalsPanel patentId={patent.id} />
       )}
     </div>
   );

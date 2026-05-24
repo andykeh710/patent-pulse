@@ -7,6 +7,7 @@ repeatedly.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -16,7 +17,8 @@ from sqlalchemy import select
 
 from app.core.ai_models import PatentUsageSignals, UsageEvidence
 from app.core.models import PatentPublication
-from app.database import async_session_maker
+from app.database import async_session_maker, engine as _engine
+from app.tasks.celery_app import celery_app
 from app.usage.collector import collect_all_evidence
 from app.usage.scoring import compute_usage_signal_score
 
@@ -128,6 +130,36 @@ async def backfill_usage_signals(
         return await backfill_usage_signals_for_session(
             session, limit=limit, offset=offset
         )
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.backfill_usage_signals.batch_backfill_usage_signals",
+    max_retries=1,
+)
+def batch_backfill_usage_signals(self, limit: int = 200, offset: int = 0) -> dict[str, Any]:
+    """Celery task wrapper — runs the async backfill in a fresh event loop.
+
+    Beat schedule invokes this hourly with limit=200, offset=0. The function
+    is idempotent (skips patents whose signal row was computed within the last
+    STALENESS_DAYS), so repeated invocations naturally walk the embedded-patent
+    population over time.
+    """
+    logger.info("Starting usage signals backfill (limit=%d, offset=%d)", limit, offset)
+
+    async def _run_and_dispose():
+        try:
+            return await backfill_usage_signals(limit=limit, offset=offset)
+        finally:
+            # Force-close connections checked out by this asyncio.run loop.
+            # Mirrors the fix in embeddings.batch_generate_embeddings — without
+            # this, idle-in-transaction connections accumulate every hourly
+            # firing.
+            await _engine.dispose()
+
+    stats = asyncio.run(_run_and_dispose())
+    logger.info("Usage signals backfill complete: %s", stats)
+    return stats
 
 
 # ── helpers ────────────────────────────────────────────────────────────

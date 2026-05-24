@@ -206,6 +206,11 @@ class ExpiryItem(BaseModel):
     publication_number: str | None = None
     office: str | None = None
 
+    # Sprint 5: usage signal enrichment from patent_usage_signals LEFT JOIN.
+    usage_signal_score: float | None = None
+    usage_signal_evidence_count: int | None = None
+    usage_has_self_citation_risk: bool | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 

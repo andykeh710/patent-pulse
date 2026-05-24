@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import Text, and_, func, or_, select, text
 
 from app.api.deps import DbSession
-from app.core.ai_models import ExpiryAssessment
+from app.core.ai_models import ExpiryAssessment, PatentUsageSignals
 from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
 from app.core.schemas import ExpiryItem, PaginatedResponse
@@ -47,6 +47,10 @@ class ExpiryOpportunityItem(BaseModel):
     expiry_opportunity_score: float | None
     opportunity_score: float | None
     days_until_expiry: int | None
+    # Sprint 5 — surfaced via LEFT JOIN on patent_usage_signals.
+    usage_signal_score: float | None = None
+    usage_signal_evidence_count: int | None = None
+    usage_has_self_citation_risk: bool | None = None
 
 
 class ExpiryOpportunityResponse(BaseModel):
@@ -75,6 +79,11 @@ async def list_expiring_patents(
         default=None,
         description="Lower bound for estimated_expiry_date. Defaults to today (forward-looking). Set to a past date to query expired patents.",
     ),
+    # ── Sprint 5: usage signals filter ──
+    has_usage_signals: bool | None = Query(
+        default=None,
+        description="Filter by whether usage signals have been assessed (true) or not (false).",
+    ),
     # ── sorts ──
     sort_by: str = Query(
         default="expiry_urgency",
@@ -98,10 +107,17 @@ async def list_expiring_patents(
             ExpiryAssessment.active_family_risk,
             ExpiryAssessment.maintenance_status,
             ExpiryAssessment.expiry_opportunity_score,
+            PatentUsageSignals.usage_signal_score,
+            PatentUsageSignals.evidence_count.label("usage_signal_evidence_count"),
+            PatentUsageSignals.has_self_citation_risk.label("usage_has_self_citation_risk"),
         )
         .outerjoin(
             ExpiryAssessment,
             ExpiryAssessment.patent_publication_id == PatentPublication.id,
+        )
+        .outerjoin(
+            PatentUsageSignals,
+            PatentUsageSignals.patent_publication_id == PatentPublication.id,
         )
     )
 
@@ -134,6 +150,11 @@ async def list_expiring_patents(
         conditions.append(ExpiryAssessment.maintenance_status == maintenance_status)
     if active_family_risk is not None:
         conditions.append(ExpiryAssessment.active_family_risk == active_family_risk)
+    if has_usage_signals is not None:
+        if has_usage_signals:
+            conditions.append(PatentUsageSignals.patent_publication_id.isnot(None))
+        else:
+            conditions.append(PatentUsageSignals.patent_publication_id.is_(None))
     if min_expiry_opportunity_score is not None:
         conditions.append(
             ExpiryAssessment.expiry_opportunity_score >= min_expiry_opportunity_score
@@ -223,6 +244,10 @@ async def list_expiring_patents(
                 active_family_risk=row[3] if len(row) > 3 else None,
                 maintenance_status=row[4] if len(row) > 4 else None,
                 expiry_opportunity_score=row[5] if len(row) > 5 else None,
+                # Sprint 5: usage signals from row indices 6-7.
+                usage_signal_score=row[6] if len(row) > 6 else None,
+                usage_signal_evidence_count=row[7] if len(row) > 7 else None,
+                usage_has_self_citation_risk=row[8] if len(row) > 8 else None,
                 # Sprint 2C: CSV export metadata.
                 publication_number=patent.publication_number,
                 office=patent.office,
@@ -337,10 +362,17 @@ async def expiry_opportunities(
         select(
             PatentPublication,
             ExpiryAssessment,
+            PatentUsageSignals.usage_signal_score,
+            PatentUsageSignals.evidence_count.label("usage_signal_evidence_count"),
+            PatentUsageSignals.has_self_citation_risk.label("usage_has_self_citation_risk"),
         )
         .join(
             ExpiryAssessment,
             ExpiryAssessment.patent_publication_id == PatentPublication.id,
+        )
+        .outerjoin(
+            PatentUsageSignals,
+            PatentUsageSignals.patent_publication_id == PatentPublication.id,
         )
         .where(
             ExpiryAssessment.expiry_opportunity_score >= min_score,
@@ -351,7 +383,8 @@ async def expiry_opportunities(
     rows = result.all()
 
     items = []
-    for patent, assessment in rows:
+    for row in rows:
+        patent, assessment, signal_score, signal_ev_count, signal_self_cite = row
         days_until = None
         if patent.estimated_expiry_date:
             days_until = (patent.estimated_expiry_date - today).days
@@ -369,6 +402,9 @@ async def expiry_opportunities(
                 expiry_opportunity_score=assessment.expiry_opportunity_score,
                 opportunity_score=patent.opportunity_score,
                 days_until_expiry=days_until,
+                usage_signal_score=signal_score,
+                usage_signal_evidence_count=signal_ev_count,
+                usage_has_self_citation_risk=signal_self_cite,
             )
         )
 

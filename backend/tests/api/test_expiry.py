@@ -183,6 +183,130 @@ async def test_expiry_window_start_backward_looking(client, db_session):
     assert found, f"Patent WINPAST not found in backward-looking window."
 
 
+# ── Sprint 5: has_usage_signals filter ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_has_usage_signals_filter_respects_join(client, db_session):
+    """has_usage_signals=true returns only patents with a PatentUsageSignals row;
+    has_usage_signals=false returns only patents without one. Both must respect
+    the LEFT JOIN added in Sprint 5 Chunk 8.
+    """
+    from app.core.ai_models import PatentUsageSignals
+
+    with_signal = _make_patent(
+        doc_id="USPTO:WSIG01",
+        publication_number="WSIG01",
+        estimated_expiry_date=date.today() + timedelta(days=30),
+    )
+    without_signal = _make_patent(
+        doc_id="USPTO:NOSIG01",
+        publication_number="NOSIG01",
+        estimated_expiry_date=date.today() + timedelta(days=30),
+    )
+    db_session.add(with_signal)
+    db_session.add(without_signal)
+    await db_session.commit()
+    await _create_assessment(db_session, with_signal)
+    await _create_assessment(db_session, without_signal)
+
+    db_session.add(
+        PatentUsageSignals(
+            patent_publication_id=with_signal.id,
+            usage_signal_score=55,
+            usage_signal_confidence="medium",
+            evidence_count=3,
+            has_self_citation_risk=False,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/expiry?has_usage_signals=true&page_size=50")
+    assert resp.status_code == 200
+    ids_true = [i["doc_id"] for i in resp.json()["items"]]
+    assert "USPTO:WSIG01" in ids_true
+    assert "USPTO:NOSIG01" not in ids_true
+
+    resp = await client.get("/api/v1/expiry?has_usage_signals=false&page_size=50")
+    assert resp.status_code == 200
+    ids_false = [i["doc_id"] for i in resp.json()["items"]]
+    assert "USPTO:NOSIG01" in ids_false
+    assert "USPTO:WSIG01" not in ids_false
+
+
+@pytest.mark.asyncio
+async def test_expiry_response_carries_usage_signal_fields(client, db_session):
+    """Main list response includes usage_signal_score, evidence_count, and
+    self_citation_risk fields — null when no row, populated when LEFT JOIN matches.
+    """
+    from app.core.ai_models import PatentUsageSignals
+
+    patent = _make_patent(
+        doc_id="USPTO:USFIELDS",
+        publication_number="USFIELDS",
+        estimated_expiry_date=date.today() + timedelta(days=60),
+    )
+    db_session.add(patent)
+    await db_session.commit()
+    await _create_assessment(db_session, patent)
+    db_session.add(
+        PatentUsageSignals(
+            patent_publication_id=patent.id,
+            usage_signal_score=72.5,
+            usage_signal_confidence="high",
+            evidence_count=4,
+            has_self_citation_risk=True,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/expiry?page_size=100")
+    assert resp.status_code == 200
+    items = [i for i in resp.json()["items"] if i["doc_id"] == "USPTO:USFIELDS"]
+    assert items, "USFIELDS not returned by /expiry"
+    item = items[0]
+    assert item["usage_signal_score"] == 72.5
+    assert item["usage_signal_evidence_count"] == 4
+    assert item["usage_has_self_citation_risk"] is True
+
+
+@pytest.mark.asyncio
+async def test_opportunities_response_carries_usage_signal_fields(client, db_session):
+    """/opportunities response now LEFT JOINs patent_usage_signals (Chunk 9
+    parity). Verify fields appear on opportunity items when a signal row exists.
+    """
+    from app.core.ai_models import PatentUsageSignals
+
+    patent = _make_patent(
+        doc_id="USPTO:OPPSIG",
+        publication_number="OPPSIG",
+        estimated_expiry_date=date.today() - timedelta(days=10),
+        maintenance_status="EXPIRED",
+    )
+    db_session.add(patent)
+    await db_session.commit()
+    await _create_assessment(db_session, patent, expiry_status="expired_confirmed")
+    db_session.add(
+        PatentUsageSignals(
+            patent_publication_id=patent.id,
+            usage_signal_score=60,
+            usage_signal_confidence="medium",
+            evidence_count=2,
+            has_self_citation_risk=False,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/expiry/opportunities?min_score=0&limit=100")
+    assert resp.status_code == 200
+    matching = [i for i in resp.json()["items"] if i["doc_id"] == "USPTO:OPPSIG"]
+    assert matching, "OPPSIG not returned by /opportunities"
+    item = matching[0]
+    assert item["usage_signal_score"] == 60
+    assert item["usage_signal_evidence_count"] == 2
+    assert item["usage_has_self_citation_risk"] is False
+
+
 @pytest.mark.asyncio
 async def test_days_ahead_zero_returns_only_past(client, db_session):
     """days_ahead=0 returns only patents with expiry <= today, not future."""

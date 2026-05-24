@@ -36,7 +36,8 @@ function expiryItemToCardProps(item: ExpiryItem): ExpiryRadarCardProps {
     expiryOpportunityScore: item.expiry_opportunity_score,
     legalStatus: item.legal_status,
     legalStatusConfidence: item.legal_status_confidence,
-    usageSignalCount: 0,
+    usageSignalCount: item.usage_signal_evidence_count ?? null,
+    usageHasSelfCitationRisk: item.usage_has_self_citation_risk ?? null,
   };
 }
 
@@ -55,7 +56,8 @@ function oppItemToCardProps(item: ExpiryOpportunityItem): ExpiryRadarCardProps {
     expiryOpportunityScore: item.expiry_opportunity_score,
     legalStatus: null,
     legalStatusConfidence: "estimated",
-    usageSignalCount: 0,
+    usageSignalCount: item.usage_signal_evidence_count ?? null,
+    usageHasSelfCitationRisk: item.usage_has_self_citation_risk ?? null,
   };
 }
 

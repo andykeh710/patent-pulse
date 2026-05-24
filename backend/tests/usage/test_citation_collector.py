@@ -47,11 +47,6 @@ def test_compute_tier_old_excluded():
     assert tier == "excluded"
 
 
-@pytest.mark.xfail(
-    reason="event_loop fixture contention in full suite. Passes in isolation. "
-           "Fix post-Sprint-6.",
-    strict=False,
-)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_collect_returns_empty_for_no_citations(db_session):
     """Patent without forward citations returns empty list."""
@@ -74,11 +69,6 @@ async def test_collect_returns_empty_for_no_citations(db_session):
     assert result == []
 
 
-@pytest.mark.xfail(
-    reason="event_loop fixture contention in full suite. Passes in isolation. "
-           "Fix post-Sprint-6.",
-    strict=False,
-)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_collect_assigns_tiers_correctly(db_session):
     """Collector assigns tiers based on age + CPC overlap + self-citation."""
@@ -133,11 +123,6 @@ async def test_collect_assigns_tiers_correctly(db_session):
     assert tiers.get("USPTO:SOURCE02") == "weak"
 
 
-@pytest.mark.xfail(
-    reason="event_loop fixture contention in full suite (tracked in conftest.py). "
-           "Passes in isolation. Fix post-Sprint-6.",
-    strict=False,
-)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_collect_self_citation_detected(db_session):
     """Self-citation identified when assignees overlap."""

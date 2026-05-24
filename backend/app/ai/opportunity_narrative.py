@@ -206,7 +206,12 @@ async def generate_opportunity_narrative(
         input_payload=payload,
         patent_publication_id=patent.id,
         run_id=run_id,
-        tier="narrative",
+        # Post-Sprint-5 audit (A3): Haiku consistently returned a non-canonical
+        # schema (commercialization_analysis, inferred_opportunities, etc.)
+        # where the existing key_map only mapped 1 of 7 required fields — the
+        # rest defaulted to empty. Switching to summary tier (Sonnet) per the
+        # Sprint 4 trend_narrative precedent.
+        tier="summary",
         max_tokens=2048,
         expected_output_tokens=600,
     )

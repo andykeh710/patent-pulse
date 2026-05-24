@@ -42,6 +42,9 @@ import type {
   TrendDrilldownPatentsResponse,
   TrendDrilldownAssigneesResponse,
   TrendNarrativeResponse,
+  UsageSignalResponse,
+  UsageGenerateResponse,
+  UsageNarrativeResponse,
 } from "./types";
 
 const API_BASE = "";
@@ -333,6 +336,24 @@ export const suppliersApi = {
 
   profile: (name: string) =>
     apiFetch<CompanyProfile>(`/api/v1/suppliers/profile/${encodeURIComponent(name)}`),
+};
+
+// Sprint 5
+export const usageSignalsApi = {
+  get: (patentId: string) =>
+    apiFetch<UsageSignalResponse>(`/api/v1/usage-signals/${patentId}`),
+
+  generate: (patentId: string) =>
+    apiFetch<UsageGenerateResponse>(
+      `/api/v1/usage-signals/${patentId}/generate`,
+      { method: "POST" }
+    ),
+
+  narrative: (patentId: string) =>
+    apiFetch<UsageNarrativeResponse>(
+      `/api/v1/usage-signals/${patentId}/narrative`,
+      { method: "POST" }
+    ),
 };
 
 export const healthApi = {

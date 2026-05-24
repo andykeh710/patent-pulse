@@ -197,7 +197,13 @@ async def generate_why_now(
         input_payload=payload,
         patent_publication_id=patent.id,
         run_id=run_id,
-        tier="narrative",  # routes to Haiku per llm_client._model_for_tier
+        # Post-Sprint-5 audit (A3): Haiku consistently returned a non-canonical
+        # schema (key_factors, current_relevance_level, etc.) that the existing
+        # key_map only partially translated — most required fields ended up
+        # defaulted to empty despite the artifact being marked "complete".
+        # Switching to summary tier (Sonnet) per the Sprint 4 trend_narrative
+        # precedent. Cost is higher but the data is actually populated.
+        tier="summary",
         max_tokens=2048,
         expected_output_tokens=600,
     )

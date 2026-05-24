@@ -7,13 +7,14 @@ and novelty scoring.
 
 import asyncio
 import logging
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
 
 from app.ai.embedder import EmbeddingError, PatentEmbedder
 from app.core.models import PatentPublication
-from app.database import async_session_maker
+from app.database import async_session_maker, engine as _engine
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -54,19 +55,53 @@ def generate_patent_embedding(self, patent_id: str) -> dict:
     name="app.tasks.embeddings.batch_generate_embeddings",
     max_retries=1,
 )
-def batch_generate_embeddings(self, limit: int = 50) -> dict:
+def batch_generate_embeddings(
+    self,
+    limit: int = 50,
+    prioritize_expiring: bool = False,
+    expiring_window_days: int = 730,
+) -> dict:
     """
     Generate embeddings for patents missing them.
 
     Args:
-        limit: Maximum patents to process
+        limit: Maximum patents to process.
+        prioritize_expiring: When True, restrict the query to patents
+            whose estimated_expiry_date falls within the next
+            ``expiring_window_days`` days and order by expiry-soonest first.
+            Used by the Sprint 5 follow-up beat schedule to ensure the
+            Expiry Radar cohort acquires embeddings (and therefore usage
+            signals) — the default newest-first ordering otherwise leaves
+            them perpetually unembedded.
+        expiring_window_days: Look-ahead window when ``prioritize_expiring``
+            is set. Defaults to 730 (2 years), matching the Expiry Radar
+            default view.
 
     Returns:
-        Stats dict with succeeded/failed counts
+        Stats dict with succeeded/failed counts.
     """
-    logger.info(f"Starting batch embedding generation (limit: {limit})")
+    logger.info(
+        "Starting batch embedding generation (limit=%d, prioritize_expiring=%s)",
+        limit,
+        prioritize_expiring,
+    )
 
-    stats = asyncio.run(_batch_generate_embeddings_async(limit))
+    async def _run_and_dispose():
+        try:
+            return await _batch_generate_embeddings_async(
+                limit,
+                prioritize_expiring=prioritize_expiring,
+                expiring_window_days=expiring_window_days,
+            )
+        finally:
+            # Force-close any connections checked out by this asyncio.run loop.
+            # Without this, the embedder's synchronous OpenAI calls (which block
+            # the loop for several seconds) can leave the SELECT transaction
+            # idle-in-transaction across Celery task boundaries, accumulating
+            # leaked connections every */2 min cron firing.
+            await _engine.dispose()
+
+    stats = asyncio.run(_run_and_dispose())
 
     logger.info(f"Batch embedding complete: {stats}")
     return stats
@@ -99,18 +134,35 @@ async def _generate_embedding_async(patent_id: str) -> dict:
         return {"status": "success", "dimensions": len(embedding)}
 
 
-async def _batch_generate_embeddings_async(limit: int) -> dict:
+async def _batch_generate_embeddings_async(
+    limit: int,
+    *,
+    prioritize_expiring: bool = False,
+    expiring_window_days: int = 730,
+) -> dict:
     """Generate embeddings for patents missing them."""
     stats = {"processed": 0, "succeeded": 0, "failed": 0, "skipped": 0}
 
     async with async_session_maker() as session:
-        result = await session.execute(
+        query = (
             select(PatentPublication)
             .where(PatentPublication.embedding.is_(None))
             .where(PatentPublication.title.isnot(None))
-            .order_by(PatentPublication.created_at.desc())
-            .limit(limit)
         )
+
+        if prioritize_expiring:
+            today = date.today()
+            horizon = today + timedelta(days=expiring_window_days)
+            query = (
+                query.where(PatentPublication.estimated_expiry_date.isnot(None))
+                .where(PatentPublication.estimated_expiry_date >= today)
+                .where(PatentPublication.estimated_expiry_date <= horizon)
+                .order_by(PatentPublication.estimated_expiry_date.asc())
+            )
+        else:
+            query = query.order_by(PatentPublication.created_at.desc())
+
+        result = await session.execute(query.limit(limit))
         patents = result.scalars().all()
 
         if not patents:

@@ -24,11 +24,14 @@ def pytest_configure(config) -> None:  # noqa: D401
     )
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Note: the custom session-scoped `event_loop` fixture that used to live
+# here was removed during the post-Sprint-5 audit (A1). pytest-asyncio 0.23+
+# deprecated custom event_loop fixtures, and the conflict between the
+# session-scoped loop and tests requesting `loop_scope="function"` was the
+# root cause of ~10 spurious xfails ("event_loop fixture contention") and
+# the leaked idle-in-transaction connections (A2). We now rely on
+# pytest-asyncio's default per-function loop (configured via the
+# `asyncio_default_fixture_loop_scope` option in pyproject.toml).
 
 
 @pytest.fixture(scope="session")

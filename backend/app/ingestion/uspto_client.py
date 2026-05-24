@@ -105,6 +105,16 @@ class USPTOClient:
             "inventors": [{"inventor_name": n} for n in (getattr(patent, "applicant_names", None) or [])],
             "cpc_codes": [{"code": c} for c in (getattr(patent, "cpc_additional", None) or [])],
             "ipc_codes": [{"code": c} for c in (getattr(patent, "ipc_code", None) or [])],
+            # TODO (post-Sprint-5 audit A4): patent_client.PatentBiblio exposes
+            # `forward_citations` (a PublicSearchBiblioManager — lazy iterator
+            # that issues a separate USPTO API call per patent on iteration).
+            # Wiring this in requires:
+            #   1. A feature flag to opt-in per-ingestion fetch (cost control).
+            #   2. Rate-limit-aware retry around the extra call.
+            #   3. A separate backfill task for the ~54K historical patents
+            #      that pre-date the fix (estimate: ~15 hours at 1 call/sec).
+            # Sprint 5 usage_signals.citation_collector falls back to
+            # similarity-only evidence until this lands.
             "citations": [],
         }
 
