@@ -29,8 +29,9 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models import Base
@@ -476,4 +477,103 @@ class SleepingGiantCluster(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, server_default="now()"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sprint 5 — Commercial Usage Signals
+# ---------------------------------------------------------------------------
+
+
+class UsageEvidence(Base):
+    """One row per piece of usage evidence. Multiple rows per patent."""
+
+    __tablename__ = "usage_evidence"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    patent_publication_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE")
+    )
+    source_type: Mapped[str] = mapped_column(String(32))
+    source_patent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="SET NULL")
+    )
+    source_patent_doc_id: Mapped[str | None] = mapped_column(String(64))
+    source_patent_title: Mapped[str | None] = mapped_column(Text)
+    source_patent_assignee: Mapped[str | None] = mapped_column(Text)
+    source_patent_filing_date: Mapped[date | None] = mapped_column(Date)
+    source_patent_cpc: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    matched_cpc: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    cpc_overlap_count: Mapped[int] = mapped_column(Integer, default=0)
+    similarity_score: Mapped[float | None] = mapped_column(Float)
+    citation_direction: Mapped[str | None] = mapped_column(String(16))
+    evidence_tier: Mapped[str] = mapped_column(String(8))
+    evidence_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, server_default="now()"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, server_default="now()"
+    )
+
+    __table_args__ = (
+        Index("ix_usage_evidence_patent", "patent_publication_id"),
+        Index("ix_usage_evidence_source_type", "source_type"),
+        Index("ix_usage_evidence_tier", "evidence_tier"),
+        Index("ix_usage_evidence_source_patent", "source_patent_id"),
+        Index(
+            "ix_usage_evidence_patent_tier",
+            "patent_publication_id",
+            "evidence_tier",
+        ),
+    )
+
+
+class PatentUsageSignals(Base):
+    """One row per assessed patent. Aggregates evidence into score + summary."""
+
+    __tablename__ = "patent_usage_signals"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    patent_publication_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE")
+    )
+    usage_signal_score: Mapped[float | None] = mapped_column(Float)
+    usage_signal_confidence: Mapped[str | None] = mapped_column(String(8))
+    score_breakdown: Mapped[dict | None] = mapped_column(JSONB)
+    evidence_count: Mapped[int] = mapped_column(Integer, default=0)
+    strong_evidence_count: Mapped[int] = mapped_column(Integer, default=0)
+    medium_evidence_count: Mapped[int] = mapped_column(Integer, default=0)
+    weak_evidence_count: Mapped[int] = mapped_column(Integer, default=0)
+    strongest_evidence_ids: Mapped[list[uuid.UUID] | None] = mapped_column(
+        ARRAY(UUID(as_uuid=True))
+    )
+    market_categories: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    top_companies: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    most_recent_evidence_date: Mapped[date | None] = mapped_column(Date)
+    narrative_summary: Mapped[str | None] = mapped_column(Text)
+    narrative_artifact_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("ai_artifacts.id", ondelete="SET NULL")
+    )
+    narrative_generated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    has_self_citation_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_stale_evidence_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, server_default="now()"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, server_default="now()"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, server_default="now()"
+    )
+
+    __table_args__ = (
+        Index("ix_usage_signals_patent", "patent_publication_id", unique=True),
+        Index("ix_usage_signals_score", "usage_signal_score"),
+        Index("ix_usage_signals_confidence", "usage_signal_confidence"),
     )
