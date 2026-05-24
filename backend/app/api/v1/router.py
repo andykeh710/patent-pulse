@@ -13,6 +13,7 @@ from app.api.v1 import (
     suppliers,
     themes,
     trends,
+    usage_signals,
     watchlist,
 )
 
@@ -31,3 +32,4 @@ v1_router.include_router(ai_runs.router, prefix="/ai-runs", tags=["ai-runs"])
 v1_router.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
 v1_router.include_router(trends.router, prefix="/trends", tags=["trends"])
 v1_router.include_router(content.router, prefix="/content", tags=["content"])
+v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["usage-signals"])
