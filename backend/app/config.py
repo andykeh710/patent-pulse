@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from_address: str = ""
     email_dev_recipient: str = ""
-    email_send_mode: str = "dev"  # "dev" | "production"
+    email_send_mode: str = "dev"  # "dev" | "dry_run" | "production"
 
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #333;">
+  <h2 style="color: #1a56db; margin-bottom: 4px;">{{ topic_name }}</h2>
+  <p style="font-size: 13px; color: #999;">{{ match_count }} new patent(s) matched your topic</p>
+
+  {% for patent in patents %}
+  <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 12px 0;">
+    <h3 style="margin: 0 0 4px; font-size: 15px;"><a href="{{ patent.url }}" style="color: #1a56db; text-decoration: none;">{{ patent.title }}</a></h3>
+    <p style="font-size: 12px; color: #666;">{{ patent.assignee }} · {{ patent.publication_number }} · {{ patent.expiry_status }}</p>
+    <p style="font-size: 13px; color: #444; margin-top: 8px;">{{ patent.abstract_snippet }}</p>
+    <a href="{{ patent.url }}" style="font-size: 12px; color: #1a56db;">View on Patent Pulse →</a>
+  </div>
+  {% endfor %}
+
+  {% if not patents %}
+  <p style="color: #999; font-style: italic;">No new matches this cycle.</p>
+  {% endif %}
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+  <p style="font-size: 11px; color: #bbb;">
+    You received this alert because you subscribed to "{{ topic_name }}" on Patent Pulse.<br>
+    <a href="{{ unsubscribe_url }}" style="color: #bbb;">Unsubscribe</a> ·
+    <a href="{{ magic_link_base_url }}/account" style="color: #bbb;">Manage preferences</a>
+  </p>
+  <p style="font-size: 11px; color: #bbb;">Patent Pulse · Evidence-backed signals · Verify with official registers.</p>
+</body>
+</html>

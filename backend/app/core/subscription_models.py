@@ -19,6 +19,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models import Base
 
+# Import User model to ensure it's registered in Base.metadata before
+# we reference it via ForeignKey("users.id") below.
+from app.core.ai_models import User as _User  # noqa: F401
+
 
 class TopicSubscription(Base):
     """User subscription to a theme for alerts or weekly digests."""
