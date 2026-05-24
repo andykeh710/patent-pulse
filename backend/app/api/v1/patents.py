@@ -28,6 +28,27 @@ from app.ai.assignee_intelligence import generate_assignee_intelligence as gener
 
 router = APIRouter()
 
+_OFFICE_CODE_ALIASES = {
+    "US": "USPTO",
+    "EP": "EPO",
+    "WO": "WIPO",
+    "JP": "JPO",
+    "CN": "CNIPA",
+    "KR": "KIPO",
+}
+_SCORE_PERCENT_SCALE = 100.0
+
+
+def _normalize_office_filter(office: str) -> str:
+    value = office.strip().upper()
+    return _OFFICE_CODE_ALIASES.get(value, value)
+
+
+def _normalize_score_filter(score: float) -> float:
+    if score >= 1:
+        return score / _SCORE_PERCENT_SCALE
+    return score
+
 
 @router.get("", response_model=PaginatedResponse[PatentListItem])
 async def list_patents(
@@ -39,6 +60,7 @@ async def list_patents(
     date_from: date | None = None,
     date_to: date | None = None,
     min_score: float | None = None,
+    max_score: float | None = None,
     sort_by: str = Query(default="publication_date", pattern="^(publication_date|interesting_score|opportunity_score|created_at)$"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
@@ -48,7 +70,7 @@ async def list_patents(
     conditions = []
 
     if office:
-        conditions.append(PatentPublication.office == office)
+        conditions.append(PatentPublication.office == _normalize_office_filter(office))
     if kind_code:
         conditions.append(PatentPublication.kind_code == kind_code)
     if cpc_prefix:
@@ -63,7 +85,9 @@ async def list_patents(
     if date_to:
         conditions.append(PatentPublication.publication_date <= date_to)
     if min_score is not None:
-        conditions.append(PatentPublication.interesting_score >= min_score)
+        conditions.append(PatentPublication.interesting_score >= _normalize_score_filter(min_score))
+    if max_score is not None:
+        conditions.append(PatentPublication.interesting_score <= _normalize_score_filter(max_score))
 
     base_query = select(PatentPublication)
     if conditions:

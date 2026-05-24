@@ -66,6 +66,73 @@ async def test_list_patents_filter_by_office(client: AsyncClient, db_session) ->
 
 
 @pytest.mark.asyncio
+async def test_list_patents_filter_by_frontend_office_code(
+    client: AsyncClient, db_session
+) -> None:
+    patents = [
+        PatentPublication(
+            doc_id="USPTO:US002",
+            office="USPTO",
+            publication_number="US002",
+            title="US Patent",
+        ),
+        PatentPublication(
+            doc_id="EPO:EP002",
+            office="EPO",
+            publication_number="EP002",
+            title="EP Patent",
+        ),
+    ]
+    for p in patents:
+        db_session.add(p)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/patents?office=US")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["doc_id"] == "USPTO:US002"
+
+
+@pytest.mark.asyncio
+async def test_list_patents_filter_by_score_percentage_range(
+    client: AsyncClient, db_session
+) -> None:
+    patents = [
+        PatentPublication(
+            doc_id="USPTO:LOW001",
+            office="USPTO",
+            publication_number="LOW001",
+            title="Low Score Patent",
+            interesting_score=0.25,
+        ),
+        PatentPublication(
+            doc_id="USPTO:MID001",
+            office="USPTO",
+            publication_number="MID001",
+            title="Mid Score Patent",
+            interesting_score=0.65,
+        ),
+        PatentPublication(
+            doc_id="USPTO:HIGH001",
+            office="USPTO",
+            publication_number="HIGH001",
+            title="High Score Patent",
+            interesting_score=0.95,
+        ),
+    ]
+    for p in patents:
+        db_session.add(p)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/patents?min_score=50&max_score=80")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["doc_id"] == "USPTO:MID001"
+
+
+@pytest.mark.asyncio
 async def test_list_patents_pagination(client: AsyncClient, db_session) -> None:
     for i in range(25):
         patent = PatentPublication(
