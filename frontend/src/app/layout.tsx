@@ -17,10 +17,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased bg-gray-50 min-h-screen">
         <div className="flex min-h-screen">
-          <NavSidebar />
-          <main className="flex-1 ml-64 p-8">
-            <AuthProvider>{children}</AuthProvider>
-          </main>
+          <AuthProvider>
+            <NavSidebar />
+            <main className="flex-1 ml-64 p-8">{children}</main>
+          </AuthProvider>
         </div>
       </body>
     </html>
