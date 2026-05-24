@@ -146,4 +146,11 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=8, minute=0, day_of_week=0),
         "options": {"queue": "maintenance"},
     },
+    # Sprint 5 — embedding backfill (every 15 min, 200/batch).
+    "embeddings-backfill": {
+        "task": "app.tasks.embeddings.batch_generate_embeddings",
+        "schedule": crontab(minute="*/2"),
+        "args": (1000,),
+        "options": {"queue": "maintenance"},
+    },
 }

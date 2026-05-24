@@ -37,7 +37,12 @@ class PatentEmbedder:
     """
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or settings.anthropic_api_key
+        self.api_key = api_key or settings.openai_api_key
+        if not self.api_key:
+            logger.warning(
+                "OPENAI_API_KEY not set — embeddings will fail. "
+                "Set OPENAI_API_KEY in .env to enable semantic search."
+            )
         self._http_client = httpx.Client(timeout=30.0)
 
     def __enter__(self):

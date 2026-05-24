@@ -42,6 +42,7 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
@@ -73,6 +74,7 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
 
     anthropic_api_key: str = ""
+    openai_api_key: str = ""
     uspto_api_key: str = ""
     google_cloud_project: str | None = None
 
