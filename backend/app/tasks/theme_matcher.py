@@ -17,6 +17,7 @@ from app.core.models import PatentPublication
 from app.core.theme_models import Theme, ThemeMatch
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
+from app.tasks.send_instant_alert import send_instant_alert
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ async def _match_theme_async(theme_id: UUID, limit: int) -> dict:
 
 async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
     """Match patents to a single theme."""
-    stats = {"matched": 0, "updated": 0, "skipped": 0}
+    stats: dict = {"matched": 0, "updated": 0, "skipped": 0, "alerts_enqueued": 0}
 
     conditions = []
 
@@ -173,10 +174,39 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
             )
             await session.execute(stmt)
             stats["matched"] += 1
+
+            # Sprint 6: enqueue instant alerts for this match.
+            cnt = await _enqueue_match_alerts(session, theme.id, patent.id, patent.opportunity_score or 0)
+            stats["alerts_enqueued"] += cnt
         else:
             stats["skipped"] += 1
 
     return stats
+
+
+async def _enqueue_match_alerts(session, theme_id, patent_id, opportunity_score: float) -> int:
+    """Enqueue instant alerts for matching subscriptions. Returns count."""
+    from app.core.subscription_models import TopicSubscription
+
+    subs_result = await session.execute(
+        select(TopicSubscription).where(
+            TopicSubscription.theme_id == theme_id,
+            TopicSubscription.mode == "instant_alert",
+            TopicSubscription.paused == False,  # noqa: E712
+        )
+    )
+    subs = subs_result.scalars().all()
+
+    enqueued = 0
+    for sub in subs:
+        # min_score filter.
+        if sub.min_score is not None and opportunity_score < sub.min_score:
+            continue
+
+        send_instant_alert.delay(str(sub.id), str(patent_id), str(theme_id))
+        enqueued += 1
+
+    return enqueued
 
 
 def _calculate_match_score(patent: PatentPublication, theme: Theme) -> tuple[float, list[str]]:
