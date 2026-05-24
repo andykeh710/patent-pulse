@@ -13,7 +13,7 @@ already have or can compute cheaply.** No web scraping in V1.
 
 | Source | MVP? | Rationale |
 |--------|------|-----------|
-| Forward citations | ✅ **MVP** | Already in DB (`citations_backward` exists; forward needs a column). Deterministic, zero cost per patent, always fresh. |
+| Forward citations | ✅ **MVP** | Forward citations already in DB (`citations_forward` column, migration 0009). Deterministic, zero cost per patent, always fresh. |
 | Semantically similar newer patents | ✅ **MVP** | Existing embeddings via `pgvector`. Call `semanticApi.similar()` filtered to newer patents. Cheap batch computation. |
 | Company product pages | ❌ Defer | Requires web scraping or API integration. Fragile, high maintenance, legal grey area. Defer to v2. |
 | Press releases | ❌ Defer | Same as product pages — scraping required, stale quickly. |
@@ -66,6 +66,21 @@ Evidence below these thresholds is **not stored**:
 - Semantic similarity below 0.65
 - Self-citations by the same assignee on patents older than 10 years
 
+### Evidence dedup
+
+When a source patent appears in BOTH forward citations AND similar
+patents, count it once at the higher tier. Dedup by `source_patent_id`.
+This prevents double-counting a patent that both cites and is
+semantically similar.
+
+### "Newer patent" definition
+
+For similar-patent evidence, "newer" means: `source.filing_date >
+target.grant_date` (preferred). Fallback: `source.filing_date >
+target.filing_date` when `grant_date` is null on the target patent.
+This ensures we only match against patents filed AFTER the target
+was known.
+
 ## 3. Scoring Formula
 
 `usage_signal_score` lives on `patent_usage_signals`. Range: 0–100.
@@ -90,12 +105,16 @@ usage_signal_score = clamp(0, 100, raw_score)
 
 ### Confidence labels (derived from score, not separate)
 
-| Score range | Label |
-|-------------|-------|
-| ≥ 70 | High |
-| 40–69 | Medium |
-| 20–39 | Low |
-| < 20 | Insufficient — do not surface to users |
+| Score range | Label stored (VARCHAR 8) | Display label |
+|-------------|--------------------------|---------------|
+| ≥ 70 | "high" | High |
+| 40–69 | "medium" | Medium |
+| 20–39 | "low" | Low |
+| < 20 | "low" | Insufficient evidence |
+
+Note: column is VARCHAR(8). "insufficient" (12 chars) doesn't fit.
+Frontend displays "Insufficient evidence" when score < 20 based on
+score value, not the stored label. Documented 2026-05-23.
 
 ### anti-gaming guard
 
@@ -235,13 +254,28 @@ CREATE TABLE patent_usage_signals (
 
 ## 6. UI Surface
 
-### Patent detail page — new tab or panel
+### Patent detail page — new "Usage Signals" tab (8th tab)
 
-Placement: new tab **"Usage Signals"** (between Similar and Family? or
-after Legal/Expiry). Or keep the 7-tab structure and add a panel inside
-the Opportunity tab. **Decision needed during implementation plan.**
+Placement: new tab **"Usage Signals"** after Legal/Expiry. Resolved
+2026-05-23: dedicated tab, not a panel inside Opportunity.
 
-Panel content:
+Even with zero evidence, the tab renders with the empty state below
+(never hidden — hidden tabs look broken).
+
+Empty state:
+```
+No Usage Signals Detected
+─────────────────────────
+Checked X forward citations and Y similar newer patents.
+No evidence met the significance threshold (≥0.65 similarity
+and/or shared CPC code). This does not mean the technology is
+unused — evidence is patent-based only. Product-level usage
+is not tracked.
+
+[View patent citations →] [View similar patents →]
+```
+
+Panel content (when evidence exists):
 
 ```
 Commercial Usage Signals
@@ -270,7 +304,12 @@ Limitations:
 - New filter: `has_usage_signals=true/false`
 - New sort: `usage_signal_score` (asc/desc)
 - New column on ExpiryRadarCard: score badge + confidence dot
-- Existing "0" placeholder replaced with real data
+- Existing "0" placeholder replaced with empty-state-or-real-data:
+  (a) Sprint 5 "Usage signals assessed — check patent detail" if no data,
+  (b) real score badge + count when backfill populates data
+- **Self-citation badge:** when `has_self_citation_risk` is true, show:
+  "⚠ Self-citation risk: N of M evidence pieces share an assignee with
+  the source patent."
 
 ### Does NOT appear elsewhere in MVP
 
@@ -286,8 +325,13 @@ product. The narrative is for users who want a quick read.
 
 ### When to generate
 
-Only for patents with `usage_signal_score ≥ 40` (medium+ confidence).
-Below that, the evidence is too thin to summarize meaningfully.
+On-demand via user clicking "Analyze" on the Usage Signals tab. Mirrors
+the trend_narrative pattern (Sprint 4): `POST /api/v1/signals/{id}/narrative`
+generates and caches via AIArtifact. Cache hit returns cached result.
+
+Only generate when `usage_signal_score ≥ 40` (medium+ confidence). Below
+that, evidence too thin for meaningful narrative — show "Not enough
+evidence for narrative generation" with the empty state.
 
 ### Prompt outline
 
@@ -395,29 +439,25 @@ Evidence pieces:
 | **Storage growth** — evidence rows per patent unbounded | Low | Medium | Cap at 50 evidence rows per patent. Evict weakest on recompute. |
 | **User misinterpretation** — user treats signal score as "safety score" | High | High | Every panel must include the mandatory disclaimer. Score label is "usage signal" not "freedom to operate." |
 | **Missing data bias** — patents without embeddings or citations get score=0 unfairly | Medium | Low | Score breakdown shows which components contributed. "No data available" empty state with explanation. |
+| **Evidence freshness** — evidence grows stale if not recomputed | Medium | Medium | Weekly Celery beat recompute cycle. `most_recent_evidence_date` column on patent_usage_signals tracks age. Evict evidence older than 20 years on each cycle. |
+| **Cache invalidation** — narratives stale after recompute | Medium | Low | Don't auto-invalidate on recompute. Mark narrative as "stale — evidence recomputed [date]" if signal row has been updated since generation. User triggers manual regeneration. |
+| **pgvector performance at scale** — kNN queries at 50K+ patent corpus | Medium | High | Confirm ivfflat/HNSW index strategy supports sub-second queries BEFORE backfill runs. If not, batch similar-patent collector in the worker; never inline in request path. Measure and report query time before full backfill. |
 
 ---
 
-## Open Questions for Review
+## Decisions (resolved 2026-05-23)
 
-1. **Placement:** New "Usage Signals" tab, or panel inside Opportunity tab?
-   (Affects layout, tab count, and user discovery.)
+The 5 open questions from the draft scope are now resolved. Rationale
+documented for traceability.
 
-2. **Narrative generation trigger:** On-demand (user clicks "Analyze") or
-   batch backfill? Batch is cheaper but means stale narratives until
-   recompute. On-demand is more responsive but adds latency.
-
-3. **Score threshold for surfacing:** Should we show patents with
-   score < 20 as "Insufficient evidence" or hide them entirely? Hiding
-   reduces noise but hides the fact that we assessed and found nothing.
-
-4. **Self-citation policy:** Is 1/3 weighting aggressive enough? Should
-   we also flag "heavily self-cited" with a warning badge?
-
-5. **Integration with Expiry Radar:** Should the Expiry Radar filter
-   only show patents with signals, or should it also show "No signals
-   yet" with an empty state that explains why?
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | **Placement:** New tab or panel inside Opportunity? | New "Usage Signals" tab (8th tab, after Legal/Expiry) | Opportunity tab is already long (WhyNow + LinkedIn + narrative). Usage signals are conceptually distinct — mixing them dilutes both. Dedicated tab signals importance. |
+| 2 | **Narrative generation trigger:** On-demand or batch? | On-demand with AIArtifact caching (mirrors trend_narrative) | Consistent UX across all AI features. Batch is cheaper but means stale narratives; on-demand with cache gives fast repeated reads and fresh first reads. |
+| 3 | **Score threshold for surfacing:** Show "Insufficient" or hide? | Show empty state: "No usage signals detected — evidence below significance threshold. Checked X forward citations and Y similar patents." | Hiding creates impression we didn't check. Empty state with counts educates users about the data that was examined. |
+| 4 | **Self-citation policy:** Is 1/3 weighting enough? Warning badge? | 1/3 weighting + warning badge: "⚠ Self-citation risk: N of M evidence pieces share an assignee" when flag is true | Mathematical weighting is subtle; UI badge makes the risk visible. Both layers. |
+| 5 | **Expiry Radar integration:** Show no-signal patents or hide? | Show empty state "Usage signals assessed — check patent detail" when no data; real score badge + count when data exists | Consistent with the rest of Expiry Radar: surfaces exist even when empty, with explanation of why. |
 
 ---
 
-*End of scope document. Awaiting review before implementation plan.*
+*End of scope document. Proceeding to implementation plan.*
