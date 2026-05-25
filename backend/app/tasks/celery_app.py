@@ -26,6 +26,7 @@ celery_app = Celery(
         "app.tasks.compute_trends",
         "app.tasks.compute_cliffs",
         "app.tasks.send_instant_alert",
+        "app.tasks.send_weekly_digest",
         "app.tasks.compute_convergence",
         "app.tasks.backfill_usage_signals",
     ],
@@ -55,6 +56,7 @@ celery_app.conf.update(
         "app.tasks.trend_snapshot.*": {"queue": "summarization"},
         "app.tasks.assignee_intelligence.*": {"queue": "summarization"},
         "app.tasks.send_instant_alert.*": {"queue": "summarization"},
+        "app.tasks.send_weekly_digest.*": {"queue": "summarization"},
         "app.tasks.compute_trends.*": {"queue": "maintenance"},
         "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
         "app.tasks.compute_convergence.*": {"queue": "maintenance"},
@@ -208,6 +210,12 @@ celery_app.conf.beat_schedule = {
         # Sonnet-tier LLM (per A3) — modest cadence.
         "schedule": crontab(minute=35),
         "kwargs": {"limit": 50},
+        "options": {"queue": "summarization"},
+    },
+    # Sprint 6 — weekly digest fan-out (Sunday 7am).
+    "weekly-digest-sunday": {
+        "task": "app.tasks.send_weekly_digest.fan_out_weekly_digests",
+        "schedule": crontab(hour=7, minute=0, day_of_week=0),
         "options": {"queue": "summarization"},
     },
 }
