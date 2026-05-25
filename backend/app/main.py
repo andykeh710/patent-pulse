@@ -10,9 +10,21 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.health import router as health_router
 from app.api.v1.router import v1_router
+from app.config import settings
 from app.database import engine
 
 logger = logging.getLogger(__name__)
+
+# Sprint 6: hard gate — refuse to boot in production send mode without acknowledgement.
+if settings.email_send_mode == "production":
+    ack = (settings.email_production_acknowledged or "").lower()
+    if ack != "true":
+        logger.critical(
+            "EMAIL_SEND_MODE=production but EMAIL_PRODUCTION_ACKNOWLEDGED is not 'true'. "
+            "Refusing to start. Set EMAIL_PRODUCTION_ACKNOWLEDGED=true in .env to acknowledge "
+            "that you are sending real emails to real users via Resend."
+        )
+        raise SystemExit(1)
 
 
 @asynccontextmanager

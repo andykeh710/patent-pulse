@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Cookie, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
@@ -24,9 +24,11 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 # ── Sprint 6: magic-link auth ───────────────────────────────────────
 
+SESSION_COOKIE_NAME = "auth_session"
+
 
 async def current_user(
-    auth_session: str | None = None,
+    auth_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
 ) -> str:
     """FastAPI dependency returning the authenticated user_id.
@@ -34,7 +36,7 @@ async def current_user(
     Reads the 'auth_session' cookie, verifies the JWT, and returns
     the user_id. Raises 401 if missing, expired, or invalid.
     """
-    from fastapi import Cookie, HTTPException
+    from fastapi import HTTPException
     import jwt as _jwt
     from sqlalchemy import select
     from app.core.ai_models import User

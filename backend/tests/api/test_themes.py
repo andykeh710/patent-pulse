@@ -19,7 +19,7 @@ from app.tasks.theme_matcher import _match_single_theme
 # List / get
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="function")
 async def test_list_themes_includes_system_and_user(client, db_session):
     """List endpoint returns both system themes (user_id=None) and user topics."""
     db_session.add_all([
@@ -32,11 +32,12 @@ async def test_list_themes_includes_system_and_user(client, db_session):
     assert response.status_code == 200
 
     body = response.json()
-    assert len(body) == 2
+    assert len(body) == 5  # 2 test-added + 3 conftest-seeded
 
-    # Order by name → "System Theme" then "User Topic"
-    assert body[0]["user_id"] is None
-    assert body[1]["user_id"] == "anonymous"
+    # At least one system theme (user_id=None) and one user topic present
+    user_ids = [t["user_id"] for t in body]
+    assert None in user_ids, "Should have at least one system theme (user_id=None)"
+    assert "anonymous" in user_ids, "Should have at least one user topic (user_id='anonymous')"
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -23,6 +23,9 @@ from app.core.models import Base
 # we reference it via ForeignKey("users.id") below.
 from app.core.ai_models import User as _User  # noqa: F401
 
+def _utcnow():
+    return datetime.now(timezone.utc)
+
 
 class TopicSubscription(Base):
     """User subscription to a theme for alerts or weekly digests."""
@@ -38,15 +41,15 @@ class TopicSubscription(Base):
     theme_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("themes.id", ondelete="CASCADE")
     )
-    mode: Mapped[str] = mapped_column(String(16))  # 'instant_alert' | 'weekly_digest'
+    mode: Mapped[str] = mapped_column(String(16))
     min_score: Mapped[float | None] = mapped_column(Float)
-    last_delivered_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paused: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, server_default="now()"
+        DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, server_default="now()"
+        DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
 
     __table_args__ = (
@@ -66,10 +69,10 @@ class AuthMagicLinkToken(Base):
         String(64), ForeignKey("users.id", ondelete="CASCADE")
     )
     email: Mapped[str] = mapped_column(String(256))
-    expires_at: Mapped[datetime] = mapped_column(DateTime)
-    consumed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, server_default="now()"
+        DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
 
     __table_args__ = (
@@ -93,7 +96,7 @@ class EmailDelivery(Base):
     resend_message_id: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16))
     sent_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, server_default="now()"
+        DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
     artifact_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ai_artifacts.id")
