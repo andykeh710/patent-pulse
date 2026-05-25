@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     email_send_mode: str = "dev"  # "dev" | "dry_run" | "production"
     email_production_acknowledged: str | None = None
 
+    # Sprint 6.5: feature-flag USPTO citation ingestion (1 extra API call/patent).
+    uspto_fetch_citations: bool = False
+
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
 

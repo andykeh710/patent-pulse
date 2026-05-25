@@ -27,13 +27,26 @@ Operating rules — non-negotiable:
    the next chunk identifier.
 4. Verification block must include:
    - Files created/modified (table with path + LOC delta + purpose)
-   - Full `pytest -q` output WITHOUT --ignore. Report exact counts:
-     "N passed, M xfailed, K xpassed, F failed". No emoji checkmarks
-     without numbers attached.
+   - Full `pytest -q` output WITHOUT --ignore. **Paste the LITERAL
+     last 5-15 lines of pytest output, not a summary.** The user will
+     re-run pytest themselves to verify; numbers in your summary must
+     match the literal tail. If they don't match, you have failed
+     the chunk.
+   - Report exact counts as part of the literal tail: "N passed,
+     M xfailed, K xpassed, F failed". No emoji checkmarks without
+     numbers attached.
    - Baseline diff vs the previous chunk's count.
-   - Frontend `npm run build` result if any frontend changed.
-   - Language audit grep result for sprint surfaces.
-   - Browser smoke test description if any UI changed.
+   - Frontend `npm run build` result if any frontend changed — paste
+     the literal output (✓ Compiled successfully line or first error).
+   - Language audit grep result for sprint surfaces — paste literal
+     grep output (zero lines or actual hits).
+   - Browser smoke test: each step's actual curl/browser response
+     code and JSON shape. No "should work" — only observed results.
+
+   **Run pytest as the LAST step of every chunk, immediately before
+   printing the verification block.** Do not rely on counts from
+   earlier in the same session. Container restarts, dependency
+   installs, or other-chunk changes can invalidate stale numbers.
 5. DEVIATION DETECTED protocol — if reality diverges from the plan
    (different schema, different API field, missing dependency, etc.)
    STOP immediately and present Options A/B/C with your recommendation.

@@ -89,6 +89,11 @@ class USPTOClient:
     def _patent_to_dict(self, patent) -> dict:
         """Convert PatentBiblio object to dictionary."""
         pub_num = getattr(patent, "publication_number", None) or ""
+
+        citations = []
+        if settings.uspto_fetch_citations:
+            citations = self._fetch_forward_citations(patent)
+
         return {
             "patent_number": pub_num,
             "publication_number": pub_num,
@@ -105,18 +110,57 @@ class USPTOClient:
             "inventors": [{"inventor_name": n} for n in (getattr(patent, "applicant_names", None) or [])],
             "cpc_codes": [{"code": c} for c in (getattr(patent, "cpc_additional", None) or [])],
             "ipc_codes": [{"code": c} for c in (getattr(patent, "ipc_code", None) or [])],
-            # TODO (post-Sprint-5 audit A4): patent_client.PatentBiblio exposes
-            # `forward_citations` (a PublicSearchBiblioManager — lazy iterator
-            # that issues a separate USPTO API call per patent on iteration).
-            # Wiring this in requires:
-            #   1. A feature flag to opt-in per-ingestion fetch (cost control).
-            #   2. Rate-limit-aware retry around the extra call.
-            #   3. A separate backfill task for the ~54K historical patents
-            #      that pre-date the fix (estimate: ~15 hours at 1 call/sec).
-            # Sprint 5 usage_signals.citation_collector falls back to
-            # similarity-only evidence until this lands.
-            "citations": [],
+            # Sprint 6.5: populated when settings.uspto_fetch_citations=true.
+            "citations": citations,
         }
+
+    def _fetch_forward_citations(self, patent) -> list[str]:
+        """Fetch forward citation doc IDs with rate-limit retry.
+
+        Iterates PatentBiblio.forward_citations (lazy — 1 USPTO API call).
+        Returns list of "USPTO:..." doc_id strings. On failure: logs and returns [].
+        """
+        import time
+        from urllib.error import HTTPError
+
+        max_retries = 3
+        for attempt in range(max_retries + 1):
+            try:
+                fwd = getattr(patent, "forward_citations", None)
+                if fwd is None:
+                    return []
+                # Ensure rate-limit: 1 call/sec.
+                if attempt > 0:
+                    time.sleep(2 ** attempt)
+                return [
+                    f"USPTO:{getattr(c, 'publication_number', '')}"
+                    for c in fwd
+                    if getattr(c, "publication_number", None)
+                ]
+            except HTTPError as e:
+                if e.code == 429 and attempt < max_retries:
+                    backoff = 2 ** (attempt + 1)
+                    logger.warning(
+                        "Rate-limited fetching citations (429). "
+                        "Retry %d/%d after %ds.",
+                        attempt + 1, max_retries, backoff,
+                    )
+                    time.sleep(backoff)
+                else:
+                    logger.error(
+                        "Failed to fetch citations for %s (attempt %d): %s",
+                        getattr(patent, "publication_number", "?"),
+                        attempt, e,
+                    )
+                    return []
+            except Exception as e:
+                logger.error(
+                    "Failed to fetch citations for %s: %s",
+                    getattr(patent, "publication_number", "?"), e,
+                )
+                return []
+
+        return []
 
     def _application_to_dict(self, app) -> dict:
         """Convert PublishedApplicationBiblio object to dictionary."""
