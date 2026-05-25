@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 
 const NAV_ITEMS = [
   {
@@ -66,6 +67,7 @@ const ADMIN_ITEMS = [
 
 export function NavSidebar() {
   const pathname = usePathname();
+  const { isAuthenticated, user } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/today") return pathname === "/" || pathname === "/today";
@@ -142,6 +144,27 @@ export function NavSidebar() {
           </li>
         ))}
       </ul>
+
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        {isAuthenticated ? (
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 truncate px-3">{user?.email}</p>
+            <Link
+              href="/account"
+              className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Account
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Sign In
+          </Link>
+        )}
+      </div>
     </nav>
   );
 }

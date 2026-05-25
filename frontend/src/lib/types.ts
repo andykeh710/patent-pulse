@@ -289,6 +289,19 @@ export interface Topic {
 /** @deprecated Use Topic instead */
 export type Theme = Topic;
 
+// Sprint 6
+export type SubscriptionMode = "instant_alert" | "weekly_digest";
+
+export interface TopicSubscription {
+  id: string;
+  user_id: string;
+  theme_id: string;
+  mode: SubscriptionMode;
+  min_score: number | null;
+  paused: boolean;
+  last_delivered_at: string | null;
+}
+
 export interface ThemeStats {
   total_matches: number;
   avg_score: number;

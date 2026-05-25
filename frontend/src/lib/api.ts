@@ -45,6 +45,8 @@ import type {
   UsageSignalResponse,
   UsageGenerateResponse,
   UsageNarrativeResponse,
+  TopicSubscription,
+  SubscriptionMode,
 } from "./types";
 
 const API_BASE = "";
@@ -355,6 +357,23 @@ export const usageSignalsApi = {
       { method: "POST" }
     ),
 };
+// Sprint 6
+export const subscriptionsApi = {
+  list: () => apiFetch<TopicSubscription[]>("/api/v1/subscriptions"),
+  create: (data: { theme_id: string; mode: SubscriptionMode; min_score?: number | null }) =>
+    apiFetch<TopicSubscription>("/api/v1/subscriptions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: { mode?: SubscriptionMode; min_score?: number | null; paused?: boolean }) =>
+    apiFetch<TopicSubscription>(`/api/v1/subscriptions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiFetch<void>(`/api/v1/subscriptions/${id}`, { method: "DELETE" }),
+};
+
 
 export const healthApi = {
   check: () => apiFetch<{ status: string; database: string }>("/health"),
