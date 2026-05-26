@@ -27,6 +27,7 @@ celery_app = Celery(
         "app.tasks.compute_cliffs",
         "app.tasks.send_instant_alert",
         "app.tasks.send_weekly_digest",
+        "app.tasks.backfill_citations",
         "app.tasks.compute_convergence",
         "app.tasks.backfill_usage_signals",
     ],
@@ -57,6 +58,7 @@ celery_app.conf.update(
         "app.tasks.assignee_intelligence.*": {"queue": "summarization"},
         "app.tasks.send_instant_alert.*": {"queue": "summarization"},
         "app.tasks.send_weekly_digest.*": {"queue": "summarization"},
+        "app.tasks.backfill_citations.*": {"queue": "maintenance"},
         "app.tasks.compute_trends.*": {"queue": "maintenance"},
         "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
         "app.tasks.compute_convergence.*": {"queue": "maintenance"},
@@ -217,5 +219,14 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.send_weekly_digest.fan_out_weekly_digests",
         "schedule": crontab(hour=7, minute=0, day_of_week=0),
         "options": {"queue": "summarization"},
+    },
+    # Sprint 6.5 — citation backfill (every 5 min, 50/batch).
+    # ~600 patents/hr. Full 54K corpus → ~90 hours wall-clock.
+    # Idempotent: skips patents where citations_forward is non-empty.
+    "citations-backfill": {
+        "task": "app.tasks.backfill_citations.batch_backfill_citations",
+        "schedule": crontab(minute="*/5"),
+        "kwargs": {"limit": 50},
+        "options": {"queue": "maintenance"},
     },
 }

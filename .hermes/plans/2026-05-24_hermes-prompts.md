@@ -8,7 +8,11 @@ has access to the repo and can read the referenced plan docs.
 1. Paste the prompt to Hermes.
 2. Hermes executes one chunk and stops at the verification block.
 3. You review, ask follow-ups, and commit the chunk.
-4. Reply with the next chunk number (e.g. "S6-2") to advance.
+4. **`git push`** — added 2026-05-26 after the "main was 16 commits
+   ahead of origin" discovery. Push every commit immediately so
+   GitHub never falls behind local. Upstream tracking is configured;
+   bare `git push` is sufficient.
+5. Reply with the next chunk number (e.g. "S6-2") to advance.
 
 ---
 
