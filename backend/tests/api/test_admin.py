@@ -12,14 +12,12 @@ def _cookie(user_id="local-user"):
     )}
 
 
-@pytest.mark.xfail(reason="require_admin dep needs restructuring — endpoint works, auth guard bypass in test", strict=False)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_admin_users_unauthorized(client, db_session):
     r = await client.get("/api/v1/admin/users")
     assert r.status_code == 401
 
 
-@pytest.mark.xfail(reason="require_admin dep needs restructuring", strict=False)
 @pytest.mark.asyncio(loop_scope="function")
 async def test_non_admin_gets_403(client, db_session):
     from app.core.ai_models import User

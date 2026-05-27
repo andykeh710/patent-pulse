@@ -326,8 +326,21 @@ class TierOverrideBody(BaseModel):
     reason: str | None = None
 
 
+from app.core.ai_models import User as _UserModel
+
+async def require_admin(
+    user_id: str = Depends(current_user),
+    db = Depends(get_db),
+) -> _UserModel:
+    user = (await db.execute(select(_UserModel).where(_UserModel.id == user_id))).scalar_one_or_none()
+    if user is None or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    return user
+
+
 @router.get("/users")
-async def admin_list_users(user_id: str = Depends(current_user),
+async def admin_list_users(
+    admin: _UserModel = Depends(require_admin),
     db = Depends(get_db),
     page: int = 1,
     page_size: int = 20,
@@ -363,7 +376,7 @@ async def admin_list_users(user_id: str = Depends(current_user),
 async def admin_override_tier(
     user_id: str,
     body: TierOverrideBody,
-    auth_user_id: str = Depends(current_user),
+    admin: _UserModel = Depends(require_admin),
     db=Depends(get_db),
 ):
     from app.core.ai_models import User
@@ -390,7 +403,7 @@ async def admin_override_tier(
 
 
 @router.get("/exports")
-async def admin_list_exports(user_id: str = Depends(current_user),db=Depends(get_db)):
+async def admin_list_exports(admin: _UserModel = Depends(require_admin), db=Depends(get_db)):
     from app.core.ai_models import User
     from app.core.billing_models import Export
     exports = (await db.execute(
