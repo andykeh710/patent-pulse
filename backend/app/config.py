@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     # Sprint 6.5: feature-flag USPTO citation ingestion (1 extra API call/patent).
     uspto_fetch_citations: bool = False
 
+    # Sprint 7: Stripe billing (TEST MODE ONLY)
+    stripe_api_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_basic: str = ""
+    stripe_price_id_lifetime: str = ""
+    stripe_price_id_enterprise: str = ""
+
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
 

@@ -4,6 +4,7 @@ from app.api.v1 import (
     admin,
     ai_runs,
     auth,
+    billing,
     content,
     expiry,
     families,
@@ -37,3 +38,4 @@ v1_router.include_router(content.router, prefix="/content", tags=["content"])
 v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["usage-signals"])
 v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 v1_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
+v1_router.include_router(billing.router, prefix="/billing", tags=["billing"])

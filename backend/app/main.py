@@ -26,6 +26,14 @@ if settings.email_send_mode == "production":
         )
         raise SystemExit(1)
 
+# Sprint 7: refuse to start if Stripe is in live mode (must use test keys).
+if settings.stripe_api_key and settings.stripe_api_key.startswith("sk_live_"):
+    logger.critical(
+        "STRIPE_API_KEY starts with 'sk_live_'. Production Stripe is not allowed. "
+        "Use a test key (sk_test_...) or leave STRIPE_API_KEY unset."
+    )
+    raise SystemExit(1)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
