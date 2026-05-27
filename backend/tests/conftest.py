@@ -65,7 +65,7 @@ async def db_session(test_settings: Settings) -> AsyncGenerator[AsyncSession, No
         # Seed default test users
         from app.core.ai_models import User
         session.add_all([
-            User(id="local-user", email="test@example.com", display_name="Test User"),
+            User(id="local-user", email="test@example.com", display_name="Test User", tier="basic"),
             User(id="local-user-2", email="test2@example.com", display_name="Test User 2"),
             User(id="alert-idem-user", email="idem@example.com", display_name="Idem"),
             User(id="alert-happy-user", email="happy@example.com", display_name="Happy"),

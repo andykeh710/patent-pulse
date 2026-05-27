@@ -122,8 +122,14 @@ async def _instant_alert_with_session(
             f"/api/v1/subscriptions/unsubscribe"
             f"?subscription={sub_uuid}&token={unsubscribe_token}"
         )
-
         from app.core.ai_models import User
+
+        # ── alert quota guard (Sprint 7) ──
+        from app.quotas.limits import check_alert_quota
+        can_send = await check_alert_quota(session, sub.user_id)
+        if not can_send:
+            return {"status": "skipped", "reason": "alert_quota_exceeded"}
+
         user_row = (await session.execute(
             select(User).where(User.id == sub.user_id)
         )).scalar_one_or_none()

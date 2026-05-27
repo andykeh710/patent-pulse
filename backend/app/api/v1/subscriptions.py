@@ -101,6 +101,9 @@ async def create_subscription(
     db=Depends(get_db),
 ):
     """Create a subscription to a theme."""
+    from app.quotas.limits import check_topic_quota
+    await check_topic_quota(user_id, db)
+
     if body.mode not in ALLOWED_MODES:
         raise HTTPException(status_code=400, detail=f"Invalid mode: {body.mode}")
 
