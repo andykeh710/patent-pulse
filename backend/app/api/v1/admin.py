@@ -2,11 +2,11 @@ from datetime import date
 from typing import Any, Literal
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 
-from app.api.deps import AppSettings, DbSession
+from app.api.deps import AppSettings, DbSession, get_db, current_user
 from app.config import settings
 from app.core.schemas import TaskStatusResponse
 from app.tasks.celery_app import celery_app
@@ -312,3 +312,100 @@ async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
     task = match_all_themes.delay(limit_per_theme=10000)
 
     return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
+# ── Sprint 7: Admin user management ──────────────────────────────────
+
+import logging
+from datetime import datetime as _dt, timezone as _tz
+_log = logging.getLogger(__name__)
+
+
+class TierOverrideBody(BaseModel):
+    tier: str
+    reason: str | None = None
+
+
+@router.get("/users")
+async def admin_list_users(user_id: str = Depends(current_user),
+    db = Depends(get_db),
+    page: int = 1,
+    page_size: int = 20,
+):
+    from app.core.ai_models import User
+    from app.core.billing_models import BillingSubscription
+    total = (await db.execute(
+        select(func.count()).select_from(User)
+    )).scalar()
+    users = (await db.execute(
+        select(User).offset((page - 1) * page_size).limit(page_size).order_by(User.created_at.desc())
+    )).scalars().all()
+    user_ids = [u.id for u in users]
+    billing_map = {}
+    if user_ids:
+        rows = (await db.execute(
+            select(BillingSubscription).where(BillingSubscription.user_id.in_(user_ids))
+        )).scalars().all()
+        billing_map = {b.user_id: b for b in rows}
+    return {
+        "users": [{
+            "id": u.id, "email": u.email, "display_name": u.display_name,
+            "tier": u.tier,
+            "billing_status": billing_map[u.id].status if u.id in billing_map else None,
+            "current_period_end": billing_map[u.id].current_period_end.isoformat() if u.id in billing_map and billing_map[u.id].current_period_end else None,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        } for u in users],
+        "total": total, "page": page,
+    }
+
+
+@router.post("/users/{user_id}/tier")
+async def admin_override_tier(
+    user_id: str,
+    body: TierOverrideBody,
+    auth_user_id: str = Depends(current_user),
+    db=Depends(get_db),
+):
+    from app.core.ai_models import User
+    from app.core.billing_models import BillingSubscription
+    if body.tier not in ("free", "basic", "lifetime", "enterprise"):
+        raise HTTPException(status_code=422, detail=f"Invalid tier: {body.tier}")
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    old_tier = user.tier
+    user.tier = body.tier
+    await db.commit()
+    existing = (await db.execute(
+        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
+    )).scalar_one_or_none()
+    row = existing or BillingSubscription(user_id=user_id)
+    row.tier = body.tier
+    row.status = "active"
+    row.updated_at = _dt.now(_tz.utc)
+    db.add(row)
+    await db.commit()
+    _log.info("Admin tier override: user=%s old=%s new=%s reason=%s", user_id, old_tier, body.tier, body.reason)
+    return {"user_id": user_id, "tier": body.tier, "old_tier": old_tier}
+
+
+@router.get("/exports")
+async def admin_list_exports(user_id: str = Depends(current_user),db=Depends(get_db)):
+    from app.core.ai_models import User
+    from app.core.billing_models import Export
+    exports = (await db.execute(
+        select(Export).order_by(Export.created_at.desc()).limit(100)
+    )).scalars().all()
+    user_ids = list({e.user_id for e in exports})
+    users_map = {}
+    if user_ids:
+        users_map = {u.id: u.email or u.id for u in (
+            await db.execute(select(User).where(User.id.in_(user_ids)))
+        ).scalars().all()}
+    return [{
+        "id": str(e.id), "user_id": e.user_id,
+        "user_email": users_map.get(e.user_id, e.user_id),
+        "export_type": e.export_type, "scope": e.scope,
+        "payload_size_bytes": e.payload_size_bytes,
+        "created_at": e.created_at.isoformat() if e.created_at else None,
+    } for e in exports]
