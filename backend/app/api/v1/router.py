@@ -7,6 +7,7 @@ from app.api.v1 import (
     billing,
     content,
     expiry,
+    exports,
     families,
     opportunity,
     patents,
@@ -39,3 +40,4 @@ v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["u
 v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 v1_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 v1_router.include_router(billing.router, prefix="/billing", tags=["billing"])
+v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])

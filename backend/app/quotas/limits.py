@@ -101,10 +101,15 @@ async def check_alert_quota(
 
 
 def require_tier(*allowed_tiers: str):
-    """FastAPI dependency: 402 if user.tier not in allowed_tiers."""
+    """FastAPI dependency factory: 402 if user.tier not in allowed_tiers.
+    
+    Usage: Depends(require_tier("basic", "lifetime"))
+    Caller must provide `user_id` from `Depends(current_user)`.
+    """
+    from app.api.deps import current_user as _current_user
 
     async def _check(
-        user_id: str = Depends(_get_user_id),
+        user_id: str = Depends(_current_user),
         session: AsyncSession = Depends(_get_session),
     ):
         user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
@@ -130,12 +135,6 @@ def _next_tier_with(feature: str, current_tier: str) -> str:
         if TIER_LIMITS.get(t, {}).get(feature) not in (0, None):
             return t
     return order[-1]
-
-
-async def _get_user_id():
-    """Lazy import to work as FastAPI Depends."""
-    from app.api.deps import current_user
-    return await current_user()
 
 
 async def _get_session():
