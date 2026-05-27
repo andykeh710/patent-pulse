@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 import { useAuth } from "@/lib/AuthContext";
-import { subscriptionsApi, topicsApi } from "@/lib/api";
-import type { TopicSubscription, Topic } from "@/lib/types";
+import { subscriptionsApi, topicsApi, billingApi } from "@/lib/api";
+import type { TopicSubscription, Topic, BillingSubscription } from "@/lib/types";
 
 export default function AccountPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -44,22 +44,28 @@ export default function AccountPage() {
 }
 
 function SubscriptionsSection() {
-  const { data: subs, mutate } = useSWR<TopicSubscription[]>(
-    ["subscriptions"],
+  const { isAuthenticated } = useAuth();
+  const { data: subscriptions, mutate } = useSWR<TopicSubscription[]>(
+    isAuthenticated ? "account-subs" : null,
     () => subscriptionsApi.list()
+  );
+
+  const { data: billing } = useSWR<BillingSubscription>(
+    isAuthenticated ? "account-billing" : null,
+    () => billingApi.getSubscription()
   );
 
   const { data: themes } = useSWR<Topic[]>(["themes"], () => topicsApi.list());
 
-  const isLoading = !subs || !themes;
+  const loading = !subscriptions || !themes;
 
-  if (isLoading) {
+  if (loading) {
     return <div className="animate-pulse h-24 bg-gray-100 rounded" />;
   }
 
   const themeMap = new Map(themes.map((t) => [t.id, t]));
 
-  if (!subs.length) {
+  if (!subscriptions.length) {
     return (
       <div className="text-center py-12 text-gray-500">
         <p>You&apos;re not subscribed to any topics yet.</p>
@@ -72,9 +78,21 @@ function SubscriptionsSection() {
 
   return (
     <div>
+      {/* Billing */}
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Billing</h2>
+      <div className="mb-6 p-4 border rounded">
+        <p className="text-sm text-gray-600">
+          Current tier: <span className="font-semibold">{billing?.tier ?? "free"}</span>
+          {billing?.status && ` · ${billing.status}`}
+        </p>
+        <Link href="/account/billing" className="text-sm text-blue-600 hover:underline">
+          Manage billing →
+        </Link>
+      </div>
+
       <h2 className="text-lg font-semibold text-gray-900 mb-3">Your Subscriptions</h2>
       <div className="space-y-3">
-        {subs.map((sub) => {
+        {subscriptions.map((sub) => {
           const theme = themeMap.get(sub.theme_id);
           return (
             <div

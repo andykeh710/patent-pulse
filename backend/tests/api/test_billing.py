@@ -41,6 +41,18 @@ async def test_checkout_session_no_auth_returns_401(client):
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_get_subscription_returns_free(client, db_session):
+    from app.core.ai_models import User
+    from sqlalchemy import select
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    user.tier = "free"
+    await db_session.commit()
+    r = await client.get("/api/v1/billing/subscription", cookies=_make_session_cookie())
+    assert r.status_code == 200
+    assert r.json()["tier"] == "free"
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_checkout_session_valid_tier_returns_url(client):
     with patch("app.api.v1.billing.create_checkout_session") as mock_checkout:
         mock_checkout.return_value = {"url": "https://checkout.stripe.com/test", "id": "cs_test"}

@@ -40,7 +40,49 @@ class PortalResponse(BaseModel):
     portal_url: str
 
 
+class SubscriptionResponse(BaseModel):
+    tier: str
+    status: str
+    stripe_customer_id: str | None = None
+    stripe_subscription_id: str | None = None
+    current_period_end: datetime | None = None
+    cancel_at_period_end: bool = False
+    created_at: datetime | None = None
+
+
 # ── endpoints ────────────────────────────────────────────────────────
+
+
+@router.get("/subscription", response_model=SubscriptionResponse)
+async def get_subscription(
+    user_id: str = Depends(current_user),
+    db=Depends(get_db),
+):
+    """Return the current user's billing subscription. Never 404s."""
+    from sqlalchemy import select
+
+    existing = (await db.execute(
+        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
+    )).scalar_one_or_none()
+
+    user = (await db.execute(
+        select(User).where(User.id == user_id)
+    )).scalar_one_or_none()
+
+    tier = user.tier if user else "free"
+
+    if existing:
+        return SubscriptionResponse(
+            tier=existing.tier,
+            status=existing.status,
+            stripe_customer_id=existing.stripe_customer_id,
+            stripe_subscription_id=existing.stripe_subscription_id,
+            current_period_end=existing.current_period_end,
+            cancel_at_period_end=existing.cancel_at_period_end,
+            created_at=existing.created_at,
+        )
+
+    return SubscriptionResponse(tier=tier, status="active")
 
 
 @router.post("/checkout-session", response_model=CheckoutResponse)

@@ -155,6 +155,12 @@ export function NavSidebar() {
             >
               Account
             </Link>
+            <Link
+              href="/account/billing"
+              className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Billing
+            </Link>
           </div>
         ) : (
           <Link

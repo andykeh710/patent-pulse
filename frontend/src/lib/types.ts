@@ -292,6 +292,28 @@ export type Theme = Topic;
 // Sprint 6
 export type SubscriptionMode = "instant_alert" | "weekly_digest";
 
+// Sprint 7
+export type Tier = "free" | "basic" | "lifetime" | "enterprise";
+
+export interface BillingSubscription {
+  id: string;
+  tier: Tier;
+  status: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  created_at: string | null;
+}
+
+export interface CheckoutSessionResponse {
+  checkout_url: string;
+}
+
+export interface PortalSessionResponse {
+  portal_url: string;
+}
+
 export interface TopicSubscription {
   id: string;
   user_id: string;

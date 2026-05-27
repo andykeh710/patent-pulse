@@ -47,6 +47,9 @@ import type {
   UsageNarrativeResponse,
   TopicSubscription,
   SubscriptionMode,
+  BillingSubscription,
+  CheckoutSessionResponse,
+  PortalSessionResponse,
 } from "./types";
 
 const API_BASE = "";
@@ -387,6 +390,22 @@ export const contentApi = {
 };
 
 // Sprint 6
+
+// Sprint 7
+export const billingApi = {
+  getSubscription: () => apiFetch<BillingSubscription>("/api/v1/billing/subscription"),
+  createCheckoutSession: (tier: string) =>
+    apiFetch<CheckoutSessionResponse>("/api/v1/billing/checkout-session", {
+      method: "POST",
+      body: JSON.stringify({ tier }),
+    }),
+  createPortalSession: () =>
+    apiFetch<PortalSessionResponse>("/api/v1/billing/portal-session", {
+      method: "POST",
+    }),
+};
+
+
 export const authApi = {
   requestLink: (body: { email: string }) =>
     apiFetch<{ ok: boolean }>("/api/v1/auth/request-link", {
