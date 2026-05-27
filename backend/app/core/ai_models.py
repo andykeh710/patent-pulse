@@ -52,6 +52,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     display_name: Mapped[str] = mapped_column(String(128))
     email: Mapped[str | None] = mapped_column(String(256))
+    tier: Mapped[str] = mapped_column(String(16), default="free", index=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     preferences: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
