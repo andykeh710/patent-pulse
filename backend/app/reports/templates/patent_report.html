@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.5cm;
+    @bottom-center {
+      content: "Patent Pulse · AI-generated analysis · Source: USPTO · Verify with official registers before making business or legal decisions.";
+      font-size: 8px;
+      color: #888;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; color: #222; line-height: 1.5; }
+  h1 { font-size: 16px; color: #1a56db; margin: 0 0 4px 0; }
+  h2 { font-size: 13px; color: #1a56db; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; margin: 20px 0 8px 0; }
+  .meta { color: #666; font-size: 10px; margin-bottom: 12px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-green { background: #e6f4ea; color: #137333; }
+  .badge-amber { background: #fef7e0; color: #b06000; }
+  .badge-red { background: #fce8e6; color: #c5221f; }
+  .badge-gray { background: #f1f3f4; color: #5f6368; }
+  .caveat { background: #fef7e0; border-left: 3px solid #e37400; padding: 8px 10px; margin: 10px 0; font-size: 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e0e0e0; font-size: 10px; }
+  th { color: #1a56da; font-weight: 600; }
+  .ai-label { color: #5f6368; font-size: 9px; font-style: italic; margin-bottom: 4px; }
+  pre { background: #f5f5f5; padding: 8px; font-size: 10px; white-space: pre-wrap; }
+  .claim { margin: 4px 0 8px 12px; font-size: 10px; color: #444; border-left: 2px solid #e0e0e0; padding-left: 8px; }
+</style>
+</head>
+<body>
+
+<h1>{{ title }}</h1>
+<div class="meta">
+  {{ doc_id }} &middot; {{ assignees }} &middot; Filed {{ filing_date or "N/A" }} &middot; Granted {{ grant_date or "N/A" }}
+</div>
+
+<!-- Expiry -->
+<h2>Expiry Assessment</h2>
+<table>
+  <tr><th>Status</th><td>{{ expiry.status }}</td></tr>
+  <tr><th>Confidence</th><td>{{ expiry.confidence }}</td></tr>
+  <tr><th>Estimated Expiry</th><td>{{ expiry.estimated_date or "N/A" }}</td></tr>
+  <tr><th>Days Until Expiry</th><td>{{ expiry.days_until or "N/A" }}</td></tr>
+  <tr><th>Opportunity Score</th><td>{{ expiry.opportunity_score or "N/A" }}</td></tr>
+  <tr><th>Active Family Risk</th><td>{{ expiry.active_family_risk }}</td></tr>
+  <tr><th>Maintenance</th><td>{{ expiry.maintenance_status or "N/A" }}</td></tr>
+  <tr><th>Legal Status</th><td>{{ legal_status or "N/A" }}</td></tr>
+</table>
+<div class="caveat">⚠ Verify expiry status with official patent registers before taking action. Expiry estimates are derived from USPTO data and may not reflect maintenance-fee payments, terminal disclaimers, or family member status in other jurisdictions.</div>
+
+<!-- Claims -->
+<h2>Claims</h2>
+{% if claims_summary %}
+  <div class="ai-label">AI-generated claims summary</div>
+  <p><strong>What it is:</strong> {{ claims_summary.what_it_is or "N/A" }}</p>
+  <p><strong>Problem solved:</strong> {{ claims_summary.problem_solved or "N/A" }}</p>
+  {% if claims_summary.commercial_significance %}<p><strong>Commercial significance:</strong> {{ claims_summary.commercial_significance }}</p>{% endif %}
+{% elif claims %}
+  {% for c in claims %}
+    <div class="claim">{{ c.number }}. {{ c.text }}</div>
+  {% endfor %}
+{% else %}
+  <p>No claims data available.</p>
+{% endif %}
+
+<!-- Family -->
+<h2>Patent Family</h2>
+{% if family_members %}
+  <table>
+    <tr><th>Doc ID</th><th>Office</th><th>Link</th></tr>
+    {% for m in family_members %}
+    <tr>
+      <td>{{ m.doc_id }}</td>
+      <td>{{ m.office }}</td>
+      <td>Espacenet: {{ m.link }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% elif family_id %}
+  <p><a href="https://worldwide.espacenet.com/patent/search/family/{{ family_id }}">View family on Espacenet</a></p>
+{% else %}
+  <p>No family data available.</p>
+{% endif %}
+
+<!-- Usage Signals -->
+<h2>Usage Signals</h2>
+{% if usage %}
+  <p>Score: {{ usage.score }} &middot; Evidence: {{ usage.evidence_count }} (strong: {{ usage.strong }}, medium: {{ usage.medium }}, weak: {{ usage.weak }})</p>
+  {% if usage.has_self_cite %}<div class="caveat">⚠ This patent's usage signal score includes self-citations from the same assignee. Interpret with caution.</div>{% endif %}
+  {% if usage.top_evidence %}
+  <table>
+    <tr><th>Source Patent</th><th>Assignee</th><th>Tier</th><th>Similarity</th></tr>
+    {% for e in usage.top_evidence %}
+    <tr>
+      <td>{{ e.source_title or e.source_patent }}</td>
+      <td>{{ e.source_assignee or "N/A" }}</td>
+      <td><span class="badge badge-{% if e.tier == 'strong' %}green{% elif e.tier == 'medium' %}amber{% else %}gray{% endif %}">{{ e.tier }}</span></td>
+      <td>{{ e.similarity }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+{% else %}
+  <p>No usage signals available.</p>
+{% endif %}
+
+<!-- Why-now narrative -->
+{% if why_now %}
+<h2>Why-Now Analysis</h2>
+<div class="ai-label">AI-generated analysis · {{ why_now.model or "LLM" }}</div>
+<p>{{ why_now.summary or "No narrative available." }}</p>
+{% if why_now.key_points %}
+<ul>
+  {% for point in why_now.key_points %}
+  <li>{{ point }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+
+</body>
+</html>
