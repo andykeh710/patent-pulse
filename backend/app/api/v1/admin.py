@@ -422,3 +422,15 @@ async def admin_list_exports(admin: _UserModel = Depends(require_admin), db=Depe
         "payload_size_bytes": e.payload_size_bytes,
         "created_at": e.created_at.isoformat() if e.created_at else None,
     } for e in exports]
+
+
+@router.post("/debug/sentry")
+async def trigger_sentry_test(
+    admin: _UserModel = Depends(require_admin),
+):
+    """Trigger a test exception to verify the Sentry pipeline.
+
+    Returns 500 with a unique marker so the admin can identify the
+    corresponding event in Sentry.
+    """
+    raise RuntimeError("PR8 Sentry debug — intentional test exception")

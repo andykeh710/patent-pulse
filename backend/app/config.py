@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
 
+    # PR8: Sentry error tracking (silently noops when DSN is unset)
+    sentry_dsn: str = ""
+    release_sha: str = ""  # populated by CI; stays empty for local dev
+
     claude_model: str = "claude-sonnet-4-20250514"
     claude_haiku_model: str = "claude-haiku-4-5"
     summarization_batch_size: int = 10

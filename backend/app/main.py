@@ -17,9 +17,13 @@ from app.database import engine
 from app.logging_config import configure_logging
 from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIDMiddleware
+from app.observability.sentry import init_sentry
 
 # Structured JSON logging — call before any logger.info / logger.critical.
 configure_logging()
+
+# Sentry — call before FastAPI() instance so startup errors are captured.
+init_sentry()
 
 logger = logging.getLogger(__name__)
 

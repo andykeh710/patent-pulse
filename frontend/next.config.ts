@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   async redirects() {
@@ -30,4 +31,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// PR8: Sentry wrapper — source maps disabled for V1.
+// The SDK initialisation itself is gated by NEXT_PUBLIC_SENTRY_DSN
+// in sentry.*.config.ts; when the DSN is unset the SDK silently noops.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  sourcemaps: {
+    disable: true,
+  },
+});
