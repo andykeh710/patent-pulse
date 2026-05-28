@@ -65,6 +65,12 @@ jobs:
           --health-retries 5
 
     env:
+      # TEST_* vars are read by tests/conftest.py to avoid colliding with
+      # any production DATABASE_URL set in the dev environment.
+      TEST_DATABASE_URL: postgresql+asyncpg://patent:secret@localhost:5432/patent_pulse_test
+      TEST_DATABASE_URL_SYNC: postgresql+psycopg2://patent:secret@localhost:5432/patent_pulse_test
+      TEST_REDIS_URL: redis://localhost:6379/1
+      # DATABASE_URL is still set so alembic upgrade head can run before tests.
       DATABASE_URL: postgresql+asyncpg://patent:secret@localhost:5432/patent_pulse_test
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:secret@localhost:5432/patent_pulse_test
       REDIS_URL: redis://localhost:6379/1

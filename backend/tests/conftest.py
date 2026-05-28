@@ -35,10 +35,20 @@ def pytest_configure(config) -> None:  # noqa: D401
 
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
+    import os
+
+    # Use TEST_* env vars (set in CI) to avoid colliding with the running
+    # container's production DATABASE_URL / REDIS_URL.
     return Settings(
-        database_url="postgresql+asyncpg://patent:secret@db:5432/patent_pulse_test",
-        database_url_sync="postgresql+psycopg2://patent:secret@db:5432/patent_pulse_test",
-        redis_url="redis://redis:6379/1",
+        database_url=os.environ.get(
+            "TEST_DATABASE_URL",
+            "postgresql+asyncpg://patent:secret@db:5432/patent_pulse_test",
+        ),
+        database_url_sync=os.environ.get(
+            "TEST_DATABASE_URL_SYNC",
+            "postgresql+psycopg2://patent:secret@db:5432/patent_pulse_test",
+        ),
+        redis_url=os.environ.get("TEST_REDIS_URL", "redis://redis:6379/1"),
         anthropic_api_key="test-key",
         uspto_api_key="test-key",
         environment="test",
