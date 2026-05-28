@@ -1,5 +1,7 @@
 # Patent Pulse
 
+[![CI](https://github.com/andykeh710/patent-pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/andykeh710/patent-pulse/actions/workflows/ci.yml)
+
 Patent intelligence system for discovering, summarizing, and analyzing patent publications.
 
 ## Features
