@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -39,7 +40,104 @@ export default function AccountPage() {
       </div>
 
       <SubscriptionsSection />
+
+      <DangerZone />
     </div>
+  );
+}
+
+function DangerZone() {
+  const { logout } = useAuth();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDelete = async () => {
+    setError("");
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/v1/account/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm_email: confirmEmail }),
+      });
+      if (res.status === 204) {
+        await logout();
+        router.push("/");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || "Account deletion failed");
+      }
+    } catch {
+      setError("Network error — please try again");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <hr className="my-8 border-red-200" />
+      <div>
+        <h2 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h2>
+        <p className="text-sm text-gray-600 mb-3">
+          Permanently delete your account and all associated data. This
+          action cannot be undone.
+        </p>
+        <button
+          onClick={() => setOpen(true)}
+          className="text-sm px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Delete my account
+        </button>
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">
+              Delete your account?
+            </h3>
+            <p className="text-sm text-gray-600">
+              This will permanently delete your account, subscriptions,
+              API keys, and billing records. Email delivery history will
+              be anonymized. Type your email to confirm.
+            </p>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            {error && (
+              <p className="text-xs text-red-600">{error}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmEmail("");
+                  setError("");
+                }}
+                className="text-sm px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || !confirmEmail}
+                className="text-sm px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

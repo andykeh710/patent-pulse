@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    account,
     admin,
     ai_runs,
     api_keys,
@@ -45,3 +46,4 @@ v1_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])
 v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])
 v1_router.include_router(api_keys.router, prefix="/account", tags=["api-keys"])
+v1_router.include_router(account.router, prefix="/account", tags=["account"])

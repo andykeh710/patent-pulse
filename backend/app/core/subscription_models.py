@@ -87,7 +87,9 @@ class EmailDelivery(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
     )
-    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id"))
+    user_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     subscription_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("topic_subscriptions.id", ondelete="SET NULL")
     )

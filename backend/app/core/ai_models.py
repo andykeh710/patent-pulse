@@ -157,7 +157,9 @@ class AIRun(Base):
     celery_task_id: Mapped[str | None] = mapped_column(String(128))
     error_message: Mapped[str | None] = mapped_column(Text)
 
-    created_by: Mapped[str] = mapped_column(String(64), ForeignKey("users.id"))
+    created_by: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, server_default="now()", index=True
     )
