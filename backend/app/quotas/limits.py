@@ -102,7 +102,7 @@ async def check_alert_quota(
 
 def require_tier(*allowed_tiers: str):
     """FastAPI dependency factory: 402 if user.tier not in allowed_tiers.
-    
+
     Usage: Depends(require_tier("basic", "lifetime"))
     Caller must provide `user_id` from `Depends(current_user)`.
     """

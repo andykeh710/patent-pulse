@@ -6,8 +6,10 @@ import pytest
 
 
 def _make_cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
+
     from app.config import settings
     return jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
@@ -21,8 +23,9 @@ def _auth(client):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_free_user_gets_402(client, db_session):
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
@@ -34,8 +37,9 @@ async def test_free_user_gets_402(client, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_basic_user_gets_402(client, db_session):
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
@@ -47,9 +51,10 @@ async def test_basic_user_gets_402(client, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_lifetime_user_gets_pdf(client, db_session):
+    from sqlalchemy import select
+
     from app.core.ai_models import User
     from app.core.models import PatentPublication
-    from sqlalchemy import select
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "lifetime"
     await db_session.commit()
@@ -72,8 +77,9 @@ async def test_lifetime_user_gets_pdf(client, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_patent_not_found_returns_404(client, db_session):
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "lifetime"
     await db_session.commit()
@@ -85,10 +91,11 @@ async def test_patent_not_found_returns_404(client, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_export_row_written(client, db_session):
-    from app.core.ai_models import User
-    from app.core.models import PatentPublication
-    from app.core.billing_models import Export
     from sqlalchemy import select
+
+    from app.core.ai_models import User
+    from app.core.billing_models import Export
+    from app.core.models import PatentPublication
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "lifetime"
     await db_session.commit()

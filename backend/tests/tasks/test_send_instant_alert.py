@@ -3,7 +3,7 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from app.core.models import PatentPublication
 from app.core.subscription_models import EmailDelivery, TopicSubscription

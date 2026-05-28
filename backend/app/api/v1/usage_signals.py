@@ -1,6 +1,7 @@
 """Sprint 5 — Usage Signals API endpoints."""
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -308,8 +309,6 @@ async def generate_narrative(
 
 
 # ── helpers ──────────────────────────────────────────────────────────
-
-from datetime import datetime
 
 
 def _update_from_result(

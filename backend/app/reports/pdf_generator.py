@@ -9,7 +9,7 @@ from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_models import AIArtifact, PatentUsageSignals, ExpiryAssessment
+from app.core.ai_models import AIArtifact, ExpiryAssessment, PatentUsageSignals
 from app.core.models import PatentPublication
 
 logger = logging.getLogger(__name__)

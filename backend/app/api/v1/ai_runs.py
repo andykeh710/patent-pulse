@@ -19,33 +19,43 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 
+from app.ai.assignee_intelligence import (
+    DEFAULT_WEIGHTS as ASSIGNEE_WEIGHTS,
+)
+from app.ai.assignee_intelligence import (
+    RULES_ID as ASSIGNEE_RULES_ID,
+)
+from app.ai.assignee_intelligence import (
+    RULES_VERSION as ASSIGNEE_RULES_VERSION,
+)
 from app.ai.llm_client import (
     _model_for_tier,
     estimate_cost_usd,
     estimate_tokens,
     hash_rules,
 )
+from app.ai.opportunity_narrative import (
+    OPPORTUNITY_NARRATIVE_PROMPT_NAME,
+    OPPORTUNITY_NARRATIVE_PROMPT_VERSION,
+)
+from app.ai.opportunity_narrative import (
+    build_payload as build_opportunity_narrative_payload,
+)
 from app.ai.opportunity_scorer import (
     DEFAULT_WEIGHTS as OPPORTUNITY_WEIGHTS,
+)
+from app.ai.opportunity_scorer import (
     RULES_ID as OPPORTUNITY_RULES_ID,
+)
+from app.ai.opportunity_scorer import (
     RULES_VERSION as OPPORTUNITY_RULES_VERSION,
-)
-from app.ai.trend_snapshot import (
-    DEFAULT_WEIGHTS as TREND_WEIGHTS,
-    RULES_ID as TREND_RULES_ID,
-    RULES_VERSION as TREND_RULES_VERSION,
-)
-from app.ai.assignee_intelligence import (
-    DEFAULT_WEIGHTS as ASSIGNEE_WEIGHTS,
-    RULES_ID as ASSIGNEE_RULES_ID,
-    RULES_VERSION as ASSIGNEE_RULES_VERSION,
 )
 from app.ai.prompts import get_prompt
 from app.ai.summarizer import (
@@ -58,16 +68,21 @@ from app.ai.tagger import (
     TAG_PROMPT_VERSION,
     build_tag_payload,
 )
-from app.core.validators import validate_cpc_prefix
+from app.ai.trend_snapshot import (
+    DEFAULT_WEIGHTS as TREND_WEIGHTS,
+)
+from app.ai.trend_snapshot import (
+    RULES_ID as TREND_RULES_ID,
+)
+from app.ai.trend_snapshot import (
+    RULES_VERSION as TREND_RULES_VERSION,
+)
 from app.ai.why_now import (
     WHY_NOW_PROMPT_NAME,
     WHY_NOW_PROMPT_VERSION,
-    build_payload as build_why_now_payload,
 )
-from app.ai.opportunity_narrative import (
-    OPPORTUNITY_NARRATIVE_PROMPT_NAME,
-    OPPORTUNITY_NARRATIVE_PROMPT_VERSION,
-    build_payload as build_opportunity_narrative_payload,
+from app.ai.why_now import (
+    build_payload as build_why_now_payload,
 )
 from app.api.deps import AppSettings, DbSession
 from app.core.ai_models import (
@@ -77,6 +92,7 @@ from app.core.ai_models import (
     AIRun,
 )
 from app.core.models import PatentPublication
+from app.core.validators import validate_cpc_prefix
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

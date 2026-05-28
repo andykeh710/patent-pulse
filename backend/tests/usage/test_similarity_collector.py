@@ -1,6 +1,5 @@
 """Tests for Sprint 5 similarity evidence collector."""
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -49,7 +48,6 @@ def test_compute_similarity_tier_excluded():
 @pytest.mark.asyncio(loop_scope="function")
 async def test_collect_returns_empty_for_no_embedding(db_session):
     """Patent without embedding returns empty list."""
-    from uuid import uuid4
     uid = uuid4()
     patent = PatentPublication(
         id=uid,
@@ -73,7 +71,6 @@ async def test_collect_excludes_older_patents(db_session):
     """Patents filed BEFORE the source's grant_date are excluded.
     Only patents filed AFTER it qualify as "newer art" evidence (decision #7).
     """
-    from uuid import uuid4
     source_id = uuid4()
     older_id = uuid4()
     newer_id = uuid4()

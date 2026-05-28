@@ -144,6 +144,7 @@ async def generate_weekly_digest(
 
     # Update artifact with validated content.
     from sqlalchemy import update
+
     from app.core.ai_models import AIArtifact
     await session.execute(
         update(AIArtifact)

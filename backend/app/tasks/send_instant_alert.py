@@ -11,13 +11,13 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.models import PatentPublication
+from app.core.subscription_models import EmailDelivery, TopicSubscription
 from app.core.theme_models import Theme
-from app.core.subscription_models import TopicSubscription, EmailDelivery
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 
@@ -172,7 +172,8 @@ async def _instant_alert_with_session(
 
 
 def _sign_subscription_id(subscription_id: UUID) -> str:
-    import hashlib, hmac
+    import hashlib
+    import hmac
     return hmac.new(
         settings.auth_secret_key.encode(),
         str(subscription_id).encode(),

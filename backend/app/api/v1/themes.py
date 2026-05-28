@@ -8,8 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, delete, func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import delete, func, select
 
 from app.api.deps import DbSession
 from app.core.models import PatentPublication

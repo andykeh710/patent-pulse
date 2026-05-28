@@ -11,8 +11,8 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.database import async_session_maker
 from app.core.models import PatentPublication
+from app.database import async_session_maker
 
 logger = logging.getLogger(__name__)
 

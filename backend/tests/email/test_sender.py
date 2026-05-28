@@ -1,13 +1,10 @@
 """Tests for Resend email sender with mode guards."""
-import os
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
-from sqlalchemy import text
 
-from app.core.ai_models import User  # ensure FK target is in metadata
-from app.core.subscription_models import EmailDelivery
 from app.config import Settings
+from app.core.subscription_models import EmailDelivery
 
 
 @pytest.fixture
@@ -42,7 +39,6 @@ async def test_dev_mode_rewrites_recipient(db_session, monkeypatch):
     )
     assert r["status"] == "dev"
     from sqlalchemy import select
-    from app.core.subscription_models import EmailDelivery
     delivery = (await db_session.execute(
         select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
     )).scalar_one()
@@ -71,7 +67,6 @@ async def test_dry_run_writes_delivery_row(db_session, monkeypatch):
     )
     assert r["status"] == "dry_run"
     from sqlalchemy import select
-    from app.core.subscription_models import EmailDelivery
     delivery = (await db_session.execute(
         select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
     )).scalar_one()

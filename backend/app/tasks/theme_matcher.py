@@ -7,10 +7,10 @@ and title keywords.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
@@ -72,7 +72,7 @@ async def _match_all_themes_async(limit_per_theme: int) -> dict:
     stats = {"themes_processed": 0, "total_matches": 0, "errors": 0}
 
     async with async_session_maker() as session:
-        result = await session.execute(select(Theme).where(Theme.is_active == True))
+        result = await session.execute(select(Theme).where(Theme.is_active))
         themes = result.scalars().all()
 
         for theme in themes:

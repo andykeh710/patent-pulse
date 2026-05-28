@@ -3,7 +3,6 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
 from app.core.models import PatentPublication
 from app.ingestion.citation_fetch import fetch_forward_citations

@@ -1,12 +1,16 @@
 """Tests for expiry assessment engine and backfill task."""
 from datetime import date, timedelta
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 
 from app.core.ai_models import ExpiryAssessment
 from app.core.models import PatentPublication
-from app.expiry.assessment import compute_expiry_assessment
+from app.expiry.assessment import (
+    compute_expiry_assessment,
+    compute_expiry_opportunity_score,
+)
 
 
 def _make_patent(**overrides) -> PatentPublication:
@@ -280,9 +284,6 @@ async def test_backfill_limit_parameter(db_session):
 # ══════════════════════════════════════════════════════════════════════
 
 
-from app.expiry.assessment import compute_expiry_opportunity_score
-
-
 @pytest.mark.asyncio
 async def test_score_expired_confirmed_scores_high():
     """Expired confirmed patent scores highest."""
@@ -387,5 +388,3 @@ async def test_backfill_includes_opportunity_score(db_session):
 # ══════════════════════════════════════════════════════════════════════
 # Helpers
 # ══════════════════════════════════════════════════════════════════════
-
-from uuid import uuid4

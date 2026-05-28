@@ -1,5 +1,6 @@
 """Tests for subscription API endpoints."""
-import hashlib, hmac
+import hashlib
+import hmac
 from uuid import uuid4
 
 import pytest
@@ -29,8 +30,9 @@ async def test_get_subscriptions_no_cookie_returns_401(client):
 
 
 def _make_session_cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
     token = jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
         SECRET, algorithm="HS256",
@@ -41,6 +43,7 @@ def _make_session_cookie(user_id="local-user"):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_create_subscription(client, db_session):
     from sqlalchemy import select
+
     from app.core.theme_models import Theme
     themes = (await db_session.execute(select(Theme).limit(1))).scalars().all()
     if not themes:
@@ -55,6 +58,7 @@ async def test_create_subscription(client, db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_duplicate_subscription_returns_409(client, db_session):
     from sqlalchemy import select
+
     from app.core.theme_models import Theme
     themes = (await db_session.execute(select(Theme).limit(1))).scalars().all()
     if not themes:
@@ -71,6 +75,7 @@ async def test_duplicate_subscription_returns_409(client, db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_patch_own_subscription(client, db_session):
     from sqlalchemy import select
+
     from app.core.theme_models import Theme
     themes = (await db_session.execute(select(Theme).limit(1))).scalars().all()
     if not themes:
@@ -89,6 +94,7 @@ async def test_patch_own_subscription(client, db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_delete_own_subscription(client, db_session):
     from sqlalchemy import select
+
     from app.core.theme_models import Theme
     themes = (await db_session.execute(select(Theme).limit(1))).scalars().all()
     if not themes:
@@ -110,6 +116,7 @@ def _sign(id_str):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_unsubscribe_with_valid_token_pauses(client, db_session):
     from sqlalchemy import select
+
     from app.core.theme_models import Theme
     themes = (await db_session.execute(select(Theme).limit(1))).scalars().all()
     if not themes:

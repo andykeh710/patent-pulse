@@ -36,7 +36,7 @@ async def test_auth_verify_exempt(client: AsyncClient):
     """
     for _ in range(80):
         resp = await client.get("/api/v1/auth/verify?token=bad")
-        assert resp.status_code != 429, f"got 429 on exempt endpoint"
+        assert resp.status_code != 429, "got 429 on exempt endpoint"
 
 
 @pytest.mark.asyncio

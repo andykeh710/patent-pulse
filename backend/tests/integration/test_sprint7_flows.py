@@ -5,8 +5,10 @@ import pytest
 
 
 def _cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
+
     from app.config import settings
     return {"auth_session": jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
@@ -22,11 +24,12 @@ def _ensure_secret(monkeypatch):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_full_upgrade_flow(client, db_session):
-    from app.core.ai_models import User
-    from app.core.subscription_models import TopicSubscription
-    from app.core.billing_models import BillingSubscription, APIKey
-    from sqlalchemy import select
     from unittest.mock import patch
+
+    from sqlalchemy import select
+
+    from app.core.ai_models import User
+    from app.core.billing_models import BillingSubscription
 
     # ── 1. Create Free user ──
     user = User(id="upgrade-test", email="upgrade@example.com", display_name="Upgrade", tier="free")

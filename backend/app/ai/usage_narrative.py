@@ -117,7 +117,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
                     lines.append(f.get("evidence", "") or f.get("theme", ""))
                 elif isinstance(f, str):
                     lines.append(f)
-            data["evidence_summary"] = ". ".join(l for l in lines if l)
+            data["evidence_summary"] = ". ".join(line for line in lines if line)
         elif isinstance(findings, str):
             data["evidence_summary"] = findings
 
@@ -196,7 +196,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
     disclaimer = "Evidence is patent-based only — no product-level verification has been performed."
     if disclaimer not in lims:
         lims.insert(0, disclaimer)
-    data["limitations"] = [str(l) for l in lims][:5]
+    data["limitations"] = [str(lim) for lim in lims][:5]
 
     return data
 
@@ -276,6 +276,7 @@ async def generate_usage_narrative(
 
         # Update artifact with validated content.
         from sqlalchemy import update
+
         from app.core.ai_models import AIArtifact
         await session.execute(
             update(AIArtifact)

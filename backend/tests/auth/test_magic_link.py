@@ -2,10 +2,11 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+
 from app.auth.magic_link import (
-    generate_token,
     _compute_token_hash,
     create_token_for_email,
+    generate_token,
     verify_token,
 )
 

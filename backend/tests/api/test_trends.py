@@ -1,10 +1,8 @@
 """Tests for Sprint 4 trend drilldown endpoints."""
 from datetime import datetime
-from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
 from app.core.ai_models import TrendSnapshot
 from app.core.models import PatentPublication
@@ -167,7 +165,6 @@ async def test_narrative_get_returns_none_when_no_cache(client, db_session):
 async def test_narrative_post_returns_valid_schema(client, db_session):
     """POST narrative returns the TrendNarrativeResponse schema with content."""
     # Seed a patent so the LLM has context to work with.
-    from uuid import uuid4
     patent = PatentPublication(
         doc_id=f"USPTO:NNAR{uuid4().hex[:6]}",
         office="USPTO",
@@ -242,7 +239,6 @@ async def test_narrative_get_returns_cached_after_post(client, db_session):
 @pytest.mark.asyncio
 async def test_narrative_uses_patent_context(client, db_session):
     """Narrative summary references patent titles from seeded data."""
-    from uuid import uuid4
 
     # Seed patents with real-sounding data.
     p1 = PatentPublication(

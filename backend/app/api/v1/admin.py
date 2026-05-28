@@ -1,17 +1,23 @@
+import logging
 from datetime import date
+from datetime import datetime as _dt
+from datetime import timezone as _tz
 from typing import Any, Literal
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from app.api.deps import AppSettings, DbSession, get_db, current_user
+from app.api.deps import AppSettings, DbSession, current_user, get_db
 from app.config import settings
+from app.core.ai_models import User as _UserModel
 from app.core.schemas import TaskStatusResponse
 from app.tasks.celery_app import celery_app
 from app.tasks.ingest_applications import ingest_weekly_applications
 from app.tasks.ingest_grants import ingest_weekly_grants
+
+_log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -316,17 +322,11 @@ async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
 
 # ── Sprint 7: Admin user management ──────────────────────────────────
 
-import logging
-from datetime import datetime as _dt, timezone as _tz
-_log = logging.getLogger(__name__)
-
 
 class TierOverrideBody(BaseModel):
     tier: str
     reason: str | None = None
 
-
-from app.core.ai_models import User as _UserModel
 
 async def require_admin(
     user_id: str = Depends(current_user),

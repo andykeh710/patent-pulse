@@ -12,8 +12,9 @@ Differentiation: user_id is NULL for system themes, non-NULL for user topics.
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision: str = "0005"
 down_revision: Union[str, None] = "0004"

@@ -2,7 +2,6 @@
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import select
 
 from app.core.models import PatentPublication
 

@@ -1,5 +1,5 @@
 """Tests for Sprint 6.5 citation fetch in USPTO client."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

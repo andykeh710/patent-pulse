@@ -14,7 +14,8 @@ from sqlalchemy import select
 
 from app.ai.embedder import EmbeddingError, PatentEmbedder
 from app.core.models import PatentPublication
-from app.database import async_session_maker, engine as _engine
+from app.database import async_session_maker
+from app.database import engine as _engine
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

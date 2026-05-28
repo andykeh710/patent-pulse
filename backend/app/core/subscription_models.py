@@ -14,14 +14,13 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from app.core.models import Base
 
 # Import User model to ensure it's registered in Base.metadata before
 # we reference it via ForeignKey("users.id") below.
 from app.core.ai_models import User as _User  # noqa: F401
+from app.core.models import Base
+
 
 def _utcnow():
     return datetime.now(timezone.utc)

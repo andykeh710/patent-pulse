@@ -1,9 +1,9 @@
 """Tests for weekly digest fan-out task."""
-import pytest
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 
 from app.core.ai_models import AIArtifact

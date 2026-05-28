@@ -1,7 +1,6 @@
 """Sprint 7 — Billing API endpoints (Stripe Checkout + Webhooks)."""
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -11,8 +10,8 @@ from sqlalchemy import select
 
 from app.api.deps import current_user, get_db
 from app.billing.stripe_client import (
-    create_checkout_session,
     create_billing_portal_session,
+    create_checkout_session,
     verify_webhook_signature,
 )
 from app.config import settings

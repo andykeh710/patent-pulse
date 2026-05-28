@@ -3,7 +3,6 @@ from datetime import date, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
 from app.core.models import PatentPublication
 from app.usage.citation_collector import (

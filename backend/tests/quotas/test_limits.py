@@ -1,12 +1,12 @@
 """Tests for quota limits (Sprint 7)."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.core.ai_models import User
-from app.quotas.limits import check_topic_quota, check_alert_quota, require_tier
+from app.quotas.limits import check_alert_quota, check_topic_quota, require_tier
 
 
 @pytest.mark.asyncio(loop_scope="function")

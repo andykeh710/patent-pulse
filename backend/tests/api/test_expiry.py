@@ -2,7 +2,6 @@
 from datetime import date, timedelta
 
 import pytest
-from sqlalchemy import select
 
 from app.core.ai_models import ExpiryAssessment
 from app.core.models import PatentPublication
@@ -180,7 +179,7 @@ async def test_expiry_window_start_backward_looking(client, db_session):
     assert resp.status_code == 200
     data = resp.json()
     found = any(i["doc_id"] == "USPTO:WINPAST" for i in data["items"])
-    assert found, f"Patent WINPAST not found in backward-looking window."
+    assert found, "Patent WINPAST not found in backward-looking window."
 
 
 # ── Sprint 5: has_usage_signals filter ───────────────────────────────

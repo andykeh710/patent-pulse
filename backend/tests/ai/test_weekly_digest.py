@@ -1,5 +1,6 @@
 """Tests for weekly digest AI module."""
 import pytest
+
 from app.ai.weekly_digest import build_payload, validate_output
 from app.core.exceptions import SummarizationError
 

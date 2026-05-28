@@ -9,9 +9,10 @@ user_id is a plain string (no FK) matching the watchlist_items convention.
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "0006"
 down_revision: Union[str, None] = "0005"

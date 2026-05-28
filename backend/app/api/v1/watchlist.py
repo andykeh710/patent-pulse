@@ -7,9 +7,9 @@ Note: user_id is hardcoded as "anonymous" until Phase 4 auth.
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import delete, func, select
+from sqlalchemy import select
 
 from app.api.deps import DbSession
 from app.core.models import PatentPublication

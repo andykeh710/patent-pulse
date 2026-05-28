@@ -1,18 +1,16 @@
 """Tests for Sprint 5 usage signal narrative module."""
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from app.ai.usage_narrative import (
-    build_payload,
-    validate_output,
-    generate_usage_narrative,
     _contains_forbidden,
-    FALLBACK_NARRATIVE,
+    build_payload,
+    generate_usage_narrative,
+    validate_output,
 )
 from app.core.exceptions import SummarizationError
-
 
 # ── test data ────────────────────────────────────────────────────────
 
@@ -105,8 +103,9 @@ def test_validate_output_adds_disclaimer():
 @pytest.mark.asyncio(loop_scope="function")
 async def test_generate_writes_artifact(db_session):
     """generate_usage_narrative writes AIArtifact with validated content."""
-    from app.core.ai_models import AIArtifact
     from sqlalchemy import select
+
+    from app.core.ai_models import AIArtifact
 
     patent_id = uuid4()
     signal = _signal()

@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import select, text
+
 from app.core.theme_models import Theme
 from app.database import async_session_maker
 

@@ -14,13 +14,14 @@ from unittest.mock import patch
 import pytest
 from httpx import AsyncClient
 
-
 # ── helpers ──────────────────────────────────────────────────────────
 
 
 def _cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
+
     from app.config import settings
     return {"auth_session": jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc),
@@ -94,8 +95,9 @@ async def test_debug_sentry_unauthorized(client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_debug_sentry_non_admin_gets_403(client: AsyncClient, db_session):
     """Non-admin user → 403 on debug/sentry."""
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = False
     await db_session.commit()
@@ -110,8 +112,9 @@ async def test_debug_sentry_admin_raises_runtime_error(client: AsyncClient, db_s
     The ASGI test transport propagates unhandled exceptions, so we
     catch it here instead of checking for a 500 status code.
     """
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()

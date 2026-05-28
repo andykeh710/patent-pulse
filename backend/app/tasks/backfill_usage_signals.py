@@ -11,13 +11,13 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import select
 
 from app.core.ai_models import PatentUsageSignals, UsageEvidence
 from app.core.models import PatentPublication
-from app.database import async_session_maker, engine as _engine
+from app.database import async_session_maker
+from app.database import engine as _engine
 from app.tasks.celery_app import celery_app
 from app.usage.collector import collect_all_evidence
 from app.usage.scoring import compute_usage_signal_score

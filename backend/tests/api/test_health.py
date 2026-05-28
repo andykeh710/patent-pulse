@@ -1,5 +1,4 @@
 """Tests for health endpoint probes (PR11)."""
-from unittest.mock import AsyncMock, patch
 
 import pytest
 

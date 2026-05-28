@@ -432,6 +432,7 @@ async def generate_trend_narrative(
     top_patents: list[dict[str, str]] = []
     if trend.top_patent_ids:
         from uuid import UUID
+
         from app.core.models import PatentPublication
         result = await db.execute(
             select(PatentPublication).where(

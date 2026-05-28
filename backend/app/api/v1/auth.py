@@ -14,7 +14,6 @@ from app.api.deps import get_db
 from app.auth.magic_link import create_token_for_email, verify_token
 from app.config import settings
 from app.core.ai_models import User
-from app.database import async_session_maker
 from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)

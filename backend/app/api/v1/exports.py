@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import date as date_type, datetime, timezone
+from datetime import date as date_type
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import current_user, get_db
+from app.core.ai_models import ExpiryAssessment, PatentUsageSignals
 from app.core.billing_models import Export
 from app.core.models import PatentPublication
-from app.core.ai_models import ExpiryAssessment, PatentUsageSignals
 
 router = APIRouter()
 
@@ -38,7 +38,7 @@ async def export_expiry_csv(
     office: str | None = Query(default=None),
 ):
     """Export filtered expiry list as CSV."""
-    from sqlalchemy import select, and_, or_
+    from sqlalchemy import and_, select
 
     # Quota check: inlined to avoid double Depends(current_user)
     from app.core.ai_models import User

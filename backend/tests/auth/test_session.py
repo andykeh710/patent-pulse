@@ -2,7 +2,6 @@
 import jwt
 import pytest
 
-
 SECRET = "test-secret-key-for-tests"
 
 

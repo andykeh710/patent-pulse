@@ -2,6 +2,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
@@ -36,9 +37,10 @@ async def current_user(
     Reads the 'auth_session' cookie, verifies the JWT, and returns
     the user_id. Raises 401 if missing, expired, or invalid.
     """
-    from fastapi import HTTPException
     import jwt as _jwt
+    from fastapi import HTTPException
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
     if not auth_session:

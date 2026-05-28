@@ -1,10 +1,9 @@
 """Tests for Sprint 5 usage signals API endpoints."""
 from datetime import date
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 
 from app.core.ai_models import PatentUsageSignals, UsageEvidence
 from app.core.models import PatentPublication

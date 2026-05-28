@@ -1,6 +1,4 @@
 """Tests for billing API endpoints (Sprint 7). All Stripe calls mocked."""
-import hmac
-import hashlib
 import json
 from unittest.mock import patch
 
@@ -25,8 +23,9 @@ def _set_secret(monkeypatch):
 
 
 def _make_session_cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
     token = jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
         SECRET, algorithm="HS256",
@@ -42,8 +41,9 @@ async def test_checkout_session_no_auth_returns_401(client):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_get_subscription_returns_free(client, db_session):
-    from app.core.ai_models import User
     from sqlalchemy import select
+
+    from app.core.ai_models import User
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
@@ -110,8 +110,9 @@ async def test_webhook_checkout_subscription_creates_row(client, db_session):
         assert r.status_code == 200
 
     from sqlalchemy import select
-    from app.core.billing_models import BillingSubscription
+
     from app.core.ai_models import User
+    from app.core.billing_models import BillingSubscription
 
     sub = (await db_session.execute(
         select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
@@ -130,6 +131,7 @@ async def test_webhook_checkout_subscription_creates_row(client, db_session):
 async def test_webhook_checkout_payment_creates_lifetime(client, db_session):
     """checkout.session.completed (payment mode) → tier=lifetime, payment_intent set."""
     from sqlalchemy import select
+
     from app.core.billing_models import BillingSubscription
 
     event = {
@@ -149,7 +151,6 @@ async def test_webhook_checkout_payment_creates_lifetime(client, db_session):
         r = await client.post("/api/v1/billing/webhook", content=json.dumps(event).encode(), headers={"stripe-signature": "sig"})
         assert r.status_code == 200
 
-    from app.core.billing_models import BillingSubscription
     sub = (await db_session.execute(
         select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
     )).scalar_one_or_none()
@@ -161,6 +162,7 @@ async def test_webhook_checkout_payment_creates_lifetime(client, db_session):
 async def test_webhook_subscription_deleted_flips_to_free(client, db_session):
     """customer.subscription.deleted → user.tier='free'."""
     from sqlalchemy import select
+
     from app.core.billing_models import BillingSubscription
     sub = BillingSubscription(user_id="local-user", tier="enterprise", stripe_subscription_id="sub_del", status="active")
     db_session.add(sub)

@@ -1,5 +1,5 @@
 """Tests for content generation API endpoints."""
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select

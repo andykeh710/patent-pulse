@@ -7,9 +7,7 @@ internally.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from urllib.error import HTTPError
 from uuid import UUID
 

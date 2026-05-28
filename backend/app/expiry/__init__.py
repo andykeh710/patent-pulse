@@ -4,3 +4,8 @@ from app.expiry.assessment import (
     compute_expiry_assessment,
     compute_expiry_opportunity_score,
 )
+
+__all__ = [
+    "compute_expiry_assessment",
+    "compute_expiry_opportunity_score",
+]

@@ -11,18 +11,18 @@ the explicit query params.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import and_, cast, func, or_, select, text
 from sqlalchemy.dialects.postgresql import JSONB, array
 
 from app.api.deps import DbSession
 from app.core.models import PatentPublication
-from app.core.schemas import PaginatedResponse, PatentListItem
+from app.core.schemas import PaginatedResponse
 from app.core.validators import validate_cpc_prefix
 
 router = APIRouter()

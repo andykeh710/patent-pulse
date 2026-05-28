@@ -1,6 +1,5 @@
 """Tests for production-mode acknowledgement gate (Sprint 6)."""
 import sys
-import pytest
 
 
 def test_production_without_acknowledgement_raises_system_exit(monkeypatch):

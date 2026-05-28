@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from sqlalchemy import Text, and_, func, or_, select, text
+from sqlalchemy import Text, and_, func, select, text
 
 from app.api.deps import DbSession
 from app.core.ai_models import ExpiryAssessment, PatentUsageSignals
@@ -195,7 +195,7 @@ async def list_expiring_patents(
         conf_order = {"confirmed": 4, "high": 3, "medium": 2, "low": 1}
         order_clauses = [
             text(
-                f"CASE expiry_assessments.expiry_status_confidence "
+                "CASE expiry_assessments.expiry_status_confidence "
                 + " ".join(
                     f"WHEN '{k}' THEN {v}" for k, v in conf_order.items()
                 )

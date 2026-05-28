@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.ai_models import User
-from app.core.subscription_models import EmailDelivery, TopicSubscription
+from app.core.subscription_models import TopicSubscription
 from app.core.theme_models import Theme, ThemeMatch
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
@@ -187,7 +187,8 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
 
 
 def _sign_user_id(user_id: str) -> str:
-    import hashlib, hmac
+    import hashlib
+    import hmac
     return hmac.new(
         settings.auth_secret_key.encode(),
         user_id.encode(),

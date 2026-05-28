@@ -3,12 +3,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import Text, and_, func, or_, select, text
-from sqlalchemy.orm import load_only
 
+from app.ai.assignee_intelligence import (
+    generate_assignee_intelligence as generate_assignee_intelligence_cached,
+)
+from app.ai.opportunity_narrative import (
+    generate_opportunity_narrative as generate_opportunity_narrative_cached,
+)
+from app.ai.trend_snapshot import generate_trend_snapshot as generate_trend_snapshot_cached
+from app.ai.why_now import generate_why_now as generate_why_now_cached
 from app.api.deps import DbSession
+from app.core.ai_models import AIRun, TrendSnapshot
 from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
-from app.core.ai_models import AIRun, TrendSnapshot
 from app.core.schemas import (
     ExpirySummary,
     FreshnessResponse,
@@ -21,10 +28,6 @@ from app.core.schemas import (
     TrendResponse,
 )
 from app.core.validators import validate_cpc_prefix
-from app.ai.why_now import generate_why_now as generate_why_now_cached
-from app.ai.opportunity_narrative import generate_opportunity_narrative as generate_opportunity_narrative_cached
-from app.ai.trend_snapshot import generate_trend_snapshot as generate_trend_snapshot_cached
-from app.ai.assignee_intelligence import generate_assignee_intelligence as generate_assignee_intelligence_cached
 
 router = APIRouter()
 
