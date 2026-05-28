@@ -5,11 +5,28 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { useAuth } from "@/lib/AuthContext";
 
+interface AdminUser {
+  id: string;
+  email: string | null;
+  tier: string;
+  billing_status?: string | null;
+  current_period_end?: string | null;
+}
+
+interface AdminExport {
+  id: string;
+  user_email: string | null;
+  export_type: string;
+  scope: string;
+  payload_size_bytes: number | null;
+  created_at: string;
+}
+
 export default function AdminPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<"users" | "exports">("users");
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [tierValue, setTierValue] = useState("");
   const [reason, setReason] = useState("");
 
@@ -63,7 +80,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {usersData.users.map((u: any) => (
+                  {usersData.users.map((u: AdminUser) => (
                     <tr key={u.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedUser(u)}>
                       <td className="py-2">{u.email || u.id}</td>
                       <td className="py-2"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100">{u.tier}</span></td>
@@ -96,7 +113,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {(exports || []).map((e: any) => (
+                {(exports || []).map((e: AdminExport) => (
                   <tr key={e.id} className="border-b">
                     <td className="py-2">{e.user_email}</td>
                     <td className="py-2">{e.export_type}</td>
