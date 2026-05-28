@@ -18,6 +18,7 @@ from app.billing.stripe_client import (
 from app.config import settings
 from app.core.ai_models import User
 from app.core.billing_models import BillingSubscription
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -137,6 +138,7 @@ async def start_portal(
 
 
 @router.post("/webhook")
+@limiter.exempt
 async def handle_webhook(
     request: Request,
     db=Depends(get_db),

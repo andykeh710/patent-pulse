@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.config import settings
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
+@limiter.exempt
 async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
     db_status = await _check_db(db)
     redis_status = await _check_redis()

@@ -15,6 +15,7 @@ from app.auth.magic_link import create_token_for_email, verify_token
 from app.config import settings
 from app.core.ai_models import User
 from app.database import async_session_maker
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ async def request_link(
 
 
 @router.get("/verify")
+@limiter.exempt
 async def verify(
     token: str,
     session=Depends(get_db),
