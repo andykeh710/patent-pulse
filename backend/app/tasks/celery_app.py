@@ -2,6 +2,10 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.config import settings
+from app.logging_config import configure_logging
+
+# Structured JSON logging for Celery workers.
+configure_logging()
 
 celery_app = Celery(
     "patent_pulse",

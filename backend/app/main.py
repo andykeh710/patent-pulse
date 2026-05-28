@@ -12,6 +12,11 @@ from app.api.health import router as health_router
 from app.api.v1.router import v1_router
 from app.config import settings
 from app.database import engine
+from app.logging_config import configure_logging
+from app.middleware.request_id import RequestIDMiddleware
+
+# Structured JSON logging — call before any logger.info / logger.critical.
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +62,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request-ID middleware — binds a UUID to structlog context per request.
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(health_router)
 app.include_router(v1_router)
