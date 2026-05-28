@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.deps import get_db
@@ -64,8 +65,14 @@ def test_settings() -> Settings:
 async def db_session(test_settings: Settings) -> AsyncGenerator[AsyncSession, None]:
     engine = create_async_engine(test_settings.database_url, echo=False)
 
+    # Robust teardown/setup: drop the entire public schema rather than
+    # iterating drop_all per-table. This avoids constraint-name drift
+    # between SQLAlchemy ORM metadata and Alembic-applied migrations
+    # (e.g., the fk_pp_latest_why_now_artifact_id issue).
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -93,8 +100,10 @@ async def db_session(test_settings: Settings) -> AsyncGenerator[AsyncSession, No
         yield session
         await session.rollback()
 
+    # Symmetric teardown.
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
 
     await engine.dispose()
 
