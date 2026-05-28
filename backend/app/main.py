@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -13,6 +15,7 @@ from app.api.v1.router import v1_router
 from app.config import settings
 from app.database import engine
 from app.logging_config import configure_logging
+from app.middleware.rate_limit import limiter
 from app.middleware.request_id import RequestIDMiddleware
 
 # Structured JSON logging — call before any logger.info / logger.critical.
@@ -55,6 +58,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiter — must be on app.state before SlowAPIMiddleware.
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -65,6 +72,9 @@ app.add_middleware(
 
 # Request-ID middleware — binds a UUID to structlog context per request.
 app.add_middleware(RequestIDMiddleware)
+
+# Rate-limit middleware — applies default_limits globally.
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(health_router)
 app.include_router(v1_router)
