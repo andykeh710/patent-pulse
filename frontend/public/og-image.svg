@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0284c7"/>
+  <text x="600" y="260" text-anchor="middle" font-size="72" font-family="system-ui,-apple-system,sans-serif" font-weight="bold" fill="white">Patent Pulse</text>
+  <text x="600" y="340" text-anchor="middle" font-size="32" font-family="system-ui,-apple-system,sans-serif" fill="#bae6fd">Patent intelligence with the receipts</text>
+  <line x1="400" y1="400" x2="800" y2="400" stroke="#38bdf8" stroke-width="2"/>
+  <text x="600" y="460" text-anchor="middle" font-size="20" font-family="system-ui,-apple-system,sans-serif" fill="#7dd3fc">USPTO · EPO · WIPO · Evidence-backed · Updated weekly</text>
+</svg>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
-import { NavSidebar } from "./NavSidebar";
 
 export const metadata: Metadata = {
   title: "Patent Pulse",
@@ -15,13 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased bg-gray-50 min-h-screen">
-        <div className="flex min-h-screen">
-          <AuthProvider>
-            <NavSidebar />
-            <main className="flex-1 ml-64 p-8">{children}</main>
-          </AuthProvider>
-        </div>
+      <body className="antialiased bg-white min-h-screen font-[system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,'Helvetica_Neue',Arial,sans-serif]">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

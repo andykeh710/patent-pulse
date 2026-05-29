@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /about
+Allow: /terms
+Allow: /privacy
+Disallow: /admin/
