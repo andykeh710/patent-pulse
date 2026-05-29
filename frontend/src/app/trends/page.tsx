@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import type { TrendItem, ConvergenceItem, CliffClusterItem } from "@/lib/types";
 
 type SurfaceFilter = "all" | "cpc" | "tag" | "assignee";
@@ -440,6 +441,7 @@ function CliffList({
           </Link>
         ))}
       </div>
+      <SourceAttribution />
     </div>
   );
 }

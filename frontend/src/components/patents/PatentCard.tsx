@@ -9,6 +9,7 @@ import { OpportunityScoreBadge } from "./OpportunityScoreBadge";
 import { TagsPanel } from "./TagsPanel";
 import { LegalConfidenceBadge } from "./LegalConfidenceBadge";
 import { RiskFlagsBadge } from "./RiskFlagsBadge";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 
 interface PatentCardProps {
   patent: PatentListItem;
@@ -78,6 +79,7 @@ export function PatentCard({ patent }: PatentCardProps) {
           <span className="truncate max-w-[150px]">{patent.assignees[0]}</span>
         )}
       </div>
+      <SourceAttribution docId={patent.doc_id} />
     </Link>
   );
 }

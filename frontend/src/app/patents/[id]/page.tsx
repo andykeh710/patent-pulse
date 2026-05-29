@@ -23,6 +23,7 @@ import { PatentDetailTabs } from "@/components/patents/PatentDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { formatDate } from "@/lib/utils";
 import { patentsApi, semanticApi } from "@/lib/api";
 import { useWatchlistCheck, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
@@ -211,6 +212,7 @@ export default function PatentDetailPage({
         </div>
         <div className="mt-3">
           <ExternalPatentLinks publicationNumber={patent.publication_number} office={patent.office} docId={patent.doc_id} />
+          <SourceAttribution office={patent.office} />
 
           {/* Sprint 4.5: Figures link-out (not inline image) */}
           {patent.figure_page_url && (

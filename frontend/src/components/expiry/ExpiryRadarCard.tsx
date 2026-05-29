@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/lib/utils";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 
 // Allowed values from backend Sprint 2A.
 const STATUS_LABELS: Record<string, string> = {
@@ -183,8 +184,9 @@ export function ExpiryRadarCard({
         )}
       </div>
 
-      {/* Legal caveat */}
+      {/* Source attribution + legal caveat */}
       <div className="mt-3 pt-3 border-t border-gray-100">
+        <SourceAttribution docId={docId} />
         <p className="text-xs text-gray-400">
           Verify with official registers before relying on expiry status.
         </p>

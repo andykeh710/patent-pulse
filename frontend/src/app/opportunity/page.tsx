@@ -11,6 +11,7 @@ import { ScoreBadge } from "@/components/patents/ScoreBadge";
 import { TagsPanel } from "@/components/patents/TagsPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import {
   useOpportunityList,
   useOpportunityTabCounts,
@@ -323,6 +324,7 @@ function OpportunityContent() {
                     </span>
                   )}
                 </div>
+                <SourceAttribution docId={item.doc_id} />
               </Link>
             ))}
           </div>
