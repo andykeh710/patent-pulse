@@ -79,6 +79,7 @@ export interface PatentListItem {
   tags: PatentTags | null;
   summary_what_it_is: string | null;
   estimated_expiry_date: string | null;
+  figure_page_url: string | null;
 }
 
 export interface PatentDetail {

@@ -16,6 +16,7 @@ celery_app = Celery(
         "app.tasks.ingest_applications",
         "app.tasks.ingest_epo",
         "app.tasks.ingest_wipo",
+        "app.tasks.ingest_wipo_bigquery",
         "app.tasks.summarize",
         "app.tasks.embeddings",
         "app.tasks.enrich_abstracts",
@@ -102,11 +103,30 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=6, minute=0, day_of_week=5),
         "options": {"queue": "maintenance"},
     },
-    # Abstract enrichment - Saturday (after weekly ingestion, before summarization)
-    "enrich-abstracts-weekly": {
+    # Abstract enrichment — 4x/day with batch=500 (was: Sat 8pm batch=200).
+    # Runs at 00:00, 06:00, 12:00, 18:00 UTC.
+    "enrich-abstracts-morning": {
         "task": "app.tasks.enrich_abstracts.enrich_batch",
-        "schedule": crontab(hour=20, minute=0, day_of_week=6),
-        "kwargs": {"batch_size": 200},
+        "schedule": crontab(hour=6, minute=0),
+        "kwargs": {"batch_size": 500},
+        "options": {"queue": "ingestion"},
+    },
+    "enrich-abstracts-noon": {
+        "task": "app.tasks.enrich_abstracts.enrich_batch",
+        "schedule": crontab(hour=12, minute=0),
+        "kwargs": {"batch_size": 500},
+        "options": {"queue": "ingestion"},
+    },
+    "enrich-abstracts-evening": {
+        "task": "app.tasks.enrich_abstracts.enrich_batch",
+        "schedule": crontab(hour=18, minute=0),
+        "kwargs": {"batch_size": 500},
+        "options": {"queue": "ingestion"},
+    },
+    "enrich-abstracts-midnight": {
+        "task": "app.tasks.enrich_abstracts.enrich_batch",
+        "schedule": crontab(hour=0, minute=0),
+        "kwargs": {"batch_size": 500},
         "options": {"queue": "ingestion"},
     },
     # Summarization - Sunday batch
@@ -232,5 +252,12 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),
         "kwargs": {"limit": 50},
         "options": {"queue": "maintenance"},
+    },
+    # Sprint D2 — WIPO BigQuery ingestion (daily 03:15 UTC).
+    "wipo-bigquery-daily": {
+        "task": "app.tasks.ingest_wipo_bigquery.ingest_wipo_bigquery_recent",
+        "schedule": crontab(hour=3, minute=15),
+        "kwargs": {"days_back": 1, "max_results": 500},
+        "options": {"queue": "ingestion"},
     },
 }

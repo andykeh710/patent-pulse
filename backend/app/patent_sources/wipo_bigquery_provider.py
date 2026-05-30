@@ -4,23 +4,35 @@ WIPO provider via Google Patents BigQuery public dataset.
 Uses `patents-public-data.patents.publications` (free up to 1TB/mo).
 This is the PRIMARY WIPO acquisition path for V1.
 
-Requires:
-- GOOGLE_CLOUD_PROJECT env var (must be set with billing enabled)
-- GOOGLE_APPLICATION_CREDENTIALS pointing to a service account JSON
-- BigQuery API enabled on the project
+BigQuery Row schema (positional):
+  0:  publication_number    str  "WO-2026075437-A1"
+  1:  application_number    str  "KR-2025015308-W"
+  2:  country_code          str  "WO"
+  3:  kind_code             str  "A1"
+  8:  publication_number_v2 str  "WO2026075437A1"
+  10: title_localized       list [{text, language, truncated}]
+  11: abstract_localized    list [{text, language, truncated}]
+  12: claims_localized      list [{text, language, truncated}]
+  16: publication_date      int  20260409 (YYYYMMDD)
+  17: filing_date           int  20250929 (YYYYMMDD)
+  19: priority_date         int  20241002 (YYYYMMDD)
+  23: inventor_harmonized   list [str] (names as strings)
+  25: assignee_harmonized   list [str] (names as strings)
+  28: ipc                   list [{code, inventive, first}]
+  29: cpc                   list [{code, inventive, first}]
+  36: family_id             int
 
-WIPO acquisition ladder (V1):
-  1. Google Patents BigQuery (this provider — main path)
-  2. EPO OPS family lookup for WO records in EP families
-  3. Known-record fetch by WO publication number
-  4. (V1.1, Enterprise-gated) ScrapeGraphAI fallback
+Requires:
+- GOOGLE_CLOUD_PROJECT env var
+- GOOGLE_APPLICATION_CREDENTIALS service account JSON
+- BigQuery API enabled
 """
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.config import settings
@@ -29,27 +41,30 @@ from app.patent_sources.registry import register
 
 logger = logging.getLogger(__name__)
 
-# Table references in the public dataset
 WIPO_TABLE = "patents-public-data.patents.publications"
 
-# Columns we fetch from BigQuery for each WO publication
-WIPO_COLUMNS = [
-    "publication_number",
-    "title_localized",
-    "abstract_localized",
-    "claims_localized",
-    "ipc",
-    "cpc",
-    "family_id",
-    "publication_date",
-    "filing_date",
-    "priority_date",
-    "assignee",
-    "inventor",
-    "country_code",
-    "kind_code",
-    "application_number",
-]
+# Hard ceiling: 100 GB billed bytes per query (free tier allows 1TB/month)
+MAX_BYTES_BILLED = 100_000_000_000
+
+
+def _int_date_to_str(d: int | None) -> str | None:
+    """Convert YYYYMMDD int to ISO date string."""
+    if not d:
+        return None
+    s = str(d)
+    if len(s) == 8:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return None
+
+
+def _localized_text(items: list[dict] | None, lang: str = "en") -> str | None:
+    """Extract text in a given language from a localized-text list."""
+    if not items:
+        return None
+    for item in items:
+        if isinstance(item, dict) and item.get("language") == lang:
+            return item.get("text")
+    return None
 
 
 class BigQueryWIPOProvider(BasePatentProvider):
@@ -60,10 +75,9 @@ class BigQueryWIPOProvider(BasePatentProvider):
     def __init__(self):
         self._client = None
         self._project: str | None = None
-        self._ready: bool | None = None  # tri-state: None=unchecked
+        self._ready: bool | None = None
 
     def _ensure_client(self) -> bool:
-        """Lazy-init BigQuery client. Returns True if ready."""
         if self._ready is True:
             return True
         if self._ready is False:
@@ -72,8 +86,7 @@ class BigQueryWIPOProvider(BasePatentProvider):
         project = getattr(settings, "google_cloud_project", None)
         if not project:
             logger.warning(
-                "BigQueryWIPOProvider: GOOGLE_CLOUD_PROJECT not set. "
-                "Set this env var to a GCP project ID with BigQuery API enabled."
+                "BigQueryWIPOProvider: GOOGLE_CLOUD_PROJECT not set."
             )
             self._ready = False
             return False
@@ -81,9 +94,7 @@ class BigQueryWIPOProvider(BasePatentProvider):
         try:
             from google.cloud import bigquery
         except ImportError:
-            logger.warning(
-                "BigQueryWIPOProvider: google-cloud-bigquery not installed."
-            )
+            logger.warning("BigQueryWIPOProvider: google-cloud-bigquery not installed.")
             self._ready = False
             return False
 
@@ -94,136 +105,186 @@ class BigQueryWIPOProvider(BasePatentProvider):
             logger.info("BigQueryWIPOProvider initialized for project %s", project)
             return True
         except Exception as e:
-            logger.warning(
-                "BigQueryWIPOProvider: failed to create BigQuery client — "
-                "check GOOGLE_APPLICATION_CREDENTIALS and project billing: %s", e
-            )
+            logger.warning("BigQueryWIPOProvider: client init failed: %s", e)
             self._ready = False
             return False
 
     def fetch_by_publication_number(self, publication_number: str) -> dict[str, Any] | None:
         if not self._ensure_client():
             return None
-
-        clean = publication_number.replace("WO", "").replace("/", "").strip()
-        query = f"""
-            SELECT {', '.join(WIPO_COLUMNS)}
-            FROM `{WIPO_TABLE}`
-            WHERE country_code = 'WO'
-              AND publication_number = @pub_num
-            LIMIT 1
-        """
-
         from google.cloud import bigquery
 
+        clean = publication_number.replace("WO", "").replace("-", "").replace("/", "").strip()
+        query = f"""
+            SELECT
+                publication_number, application_number, country_code, kind_code,
+                spif_publication_number, title_localized,
+                publication_date, filing_date, priority_date, family_id
+            FROM `{WIPO_TABLE}`
+            WHERE country_code = 'WO'
+              AND REGEXP_REPLACE(publication_number, r'[^0-9A-Z]', '') = @pn
+            LIMIT 1
+        """
         job_config = bigquery.QueryJobConfig(
-            query_parameters=[bigquery.ScalarQueryParameter("pub_num", "STRING", clean)]
+            query_parameters=[bigquery.ScalarQueryParameter("pn", "STRING", f"WO{clean}A1")],
+            maximum_bytes_billed=MAX_BYTES_BILLED,
         )
-
         try:
             rows = list(self._client.query(query, job_config=job_config).result())
             if not rows:
                 return None
-            return self._row_to_dict(rows[0])
+            return self._row_to_dict(list(rows[0]))
         except Exception as e:
-            logger.warning("BigQueryWIPO fetch_by_publication_number failed: %s", e)
+            logger.warning("BigQueryWIPO fetch_by_number failed for %s: %s", publication_number, e)
             return None
 
     def search_by_publication_date(
         self, publication_date: date, max_results: int = 100
     ) -> Iterator[dict[str, Any]]:
+        """Base interface — delegates to date window for a single day."""
+        yield from self.search_by_date_window(
+            publication_date, publication_date, max_results
+        )
+
+    def search_by_date_window(
+        self,
+        start_date: date,
+        end_date: date,
+        max_results: int = 100,
+    ) -> Iterator[dict[str, Any]]:
+        """Fetch WIPO publications within a date window.
+
+        Iterates one day at a time to keep per-query bytes under 5 GB.
+        Yields normalized dicts suitable for the dedup/upsert pipeline.
+        Each day records to source_fetches.
+        """
         if not self._ensure_client():
             return
 
-        date_str = publication_date.isoformat()
-        query = f"""
-            SELECT {', '.join(WIPO_COLUMNS)}
-            FROM `{WIPO_TABLE}`
-            WHERE country_code = 'WO'
-              AND publication_date >= TIMESTAMP(@start_date)
-              AND publication_date < TIMESTAMP_ADD(TIMESTAMP(@start_date), INTERVAL 1 DAY)
-            ORDER BY publication_date DESC
-            LIMIT @limit
-        """
-
         from google.cloud import bigquery
+        import time as _time
+        import asyncio
 
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("start_date", "STRING", date_str),
-                bigquery.ScalarQueryParameter("limit", "INT64", max_results),
-            ]
-        )
+        current = start_date
+        total_yielded = 0
 
+        while current <= end_date and total_yielded < max_results:
+            day_int = int(current.strftime("%Y%m%d"))
+            remaining = max_results - total_yielded
+
+            query = f"""
+                SELECT
+                    publication_number, application_number, country_code, kind_code,
+                    spif_publication_number, title_localized,
+                    publication_date, filing_date, priority_date, family_id
+                FROM `{WIPO_TABLE}`
+                WHERE country_code = 'WO'
+                  AND publication_date = @day
+                ORDER BY publication_date DESC
+                LIMIT @limit
+            """
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("day", "INT64", day_int),
+                    bigquery.ScalarQueryParameter("limit", "INT64", remaining),
+                ],
+                maximum_bytes_billed=MAX_BYTES_BILLED,
+            )
+
+            _start = _time.monotonic()
+            records_found = 0
+            status = "success"
+            error_msg = None
+
+            try:
+                job = self._client.query(query, job_config=job_config)
+                rows = list(job.result())
+                records_found = len(rows)
+                for row in rows:
+                    yield self._row_to_dict(list(row))
+                    total_yielded += 1
+            except Exception as e:
+                status = "failed"
+                error_msg = str(e)[:2000]
+                logger.warning(
+                    "BigQueryWIPO day %s failed: %s", current.isoformat(), e
+                )
+            finally:
+                _dur = int((_time.monotonic() - _start) * 1000)
+                try:
+                    asyncio.ensure_future(self._record_fetch(
+                        target_type="search_by_date",
+                        target_id=current.isoformat(),
+                        status=status,
+                        records_found=records_found,
+                        error_message=error_msg,
+                        duration_ms=_dur,
+                    ))
+                except RuntimeError:
+                    pass
+
+            if status == "failed":
+                break  # stop on first fatal error
+            current += timedelta(days=1)
+
+    async def _record_fetch(self, **kwargs):
         try:
-            rows = self._client.query(query, job_config=job_config).result()
-            for row in rows:
-                yield self._row_to_dict(row)
-        except Exception as e:
-            logger.warning("BigQueryWIPO search_by_date failed: %s", e)
+            from app.ingestion.source_fetch import record_source_fetch_async
+            await record_source_fetch_async(
+                provider=self.name,
+                office="WIPO",
+                **kwargs,
+            )
+        except Exception:
+            logger.debug("Failed to record WIPO source fetch", exc_info=True)
 
-    def _row_to_dict(self, row: Any) -> dict[str, Any]:
-        """Normalize a BigQuery row to the standard provider dict format."""
-        pub_num = getattr(row, "publication_number", "")
-        if pub_num and not pub_num.startswith("WO"):
-            pub_num = f"WO{pub_num}"
+    def _row_to_dict(self, row: list) -> dict[str, Any]:
+        """Normalize a BigQuery row (as list) to the standard provider dict.
 
-        title = getattr(row, "title_localized", None)
-        abstract = getattr(row, "abstract_localized", None)
-        if isinstance(title, list):
-            title = next((t.get("text", "") for t in title if t.get("language") == "en"), str(title))
-        elif isinstance(title, dict):
-            title = title.get("text", str(title))
-        if isinstance(abstract, list):
-            abstract = next((a.get("text", "") for a in abstract if a.get("language") == "en"), "")
-        elif isinstance(abstract, dict):
-            abstract = abstract.get("text", "")
+        Row indices from narrowed SELECT:
+          0: publication_number       (WO-2026075437-A1)
+          1: application_number
+          2: country_code
+          3: kind_code
+          4: spif_publication_number  (WO2026075437A1 — no hyphens)
+          5: title_localized          list[{text, language, truncated}]
+          6: publication_date         int (YYYYMMDD)
+          7: filing_date              int (YYYYMMDD)
+          8: priority_date            int (YYYYMMDD)
+          9: family_id                str or int
+        """
+        pub_num = row[4] if row[4] else row[0]
+        if isinstance(pub_num, str):
+            pub_num = pub_num.replace("-", "").strip()
 
-        ipc = getattr(row, "ipc", None) or []
-        if isinstance(ipc, list) and ipc and isinstance(ipc[0], dict):
-            ipc = [c.get("code", str(c)) for c in ipc]
-        cpc = getattr(row, "cpc", None) or []
-        if isinstance(cpc, list) and cpc and isinstance(cpc[0], dict):
-            cpc = [c.get("code", str(c)) for c in cpc]
+        title = _localized_text(row[5] if len(row) > 5 else None)
 
-        assignees = getattr(row, "assignee", None) or []
-        if isinstance(assignees, list) and assignees and isinstance(assignees[0], dict):
-            assignees = [a.get("name", str(a)) for a in assignees]
-        inventors = getattr(row, "inventor", None) or []
-        if isinstance(inventors, list) and inventors and isinstance(inventors[0], dict):
-            inventors = [i.get("name", str(i)) for i in inventors]
+        pub_date = _int_date_to_str(row[6] if len(row) > 6 else None)
+        filing_date = _int_date_to_str(row[7] if len(row) > 7 else None)
+        priority_date = _int_date_to_str(row[8] if len(row) > 8 else None)
 
-        pub_date = getattr(row, "publication_date", None)
-        if isinstance(pub_date, datetime):
-            pub_date = pub_date.date()
-        filing_date = getattr(row, "filing_date", None)
-        if isinstance(filing_date, datetime):
-            filing_date = filing_date.date()
-        priority_date = getattr(row, "priority_date", None)
-        if isinstance(priority_date, datetime):
-            priority_date = priority_date.date()
+        family_id = None
+        if len(row) > 9 and row[9]:
+            family_id = f"bigquery:{row[9]}"
 
         return {
-            "publication_number": pub_num,
-            "application_number": getattr(row, "application_number", ""),
-            "kind_code": getattr(row, "kind_code", ""),
+            "publication_number": pub_num or "",
+            "application_number": row[1] if len(row) > 1 else "",
+            "kind_code": row[3] if len(row) > 3 else "",
             "office": "WIPO",
-            "title": str(title) if title else None,
-            "abstract": str(abstract) if abstract else None,
-            # claims_localized can be a complex nested dict — skip for now
+            "title": title,
+            "abstract": None,
             "claims_text": None,
-            "ipc_codes": [{"code": str(c)} for c in ipc] if ipc else [],
-            "cpc_codes": [{"code": str(c)} for c in cpc] if cpc else [],
-            "assignees": assignees if isinstance(assignees, list) else [],
-            "inventors": inventors if isinstance(inventors, list) else [],
-            "family_id": str(getattr(row, "family_id", "")) or None,
-            "publication_date": pub_date.isoformat() if pub_date else None,
-            "filing_date": filing_date.isoformat() if filing_date else None,
-            "priority_date": priority_date.isoformat() if priority_date else None,
-            "country_code": getattr(row, "country_code", "WO"),
+            "ipc_codes": [],
+            "cpc_codes": [],
+            "applicants": [],
+            "inventors": [],
+            "family_id": family_id,
+            "publication_date": pub_date,
+            "filing_date": filing_date,
+            "priority_date": priority_date,
         }
 
 
-# Auto-register if GCP seems configured (checked at first fetch time).
-# The provider itself will log warnings if GCP isn't ready.
+# Auto-register
 register(BigQueryWIPOProvider.name, BigQueryWIPOProvider())
