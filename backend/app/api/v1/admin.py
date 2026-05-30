@@ -434,3 +434,160 @@ async def trigger_sentry_test(
     corresponding event in Sentry.
     """
     raise RuntimeError("PR8 Sentry debug — intentional test exception")
+
+
+# ── Data health ──────────────────────────────────────────────
+
+
+@router.get("/data-health")
+async def admin_data_health(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Aggregated patent data health across offices and coverage axes."""
+    from app.core.models import PatentPublication, SourceFetch
+
+    # Per-office counts
+    office_rows = (await db.execute(
+        select(
+            PatentPublication.office,
+            func.count(PatentPublication.id).label("total"),
+            func.count(PatentPublication.abstract).label("with_abstract"),
+            func.count(PatentPublication.claims_text).label("with_claims"),
+            func.count(PatentPublication.figure_page_url).label("with_figure_url"),
+            func.count(PatentPublication.embedding).label("with_embedding"),
+            func.count(PatentPublication.tags).label("with_tags"),
+            func.count(PatentPublication.summarized_at).label("with_summary"),
+        ).group_by(PatentPublication.office)
+    )).all()
+
+    # Citation coverage
+    citation_stats = (await db.execute(
+        select(
+            func.count(PatentPublication.id).label("total_patents"),
+            func.count(PatentPublication.id).filter(
+                func.jsonb_array_length(PatentPublication.citations_forward) > 0
+            ).label("with_forward_citations"),
+            func.count(PatentPublication.id).filter(
+                func.jsonb_array_length(PatentPublication.citations_backward) > 0
+            ).label("with_backward_citations"),
+        )
+    )).one()
+
+    # Family coverage
+    family_stats = (await db.execute(
+        select(
+            func.count(PatentPublication.id).filter(
+                PatentPublication.family_id.isnot(None)
+            ).label("with_family_id"),
+            func.count(PatentPublication.id).filter(
+                func.jsonb_array_length(PatentPublication.family_members) > 0
+            ).label("with_family_members"),
+        )
+    )).one()
+
+    # Recent source_fetches failures
+    recent_failures = (await db.execute(
+        select(SourceFetch)
+        .where(SourceFetch.status.in_(["failed", "blocked"]))
+        .order_by(SourceFetch.created_at.desc())
+        .limit(10)
+    )).scalars().all()
+
+    # Latest success per provider
+    latest_success = (await db.execute(
+        select(
+            SourceFetch.provider,
+            func.max(SourceFetch.created_at).label("last_success"),
+        )
+        .where(SourceFetch.status == "success")
+        .group_by(SourceFetch.provider)
+    )).all()
+
+    total = sum(r.total for r in office_rows)
+
+    return {
+        "total_patents": total,
+        "by_office": [
+            {
+                "office": r.office,
+                "total": r.total,
+                "abstract_pct": round(r.with_abstract / r.total * 100, 1) if r.total else 0,
+                "claims_pct": round(r.with_claims / r.total * 100, 1) if r.total else 0,
+                "figure_url_pct": round(r.with_figure_url / r.total * 100, 1) if r.total else 0,
+                "embedding_pct": round(r.with_embedding / r.total * 100, 1) if r.total else 0,
+                "tags_pct": round(r.with_tags / r.total * 100, 1) if r.total else 0,
+                "summary_pct": round(r.with_summary / r.total * 100, 1) if r.total else 0,
+            }
+            for r in office_rows
+        ],
+        "citations": {
+            "total": citation_stats.total_patents,
+            "forward_pct": round(
+                citation_stats.with_forward_citations / citation_stats.total_patents * 100, 1
+            ) if citation_stats.total_patents else 0,
+            "backward_pct": round(
+                citation_stats.with_backward_citations / citation_stats.total_patents * 100, 1
+            ) if citation_stats.total_patents else 0,
+        },
+        "family": {
+            "with_family_id": family_stats.with_family_id,
+            "with_family_members": family_stats.with_family_members,
+        },
+        "recent_failures": [
+            {
+                "id": str(f.id),
+                "provider": f.provider,
+                "target_type": f.target_type,
+                "target_id": f.target_id,
+                "error_message": f.error_message[:200] if f.error_message else None,
+                "created_at": f.created_at.isoformat() if f.created_at else None,
+            }
+            for f in recent_failures
+        ],
+        "latest_success_by_provider": {
+            r.provider: r.last_success.isoformat() if r.last_success else None
+            for r in latest_success
+        },
+    }
+
+
+@router.get("/source-fetches")
+async def admin_source_fetches(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+    limit: int = 20,
+    provider: str | None = None,
+    status: str | None = None,
+):
+    """Recent source fetch log entries."""
+    from app.core.models import SourceFetch
+
+    q = select(SourceFetch).order_by(SourceFetch.created_at.desc())
+    if provider:
+        q = q.where(SourceFetch.provider == provider)
+    if status:
+        q = q.where(SourceFetch.status == status)
+    q = q.limit(min(limit, 100))
+
+    rows = (await db.execute(q)).scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "provider": r.provider,
+            "office": r.office,
+            "target_type": r.target_type,
+            "target_id": r.target_id,
+            "source_url": r.source_url,
+            "status": r.status,
+            "http_status": r.http_status,
+            "error_message": r.error_message[:300] if r.error_message else None,
+            "records_found": r.records_found,
+            "duration_ms": r.duration_ms,
+            "retry_count": r.retry_count,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]

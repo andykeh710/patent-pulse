@@ -3,6 +3,14 @@
 .env.local
 .env.*.local
 
+# Credentials / secrets — NEVER commit
+gcp-service-account.json
+*service-account*.json
+*-gcp-sa.json
+secrets/
+*.pem
+*.key
+
 # Python
 __pycache__/
 *.py[cod]

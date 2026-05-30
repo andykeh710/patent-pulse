@@ -31,6 +31,33 @@ EPO_API_BASE = "https://ops.epo.org/3.2/rest-services"
 TOKEN_REFRESH_BUFFER_SECONDS = 300
 
 
+async def _epo_source_fetch(
+    target_type: str,
+    target_id: str | None = None,
+    status: str = "success",
+    http_status: int | None = None,
+    error_message: str | None = None,
+    records_found: int | None = None,
+    duration_ms: int | None = None,
+):
+    """Fire-and-forget source_fetch recording for EPO API calls."""
+    try:
+        from app.ingestion.source_fetch import record_source_fetch_async
+        await record_source_fetch_async(
+            provider="epo_ops",
+            office="EP",
+            target_type=target_type,
+            target_id=target_id,
+            status=status,
+            http_status=http_status,
+            error_message=error_message,
+            records_found=records_found,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        logger.debug("Failed to record EPO source fetch", exc_info=True)
+
+
 class EPOClient:
     """
     Client for fetching patent data from EPO Open Patent Services.
@@ -264,8 +291,21 @@ class EPOClient:
         Returns:
             Raw publication data dictionary
         """
+        import asyncio
         path = f"/published-data/publication/epodoc/{publication_number}/biblio"
-        return self._request("GET", path)
+        result = self._request("GET", path)
+        try:
+            asyncio.ensure_future(
+                _epo_source_fetch(
+                    target_type="publication",
+                    target_id=publication_number,
+                    status="success",
+                    records_found=1,
+                )
+            )
+        except RuntimeError:
+            pass
+        return result
 
     def fetch_publications_by_date(self, publication_date: date) -> Iterator[dict]:
         """
@@ -291,8 +331,23 @@ class EPOClient:
             }
 
             try:
+                import asyncio, time as _time
+                _start = _time.monotonic()
                 response = self._request("GET", path, params=params)
+                _duration = int((_time.monotonic() - _start) * 1000)
                 publications = self._extract_publications(response)
+
+                # Record source_fetch for this page
+                try:
+                    asyncio.ensure_future(_epo_source_fetch(
+                        target_type="search_by_date",
+                        target_id=date_str,
+                        status="success",
+                        records_found=len(publications),
+                        duration_ms=_duration,
+                    ))
+                except RuntimeError:
+                    pass
 
                 if not publications:
                     break
@@ -307,6 +362,15 @@ class EPOClient:
                 range_end = range_begin + 99
 
             except IngestionError:
+                import asyncio as _aio
+                try:
+                    _aio.ensure_future(_epo_source_fetch(
+                        target_type="search_by_date",
+                        target_id=date_str,
+                        status="failed",
+                    ))
+                except RuntimeError:
+                    pass
                 break
 
     def fetch_family(self, publication_number: str) -> dict:
@@ -350,7 +414,11 @@ class EPOClient:
             results = []
             for pub in publications:
                 doc = pub.get("exchange-document", {})
-                if doc:
+                # exchange-document can be a single dict or a list of dicts
+                if isinstance(doc, list):
+                    for d in doc:
+                        results.append(self._normalize_biblio(d))
+                elif doc:
                     results.append(self._normalize_biblio(doc))
 
             return results

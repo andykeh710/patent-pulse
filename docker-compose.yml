@@ -35,6 +35,10 @@ services:
       - 1.1.1.1
     volumes:
       - ./backend:/app
+      # GCP service account JSON, read-only inside container.
+      # Set GOOGLE_APPLICATION_CREDENTIALS_HOST in .env to the host path
+      # of the JSON file (e.g. /Users/you/Downloads/patent-signals-XXX.json).
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
     ports:
       - "8080:8000"
     environment:
@@ -50,6 +54,7 @@ services:
       EMAIL_SEND_MODE: ${EMAIL_SEND_MODE:-dev}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
@@ -74,6 +79,7 @@ services:
       - 1.1.1.1
     volumes:
       - ./backend:/app
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
@@ -87,6 +93,7 @@ services:
       EMAIL_SEND_MODE: ${EMAIL_SEND_MODE:-dev}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}

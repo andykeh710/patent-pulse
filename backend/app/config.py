@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     epo_ops_client_id: str | None = None
     epo_ops_client_secret: str | None = None
 
+    # ScrapeGraphAI fallback provider for WIPO + image extraction
+    scrapegraph_api_key: str = ""
+    scrapegraph_enabled: bool = False
+    scrapegraph_max_credits_per_run: int = 100
+    scrapegraph_max_pages_per_run: int = 10
+
+    # WIPO BigQuery via Google Patents public dataset
+    wipo_bigquery_dataset: str = "patents-public-data"
+
     # Phase 0: single-user mode + AI cost controls
     single_user_mode: bool = True
     default_user_id: str = "local-user"

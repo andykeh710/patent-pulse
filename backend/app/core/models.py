@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text
@@ -147,3 +147,34 @@ class PatentPublication(Base):
 
     def __repr__(self) -> str:
         return f"<PatentPublication {self.doc_id}>"
+
+
+class SourceFetch(Base):
+    """Instrumentation log for every external data fetch.
+
+    Tracks provider (epo_ops, wipo, google_patents, scrapegraph, uspto),
+    target type (publication, search, family, image, citation, full_text),
+    and outcome (success, failed, empty, blocked, partial).
+    """
+
+    __tablename__ = "source_fetches"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String(64), index=True)
+    office: Mapped[str | None] = mapped_column(String(16), index=True)
+    target_type: Mapped[str] = mapped_column(String(32), index=True)
+    target_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    status: Mapped[str] = mapped_column(String(16), index=True, default="pending")
+    http_status: Mapped[int | None] = mapped_column(Integer)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    records_found: Mapped[int | None] = mapped_column(Integer)
+    raw_storage_key: Mapped[str | None] = mapped_column(String(512))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self) -> str:
+        return f"<SourceFetch {self.provider}/{self.target_type} {self.status}>"
