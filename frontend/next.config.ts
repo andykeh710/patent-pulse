@@ -9,11 +9,6 @@ const nextConfig: NextConfig = {
         destination: "/companies",
         permanent: true,
       },
-      {
-        source: "/dashboard",
-        destination: "/today",
-        permanent: true,
-      },
     ];
   },
   async rewrites() {

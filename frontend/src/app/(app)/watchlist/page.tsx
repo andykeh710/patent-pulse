@@ -55,20 +55,29 @@ export default function WatchlistPage() {
           ))}
         </div>
       ) : !items || items.length === 0 ? (
-        <div className="rounded-lg bg-gray-50 py-16 text-center">
+        <div className="rounded-lg bg-white border border-gray-200 py-16 px-8 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
-          <p className="text-gray-500 mt-3">No patents saved yet</p>
-          <p className="text-sm text-gray-400 mt-1">
-            Click the bookmark icon on any patent to save it here
+          <p className="text-gray-500 mt-3 font-medium">No patents saved yet</p>
+          <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
+            Bookmark patents from any page to build your personal watchlist.
+            Saved patents will also appear in your Today briefing.
           </p>
-          <Link
-            href="/patents"
-            className="inline-block mt-4 text-sm text-primary-600 hover:underline"
-          >
-            Browse patents
-          </Link>
+          <div className="flex items-center justify-center gap-3 mt-5">
+            <Link
+              href="/patents"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+            >
+              Browse patents
+            </Link>
+            <Link
+              href="/search"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Search patents
+            </Link>
+          </div>
         </div>
       ) : (
         <>

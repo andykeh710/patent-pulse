@@ -5,3 +5,5 @@ Allow: /about
 Allow: /terms
 Allow: /privacy
 Disallow: /admin/
+
+Sitemap: https://inventionindex8.com/sitemap.xml

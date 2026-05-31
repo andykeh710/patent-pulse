@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
+import { BRAND } from "@/lib/brand";
 import { usePatent, usePatentSummary } from "@/hooks/usePatents";
 import { AISummaryPanel } from "@/components/patents/AISummaryPanel";
 import { ScoreBadge } from "@/components/patents/ScoreBadge";
@@ -28,6 +29,120 @@ import { formatDate } from "@/lib/utils";
 import { patentsApi, semanticApi } from "@/lib/api";
 import { useWatchlistCheck, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
 import type { PatentDetail, Summary, SimilarPatentsResponse } from "@/lib/types";
+
+// ---------------------------------------------------------------------------
+// Data Completeness Panel — shows which fields are available for this patent
+// ---------------------------------------------------------------------------
+type FieldStatus = "available" | "unavailable";
+
+interface DataField {
+  label: string;
+  category: string;
+  status: FieldStatus;
+}
+
+function DataCompletenessPanel({ patent }: { patent: PatentDetail }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const fields: DataField[] = [
+    { label: "Title", category: "Core", status: patent.title ? "available" : "unavailable" },
+    { label: "Inventors", category: "Core", status: patent.inventors?.length > 0 ? "available" : "unavailable" },
+    { label: "Full abstract", category: "Content", status: patent.abstract ? "available" : "unavailable" },
+    { label: "Claims text", category: "Content", status: patent.claims_text ? "available" : "unavailable" },
+    { label: "AI summary", category: "Intelligence", status: patent.summary ? "available" : "unavailable" },
+    { label: "AI tags", category: "Intelligence", status: patent.tags ? "available" : "unavailable" },
+    { label: "Opportunity score", category: "Intelligence", status: patent.opportunity_score != null ? "available" : "unavailable" },
+    { label: "Why-now narrative", category: "Intelligence", status: patent.why_now_text ? "available" : "unavailable" },
+    { label: "Expiry estimate", category: "Legal", status: patent.estimated_expiry_date ? "available" : "unavailable" },
+    { label: "Family members", category: "Legal", status: patent.family_members?.length > 0 ? "available" : "unavailable" },
+    { label: "Backward citations", category: "Legal", status: patent.citations_backward?.length > 0 ? "available" : "unavailable" },
+    { label: "Forward citations", category: "Legal", status: patent.citations_forward?.length > 0 ? "available" : "unavailable" },
+    { label: "Patent figures", category: "Visual", status: patent.figure_page_url ? "available" : "unavailable" },
+  ];
+
+  const availableCount = fields.filter((f) => f.status === "available").length;
+  const categories = [...new Set(fields.map((f) => f.category))];
+
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-left hover:bg-gray-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Data completeness</span>
+          <span className="text-xs text-gray-500">
+            {availableCount}/{fields.length} fields available
+          </span>
+          <div className="hidden sm:flex items-center gap-1">
+            {categories.map((cat) => {
+              const catFields = fields.filter((f) => f.category === cat);
+              const catAvailable = catFields.filter((f) => f.status === "available").length;
+              const allAvailable = catAvailable === catFields.length;
+              const noneAvailable = catAvailable === 0;
+              return (
+                <span
+                  key={cat}
+                  className={`text-xs px-1.5 py-0.5 rounded ${
+                    allAvailable
+                      ? "bg-green-100 text-green-700"
+                      : noneAvailable
+                      ? "bg-red-50 text-red-600"
+                      : "bg-yellow-50 text-yellow-700"
+                  }`}
+                >
+                  {cat} {catAvailable}/{catFields.length}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="mt-2 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            {categories.map((cat) => (
+              <div key={cat}>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  {cat}
+                </h4>
+                <div className="space-y-1">
+                  {fields
+                    .filter((f) => f.category === cat)
+                    .map((f) => (
+                      <div key={f.label} className="flex items-center gap-2 text-xs">
+                        <span className={f.status === "available" ? "text-green-500" : "text-gray-300"}>
+                          {f.status === "available" ? "●" : "○"}
+                        </span>
+                        <span className={f.status === "available" ? "text-gray-700" : "text-gray-400"}>
+                          {f.label}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
+            Data completeness reflects what {BRAND.name} has ingested from patent office sources.
+            Missing fields may be available from the patent office directly.
+            {!patent.abstract && " Abstracts populate gradually via scheduled enrichment."}
+            {!patent.claims_text && " Claims ingestion is limited in the current data pipeline."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PatentDetailPage({
   params,
@@ -236,6 +351,9 @@ export default function PatentDetailPage({
           )}
         </div>
       </div>
+
+      {/* Data Completeness Panel */}
+      <DataCompletenessPanel patent={patent} />
 
       <FreshnessBanner show={["patents", "summaries", "trends", "ai_runs"]} className="mb-4" />
 

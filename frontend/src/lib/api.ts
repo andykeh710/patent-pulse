@@ -32,16 +32,17 @@ import type {
   TabCounts,
   Topic,
   ThemeStats,
+  TrendDrilldownAssigneesResponse,
+  TrendDrilldownPatentsResponse,
   TrendListResponse,
+  TrendNarrativeResponse,
   TrendResponse,
   TrendsSummary,
+  TodayHighlightsResponse,
   WatchlistItemResponse,
   SemanticSearchResponse,
   LinkedInPostResponse,
   LinkedInDraftResponse,
-  TrendDrilldownPatentsResponse,
-  TrendDrilldownAssigneesResponse,
-  TrendNarrativeResponse,
   UsageSignalResponse,
   UsageGenerateResponse,
   UsageNarrativeResponse,
@@ -150,6 +151,11 @@ export const patentsApi = {
         body: JSON.stringify({ patent_id: patentId, tone: tone ?? null }),
       }
     ),
+};
+
+export const todayApi = {
+  highlights: () =>
+    apiFetch<TodayHighlightsResponse>(`/api/v1/today/highlights`),
 };
 
 export const searchApi = {

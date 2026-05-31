@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PricingCard } from "../PricingCard";
 
 export const metadata: Metadata = {
-  title: "Pricing — Patent Pulse",
+  title: "Pricing",
   description:
     "Free, Basic ($8/yr), Lifetime ($108 once), and Enterprise ($1,000/yr) plans.",
 };
@@ -162,7 +162,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "What does Lifetime mean?",
-    a: "One payment of $108 gives you lifetime access to the Lifetime features while Patent Pulse is actively maintained. It is not a contractual guarantee of perpetual service — it means no recurring charges for as long as the product exists.",
+    a: `One payment of $108 gives you lifetime access to the Lifetime features while Invention Index 8 is actively maintained. It is not a contractual guarantee of perpetual service — it means no recurring charges for as long as the product exists.`,
   },
   {
     q: "Do you charge tax / VAT?",

@@ -184,11 +184,19 @@ export function ExpiryRadarCard({
         )}
       </div>
 
-      {/* Source attribution + legal caveat */}
+      {/* Source attribution + legal caveat + verify-at-source */}
       <div className="mt-3 pt-3 border-t border-gray-100">
         <SourceAttribution docId={docId} />
         <p className="text-xs text-gray-400">
-          Verify with official registers before relying on expiry status.
+          Verify with official registers before relying on expiry status.{" "}
+          <a
+            href={`https://patents.google.com/patent/${encodeURIComponent(docId)}/en`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 hover:underline"
+          >
+            View at Google Patents →
+          </a>
         </p>
       </div>
     </div>

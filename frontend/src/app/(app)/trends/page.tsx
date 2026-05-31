@@ -196,6 +196,10 @@ function TrendsContent() {
       {view === "cliffs" && (
         <CliffList items={cliffs?.items || []} isLoading={cliffsLoading} />
       )}
+
+      <div className="mt-8">
+        <SourceAttribution />
+      </div>
     </div>
   );
 }
@@ -286,6 +290,20 @@ function TrendList({
                 <span>Diversity: {(item.assignee_diversity * 100).toFixed(0)}%</span>
               )}
             </div>
+            {item.top_patent_ids && item.top_patent_ids.length > 0 && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-xs text-gray-400">Top patents:</span>
+                {item.top_patent_ids.slice(0, 3).map((pid) => (
+                  <Link
+                    key={pid}
+                    href={`/patents/${pid}`}
+                    className="text-xs text-primary-600 hover:underline"
+                  >
+                    View
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3 text-right">
             <div>

@@ -131,7 +131,7 @@ async def get_stats(db: DbSession) -> StatsResponse:
     week_ago = date.today() - timedelta(days=7)
     week_result = await db.execute(
         select(func.count(PatentPublication.id)).where(
-            PatentPublication.created_at >= week_ago
+            PatentPublication.publication_date >= week_ago
         )
     )
     patents_this_week = week_result.scalar() or 0

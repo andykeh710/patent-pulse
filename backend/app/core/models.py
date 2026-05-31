@@ -49,6 +49,8 @@ class PatentPublication(Base):
 
     # Sprint 4.5: link-out to Google Patents thumbnails page (not inline image).
     figure_page_url: Mapped[str | None] = mapped_column(String(512))
+    abstract_source: Mapped[str | None] = mapped_column(String(32))
+    claims_source: Mapped[str | None] = mapped_column(String(32))
 
     # Phase 0: legal-confidence honest. V1 always "estimated"; V1.1 flips to
     # "confirmed" when INPADOC reconciliation lands.

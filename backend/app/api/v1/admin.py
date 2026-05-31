@@ -436,6 +436,30 @@ async def trigger_sentry_test(
     raise RuntimeError("PR8 Sentry debug — intentional test exception")
 
 
+# ── System health ────────────────────────────────────────────
+
+
+@router.get("/system-health")
+async def admin_system_health(
+    admin: _UserModel = Depends(require_admin),
+):
+    """Returns Anthropic API health status for monitoring."""
+    from app.tasks.tag import _anthropic_error_count, _LAST_ANTHROPIC_ERROR_AT, ANTHROPIC_ERROR_MAX_CONSECUTIVE
+
+    status = "ok"
+    if _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE:
+        status = "credits_exhausted"
+    elif _anthropic_error_count > 0:
+        status = "degraded"
+
+    return {
+        "anthropic_status": status,
+        "anthropic_consecutive_errors": _anthropic_error_count,
+        "anthropic_last_error_at": _LAST_ANTHROPIC_ERROR_AT,
+        "circuit_broken": _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE,
+    }
+
+
 # ── Data health ──────────────────────────────────────────────
 
 

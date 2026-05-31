@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { BRAND } from "@/lib/brand";
 
 const NAV_ITEMS = [
   {
@@ -77,8 +78,12 @@ export function NavSidebar() {
   return (
     <nav className="w-64 bg-white border-r border-gray-200 p-4 fixed h-full">
       <div className="mb-8">
-        <h1 className="text-xl font-bold text-primary-700">Patent Pulse</h1>
-        <p className="text-sm text-gray-500">Patent Intelligence</p>
+        <Link href="/" className="inline-flex items-center gap-2 group">
+          <span className="text-xl font-bold text-primary-700 group-hover:text-primary-600 transition-colors">
+            {BRAND.compactName}
+          </span>
+        </Link>
+        <p className="text-sm text-gray-500 mt-1">Invention Intelligence</p>
       </div>
 
       <ul className="space-y-1">

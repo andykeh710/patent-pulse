@@ -37,6 +37,8 @@ class EPONormalizer:
         kind_code = raw.get("kind_code", "")
         is_grant = kind_code.startswith("B")
 
+        raw_data = raw.get("raw_data", raw)
+
         return {
             "doc_id": self._build_doc_id(PatentOffice.EPO, pub_number),
             "office": PatentOffice.EPO,
@@ -55,11 +57,52 @@ class EPONormalizer:
             "abstract": raw.get("abstract"),
             "claims_text": None,
             "description_text": None,
-            "citations_backward": [],
+            "citations_backward": self._extract_citations(raw_data),
+            "family_id": self._extract_family_id(raw_data),
             "estimated_expiry_date": self._compute_expiry(raw),
             "legal_status": LegalStatus.GRANTED if is_grant else LegalStatus.PUBLISHED,
-            "raw_data": raw.get("raw_data", raw),
+            "raw_data": raw_data,
         }
+
+    def _extract_citations(self, raw_data: dict) -> list[str]:
+        """Extract backward citations from EPO bibliographic data."""
+        biblio = raw_data.get("bibliographic-data", {})
+        refs = biblio.get("references-cited", {})
+        citations = refs.get("citation", [])
+        if isinstance(citations, dict):
+            citations = [citations]
+        result = []
+        for c in citations:
+            patcit = c.get("patcit", {})
+            doc_id = patcit.get("document-id", {})
+            if isinstance(doc_id, list):
+                doc_id = doc_id[0] if doc_id else {}
+            country = ""
+            if isinstance(doc_id.get("country"), dict):
+                country = doc_id["country"].get("$", "")
+            elif doc_id.get("country"):
+                country = str(doc_id["country"])
+            num = ""
+            if isinstance(doc_id.get("doc-number"), dict):
+                num = doc_id["doc-number"].get("$", "")
+            elif doc_id.get("doc-number"):
+                num = str(doc_id["doc-number"])
+            kind = ""
+            if isinstance(doc_id.get("kind"), dict):
+                kind = doc_id["kind"].get("$", "")
+            elif doc_id.get("kind"):
+                kind = str(doc_id["kind"])
+            if num:
+                result.append(f"{country}{num}{kind}")
+        return result
+
+    def _extract_family_id(self, raw_data: dict) -> str | None:
+        """Extract INPADOC family ID from raw data."""
+        fid = raw_data.get("@family-id")
+        if fid:
+            return str(fid)
+        biblio = raw_data.get("bibliographic-data", {})
+        return biblio.get("@family-id") or biblio.get("family-id")
 
     def _build_doc_id(self, office: PatentOffice, number: str) -> str:
         """Build canonical document ID."""

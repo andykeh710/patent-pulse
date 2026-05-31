@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { useSupplierMap, useSupplierSummary, useSuppliers } from "@/hooks/useSuppliers";
 import { formatNumber, humanizeTag } from "@/lib/utils";
 import type { SupplierItem, SupplierListParams, SupplierMapCountry } from "@/lib/types";
@@ -32,6 +34,7 @@ export default function CompaniesPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Companies / Assignees</h1>
+        <FreshnessBanner show={["patents"]} className="mt-2" />
         <p className="text-gray-600 mt-1">
           Portfolio strength, opportunity exposure, geographic coverage, and risk from patent assignee data
         </p>
@@ -292,6 +295,10 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-8">
+        <SourceAttribution />
       </div>
     </div>
   );

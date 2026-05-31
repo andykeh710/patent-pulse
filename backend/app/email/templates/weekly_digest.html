@@ -2,26 +2,26 @@
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #333;">
-  <h1 style="color: #1a56db; font-size: 20px;">{{ greeting }}</h1>
+  <h1 style="color: #4f46e5; font-size: 20px;">{{ greeting }}</h1>
   <p style="color: #666; font-size: 14px;">{{ intro_blurb }}</p>
 
   {% for section in sections %}
   <div style="margin: 24px 0;">
-    <h2 style="font-size: 16px; color: #1a56db; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">{{ section.title }}</h2>
+    <h2 style="font-size: 16px; color: #4f46e5; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">{{ section.title }}</h2>
     <p style="font-size: 13px; color: #555; line-height: 1.5;">{{ section.body }}</p>
   </div>
   {% endfor %}
 
   <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
   <p style="font-size: 13px; color: #666;">{{ call_to_action }}</p>
-  <a href="{{ cta_url }}" style="display: inline-block; background: #1a56db; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">{{ cta_text }}</a>
+  <a href="{{ cta_url }}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">{{ cta_text }}</a>
 
   <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
   <p style="font-size: 11px; color: #bbb;">
-    You received this digest because you subscribe to weekly briefings on Patent Pulse.<br>
+    You received this digest because you subscribe to weekly briefings on Invention Index 8.<br>
     <a href="{{ unsubscribe_url }}" style="color: #bbb;">Unsubscribe</a> ·
     <a href="{{ magic_link_base_url }}/account" style="color: #bbb;">Manage preferences</a>
   </p>
-  <p style="font-size: 11px; color: #bbb;">Patent Pulse · Evidence-backed signals · Verify with official registers.</p>
+  <p style="font-size: 11px; color: #bbb;">Invention Index 8 · Research intelligence only. Not legal, financial, or investment advice. Verify with official registers.</p>
 </body>
 </html>

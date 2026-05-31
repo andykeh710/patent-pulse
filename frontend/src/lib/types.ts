@@ -788,3 +788,49 @@ export interface LinkedInDraftResponse {
   created_at: string;
   updated_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Today highlights (Step 9)
+// ---------------------------------------------------------------------------
+
+export interface FilingTrendCard {
+  trend_surface: string;
+  trend_key: string;
+  trend_label: string;
+  count_4w: number;
+  z_score: number;
+  top_assignees: string[];
+  top_patent_ids: string[];
+}
+
+export interface ExpiringOpportunityCard {
+  count: number;
+  caveat: string;
+}
+
+export interface NotablePatentCard {
+  id: string;
+  publication_number: string;
+  doc_id: string;
+  title: string | null;
+  assignee: string;
+  opportunity_score: number;
+  summary_first_sentence: string;
+  has_abstract: boolean;
+  has_claims: boolean;
+  limited_source: boolean;
+}
+
+export interface CompanyMoveCard {
+  assignee: string;
+  count_this_week: number;
+  count_4wk_avg: number;
+  delta: number;
+}
+
+export interface TodayHighlightsResponse {
+  filing_trend: FilingTrendCard | null;
+  expiring_opportunity: ExpiringOpportunityCard | null;
+  notable_patent: NotablePatentCard | null;
+  company_move: CompanyMoveCard | null;
+}

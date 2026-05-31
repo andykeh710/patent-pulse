@@ -10,7 +10,7 @@ import logging
 import httpx
 
 from app.config import settings
-from app.core.exceptions import PatentPulseError
+from app.core.exceptions import InventionIndex8Error
 from app.core.models import PatentPublication
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
 
 
-class EmbeddingError(PatentPulseError):
+class EmbeddingError(InventionIndex8Error):
     """Error generating embeddings."""
 
     pass

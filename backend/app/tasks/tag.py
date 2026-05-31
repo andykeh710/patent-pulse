@@ -17,6 +17,47 @@ from app.tasks.run_aggregates import recompute_run_aggregates
 
 logger = logging.getLogger(__name__)
 
+# Track consecutive Anthropic credit errors for circuit breaking
+_anthropic_error_count = 0
+_LAST_ANTHROPIC_ERROR_AT: str | None = None
+ANTHROPIC_ERROR_MAX_CONSECUTIVE = 3
+
+
+def _is_anthropic_error(exception: Exception) -> str | None:
+    """Check if exception is an Anthropic API error.
+
+    Returns error type string ('credits_exhausted', 'rate_limited', 'auth_error')
+    or None if not an Anthropic error.
+    """
+    msg = str(exception).lower()
+    if "credit balance is too low" in msg or "insufficient_balance" in msg:
+        return "credits_exhausted"
+    if "rate_limit" in msg or "429" in msg or "too many requests" in msg:
+        return "rate_limited"
+    if "401" in msg or "authentication" in msg or "invalid x-api-key" in msg:
+        return "auth_error"
+    if "anthropic" in msg.lower() and ("error" in msg.lower() or "badrequest" in msg.lower()):
+        return "anthropic_error"
+    return None
+
+
+async def _record_anthropic_error(error_type: str, error_message: str):
+    """Record Anthropic error to source_fetches."""
+    global _anthropic_error_count, _LAST_ANTHROPIC_ERROR_AT
+    _anthropic_error_count += 1
+    from datetime import datetime, timezone
+    _LAST_ANTHROPIC_ERROR_AT = datetime.now(timezone.utc).isoformat()
+    try:
+        from app.ingestion.source_fetch import record_source_fetch_async
+        await record_source_fetch_async(
+            provider="anthropic",
+            target_type="tag_patent",
+            status="blocked",
+            error_message=f"{error_type}: {error_message[:500]}",
+        )
+    except Exception:
+        logger.debug("Failed to record Anthropic error to source_fetches", exc_info=True)
+
 
 @celery_app.task(
     bind=True,
@@ -47,6 +88,9 @@ async def _tag_patent_async(patent_id: str, run_id: str | None) -> dict[str, Any
             patent,
             run_id=UUID(run_id) if run_id else None,
         )
+        # Reset error counter on success
+        global _anthropic_error_count
+        _anthropic_error_count = 0
         patent.tags = tags
         patent.latest_tags_artifact_id = artifact_id
         await session.commit()
@@ -88,8 +132,22 @@ async def _batch_tag_async(limit: int) -> dict[str, Any]:
                 stats["skipped"] += 1
             else:
                 stats["failed"] += 1
-        except Exception as e:  # noqa: BLE001
-            stats["failed"] += 1
-            logger.exception("tag failed for %s: %s", patent.id, e)
+        except Exception as e:
+            error_type = _is_anthropic_error(e)
+            if error_type:
+                logger.error("Anthropic API error during tagging: %s — %s", error_type, e)
+                await _record_anthropic_error(error_type, str(e))
+                stats["failed"] += 1
+                # Circuit-break: stop batch on 3 consecutive Anthropic errors
+                if error_type == "credits_exhausted" and _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE:
+                    logger.critical(
+                        "Tag batch HALTED after %d consecutive Anthropic credit errors. "
+                        "Waiting for next beat cycle.",
+                        _anthropic_error_count,
+                    )
+                    break
+            else:
+                stats["failed"] += 1
+                logger.exception("tag failed for %s: %s", patent.id, e)
         stats["processed"] += 1
     return stats

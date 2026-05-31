@@ -2,9 +2,12 @@
 
 import { Suspense, useState, useCallback, useEffect, type FormEvent } from "react";
 import { useSearchParams as useNextSearchParams, useRouter, usePathname } from "next/navigation";
+import { BRAND } from "@/lib/brand";
 import { usePatentSearch } from "@/hooks/usePatents";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
+import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { Badge } from "@/components/ui/Badge";
 import type { SearchParams } from "@/lib/types";
 import useSWR from "swr";
@@ -78,6 +81,7 @@ function SearchContent() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Search Patents</h1>
+        <FreshnessBanner show={["patents"]} className="mt-2" />
         <p className="text-gray-600 mt-1">
           Find patents by keyword or describe what you&apos;re looking for
         </p>
@@ -201,7 +205,7 @@ function SearchContent() {
       ) : semanticResults ? (
         <>
           <p className="text-sm text-gray-500 mb-4">
-            Search across Patent Pulse&apos;s indexed publications using keywords or semantic similarity
+            Search across {BRAND.name}&apos;s indexed publications using keywords or semantic similarity
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {semanticResults.results.map((result) => (
@@ -221,6 +225,10 @@ function SearchContent() {
           </div>
         </>
       ) : null}
+
+      <div className="mt-8">
+        <SourceAttribution />
+      </div>
     </div>
   );
 }

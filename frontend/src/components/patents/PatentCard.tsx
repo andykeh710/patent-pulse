@@ -64,6 +64,11 @@ export function PatentCard({ patent }: PatentCardProps) {
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-2">
+          {patent.doc_id && (
+            <Badge variant="default" size="sm" className="bg-gray-100 text-gray-600 font-mono">
+              {patent.doc_id.split(":")[0]}
+            </Badge>
+          )}
           <span>{patent.publication_number}</span>
           <span>&bull;</span>
           <span>

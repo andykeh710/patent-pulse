@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { BRAND, EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Patent Pulse",
-  description: "Terms of Service for Patent Pulse.",
+  title: `Terms of Service`,
+  description: `Terms of Service for ${BRAND.name}.`,
 };
 
 export default function TermsPage() {
@@ -23,7 +24,7 @@ export default function TermsPage() {
             1. Acceptance of Terms
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            By accessing or using Patent Pulse (&ldquo;the Service&rdquo;), you
+            By accessing or using {BRAND.name} (&ldquo;the Service&rdquo;), you
             agree to be bound by these Terms of Service. If you do not agree,
             do not use the Service.
           </p>
@@ -34,7 +35,7 @@ export default function TermsPage() {
             2. Description of Service
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            Patent Pulse is a patent intelligence tool that surfaces patent
+            {BRAND.name} is a patent intelligence tool that surfaces patent
             filing trends, expiry estimates, usage signals, and AI-generated
             narratives from publicly available patent office data. It is not
             legal advice.
@@ -104,9 +105,9 @@ export default function TermsPage() {
           </h2>
           <p className="text-gray-600 leading-relaxed">
             THE SERVICE IS PROVIDED &ldquo;AS IS&rdquo; WITHOUT WARRANTY OF ANY
-            KIND. PATENT PULSE IS NOT LEGAL ADVICE. EXPIRY ESTIMATES ARE
-            ESTIMATES — NOT GUARANTEES. VERIFY ALL INFORMATION WITH OFFICIAL
-            PATENT REGISTERS BEFORE MAKING DECISIONS.
+            KIND. {BRAND.name.toUpperCase()} IS NOT LEGAL ADVICE. EXPIRY
+            ESTIMATES ARE ESTIMATES — NOT GUARANTEES. VERIFY ALL INFORMATION
+            WITH OFFICIAL PATENT REGISTERS BEFORE MAKING DECISIONS.
           </p>
         </section>
 
@@ -115,7 +116,7 @@ export default function TermsPage() {
             8. Limitation of Liability
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            To the fullest extent permitted by law, Patent Pulse shall not be
+            To the fullest extent permitted by law, {BRAND.name} shall not be
             liable for any indirect, incidental, special, or consequential
             damages arising from your use of the Service.
           </p>
@@ -150,10 +151,10 @@ export default function TermsPage() {
           <p className="text-gray-600 leading-relaxed">
             Questions about these Terms? Email{" "}
             <a
-              href="mailto:support@patentpulse.dev"
+              href={`mailto:${EMAIL.support}`}
               className="text-primary-600 hover:text-primary-700 underline"
             >
-              support@patentpulse.dev
+              {EMAIL.support}
             </a>
           </p>
         </section>

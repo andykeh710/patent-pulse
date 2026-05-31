@@ -46,7 +46,7 @@ from app.core.models import PatentPublication
 logger = logging.getLogger(__name__)
 
 RULES_ID = "opportunity_score_rules"
-RULES_VERSION = 2
+RULES_VERSION = 3  # Bumped: increased floors for missing-data scenarios
 
 # Component weights. Sum to 1.0 by convention (rebalance if you bump
 # RULES_VERSION). Each component returns a 0..1 sub-score; the final
@@ -325,7 +325,7 @@ def _score_ai_software(f: OpportunityFeatures) -> float:
 def _score_implementation_feasibility(f: OpportunityFeatures) -> float:
     """High independent-claim count + moderate avg length → good signal."""
     if not f.has_claims:
-        return 0.2
+        return 0.3  # was 0.2: too punishing when 96% lack claims
     icc = f.independent_claim_count
     icc_score = min(icc / 4.0, 0.5)
     # 200..1500 chars/claim is a healthy band; outside that the signal weakens.
@@ -344,7 +344,7 @@ def _score_implementation_feasibility(f: OpportunityFeatures) -> float:
 
 def _score_market_relevance(f: OpportunityFeatures) -> float:
     if not f.industries:
-        return 0.2
+        return 0.3  # was 0.2: CPC sections still provide signal
     base = 0.4
     if any(t in {"startup_opportunity", "enterprise_automation", "manufacturing_reuse"} for t in f.opportunity_tags):
         base += 0.3

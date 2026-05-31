@@ -3,15 +3,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { PricingCard } from "./PricingCard";
 import { BriefingPreview } from "./BriefingPreview";
+import { BRAND, COPY } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Patent Pulse — Patent intelligence with the receipts",
-  description:
-    "Track expiry, usage signals, and filing trends across USPTO, EPO, and WIPO data — every claim labeled with confidence, every source linked back.",
+  title: `${BRAND.name} — ${COPY.tagline}`,
+  description: COPY.description,
   openGraph: {
-    title: "Patent Pulse — Patent intelligence with the receipts",
-    description:
-      "Track expiry, usage signals, and filing trends across USPTO, EPO, and WIPO data.",
+    title: BRAND.name,
+    description: COPY.description,
     images: [{ url: "/og-image.svg", width: 1200, height: 630 }],
   },
 };
@@ -53,43 +52,79 @@ export default function LandingPage() {
   return (
     <>
       {/* ═══════════════════════════════════════════
-          1. HERO — split layout
+          1. HERO — premium dark with animated background
           ═══════════════════════════════════════════ */}
-      <Section className="pt-24 pb-20">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left: copy */}
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight tracking-tight">
-              Patent intelligence with the receipts.
-            </h1>
-            <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-xl">
-              Track expiry, usage signals, and filing trends across USPTO, EPO,
-              and WIPO data — every claim labeled with confidence, every source
-              linked back. Subscribe to your topics for weekly briefings and
-              instant alerts.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
-              >
-                Get started free
-              </Link>
-              <Link
-                href="/pricing"
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-              >
-                See pricing
-              </Link>
+      <section className="relative overflow-hidden bg-[#0a0e27] text-white pt-28 pb-24">
+        {/* Animated grid background */}
+        <div className="absolute inset-0 hero-grid-bg" />
+
+        {/* Signal orbs */}
+        <div
+          className="hero-signal-orb w-[500px] h-[500px] animate-drift-slow"
+          style={{
+            background: "radial-gradient(circle, rgba(99,102,241,0.4), transparent)",
+            top: "10%",
+            left: "-10%",
+          }}
+        />
+        <div
+          className="hero-signal-orb w-[400px] h-[400px] animate-drift-slower"
+          style={{
+            background: "radial-gradient(circle, rgba(139,92,246,0.3), transparent)",
+            bottom: "-15%",
+            right: "-5%",
+          }}
+        />
+        <div
+          className="hero-signal-orb w-[300px] h-[300px]"
+          style={{
+            background: "radial-gradient(circle, rgba(6,182,212,0.25), transparent)",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left: copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full border border-indigo-400/20 bg-white/5 text-xs text-indigo-300">
+                <span className="signal-pulse" />
+                Intelligence platform · {BRAND.name}
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+                {COPY.heroHeadline}
+              </h1>
+              <p className="mt-6 text-lg text-indigo-200/80 leading-relaxed max-w-xl">
+                {COPY.heroSubheadline}
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <Link
+                  href="/login"
+                  className="shine-cta inline-flex items-center justify-center px-7 py-3.5 rounded-lg text-white font-semibold text-base"
+                >
+                  {COPY.ctaPrimary}
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center px-7 py-3.5 rounded-lg border border-indigo-400/20 text-indigo-200 font-semibold hover:bg-white/5 transition-colors"
+                >
+                  See pricing
+                </Link>
+              </div>
+              <p className="mt-6 text-xs text-indigo-300/50">
+                No credit card required
+              </p>
+            </div>
+
+            {/* Right: briefing preview card placeholder */}
+            <div className="hidden md:flex justify-center">
+              <BriefingPreview />
             </div>
           </div>
-
-          {/* Right: briefing preview card placeholder */}
-          <div className="hidden md:flex justify-center">
-            <BriefingPreview />
-          </div>
         </div>
-      </Section>
+      </section>
 
       {/* ═══════════════════════════════════════════
           2. DATA STRIP
@@ -97,7 +132,7 @@ export default function LandingPage() {
       <section className="border-y border-gray-200 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-sm text-gray-500 text-center flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <span>54,903 patents</span>
+            <span>64,231 patents</span>
             <span className="text-gray-300">·</span>
             <span>USPTO</span>
             <span className="text-gray-300">·</span>
@@ -113,12 +148,83 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════
-          3. VALUE PROPS — 4 cards, 2×2 grid
+          3. VALUE PROPS — 4 premium cards, 2×2 grid
           ═══════════════════════════════════════════ */}
       <Section className="py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            An intelligence layer for patents, ideas, and emerging opportunities.
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Four core modules — each calibrated, evidence-backed, and honest about
+            its confidence.
+          </p>
+        </div>
+
         <div className="grid sm:grid-cols-2 gap-8">
-          {/* Card 1 — Expiry Intelligence */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors">
+          {/* Card 1 — Filing Trends */}
+          <div className="signal-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                Filing Trends
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Spot unusual invention movement.
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Track filing surges across patent classes before the trend becomes
+              mainstream. Every narrative cites the underlying patents and is
+              refreshed as new filings drop.
+            </p>
+          </div>
+
+          {/* Card 2 — Company Moves */}
+          <div className="signal-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4z" />
+                </svg>
+                Company Moves
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Track where companies are inventing.
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Monitor where assignees are increasing invention activity and
+              shifting R&D focus across patent classes, with deltas and trend
+              direction surfaced automatically.
+            </p>
+          </div>
+
+          {/* Card 3 — Notable Patents */}
+          <div className="signal-card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-700">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                  <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                </svg>
+                Notable Patents
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Find the ideas companies are quietly betting on.
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Surface individual filings that may signal meaningful technology,
+              product, or market movement — with AI narratives, expiry status,
+              family risk, and source links to verify.
+            </p>
+          </div>
+
+          {/* Card 4 — Expiring Opportunities */}
+          <div className="signal-card p-6">
             <div className="flex flex-wrap gap-1.5 mb-4">
               {CONFIDENCE_PILLS.map((p) => (
                 <span
@@ -130,103 +236,41 @@ export default function LandingPage() {
               ))}
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Expiry intelligence, calibrated.
+              Expiring opportunities, honestly scored.
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Estimated expiry dates with explicit confidence labels — not raw
-              guesses. Active family members in other jurisdictions surfaced
-              when relevant. Every estimate links to the official register for
-              verification.
+              Identify patents approaching expiration that may create whitespace
+              for builders, operators, and investors. Every estimate labeled with
+              explicit confidence, active family risk surfaced, and official
+              registers linked for verification.
             </p>
           </div>
+        </div>
 
-          {/* Card 2 — Usage Signals */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors">
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {TIER_BADGES.map((b) => (
-                <span
-                  key={b.label}
-                  className={`px-2 py-0.5 rounded text-xs font-semibold ${b.color}`}
-                >
-                  {b.label}
-                </span>
-              ))}
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
-                ⚠ self-citation risk
+        {/* Usage signals standalone card */}
+        <div className="mt-8 signal-card p-6">
+          <div className="flex flex-wrap gap-1.5 mb-4 items-center">
+            {TIER_BADGES.map((b) => (
+              <span
+                key={b.label}
+                className={`px-2 py-0.5 rounded text-xs font-semibold ${b.color}`}
+              >
+                {b.label}
               </span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Usage signals, evidence-backed.
-            </h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              See how patent ideas appear in newer art — with a tier
-              (strong/medium/weak) on every piece of evidence and a source link
-              beneath. No &ldquo;this patent is used by Company X&rdquo; claims.
-              Only patterns you can verify.
-            </p>
+            ))}
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+              ⚠ self-citation risk
+            </span>
           </div>
-
-          {/* Card 3 — Trend Narratives */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors">
-            <div className="mb-4">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                <svg
-                  className="w-3 h-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                AI-generated · Claude Sonnet
-              </span>
-              <p className="mt-3 text-sm text-gray-500 italic leading-relaxed line-clamp-2">
-                &ldquo;Filing activity in quantum-resistant cryptography surged
-                42% over the trailing 12 months, led by assignees in the US and
-                Japan...&rdquo;
-              </p>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Trend narratives, in plain English.
-            </h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Filing surges and assignee movement explained by Claude Sonnet —
-              the model that follows structured-JSON instructions reliably.
-              Every narrative cites the underlying patents. Refreshed as new
-              filings drop.
-            </p>
-          </div>
-
-          {/* Card 4 — Topics & Alerts */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors">
-            <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-600 space-y-1">
-              <div>
-                Topic:{" "}
-                <span className="text-primary-700 font-semibold">G06F</span>
-              </div>
-              <div>
-                Mode:{" "}
-                <span className="text-primary-700">
-                  weekly_digest + instant_alert
-                </span>
-              </div>
-              <div>
-                Threshold: <span className="text-primary-700">≥ 60</span>
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Your topics. Briefed weekly. Alerted instantly.
-            </h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Subscribe to topics by CPC class, keyword, or assignee — with
-              optional opportunity-score thresholds. Get instant alerts on
-              high-priority matches and a Sonnet-written briefing every Sunday
-              morning.
-            </p>
-          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Commercial usage signals, evidence-backed.
+          </h3>
+          <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
+            See where patent ideas show up in newer art — with a tier (strong /
+            medium / weak) on every piece of evidence and a source link beneath.
+            No &ldquo;this patent is used by Company X&rdquo; claims. Only patterns
+            you can verify.
+          </p>
         </div>
       </Section>
 
@@ -240,9 +284,9 @@ export default function LandingPage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             {/* Attorneys */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="signal-card p-6">
               <h3 className="font-semibold text-gray-900 mb-3">
-                For patent attorneys & law firms
+                For patent attorneys &amp; law firms
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed mb-4">
                 Surveil portfolios with confidence-labeled expiry estimates.
@@ -256,14 +300,14 @@ export default function LandingPage() {
             </div>
 
             {/* Corporate IP */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="signal-card p-6">
               <h3 className="font-semibold text-gray-900 mb-3">
                 For corporate IP teams
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed mb-4">
                 Monitor your CPC areas for filing surges, family expansions, and
-                expiry opportunities. Track usage signals showing how your prior
-                art shows up in newer filings — with evidence tiers, not claims.
+                emerging opportunity zones. Track where your prior art appears in
+                newer filings — with evidence tiers, not claims.
               </p>
               <p className="text-xs text-gray-400">
                 <em className="not-italic text-gray-500">Tracks:</em> competitor
@@ -272,9 +316,9 @@ export default function LandingPage() {
             </div>
 
             {/* Founders */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="signal-card p-6">
               <h3 className="font-semibold text-gray-900 mb-3">
-                For founders & investors
+                For founders &amp; investors
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed mb-4">
                 Find ideas approaching estimated expiry in your thesis areas —
@@ -409,7 +453,7 @@ export default function LandingPage() {
           We show our work.
         </h2>
         <p className="text-gray-600 leading-relaxed text-center mb-8">
-          Patent Pulse calibrates uncertainty. We label every estimate. We cite
+          {BRAND.name} calibrates uncertainty. We label every estimate. We cite
           every source. We don&rsquo;t claim freedom-to-operate, we don&rsquo;t
           invent market data, and we tell you when our confidence is low.
         </p>
@@ -435,16 +479,16 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════
           8. FINAL CTA
           ═══════════════════════════════════════════ */}
-      <section className="bg-primary-600 py-20">
+      <section className="bg-primary-700 py-20">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Ready to read the patent landscape?
+            Ready to track the world&rsquo;s invention signals?
           </h2>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-white text-primary-700 font-semibold hover:bg-gray-100 transition-colors"
+            className="shine-cta inline-flex items-center justify-center px-8 py-3.5 rounded-lg text-white font-semibold text-base"
           >
-            Get started free
+            {COPY.ctaPrimary}
           </Link>
           <p className="mt-4 text-sm text-primary-200">
             No credit card required
@@ -555,10 +599,9 @@ export default function LandingPage() {
           </div>
           <div className="border-t border-gray-800 mt-10 pt-8 text-center text-sm">
             <p className="mb-2">
-              Patent Pulse · Evidence-backed patent intelligence · Verify with
-              official registers.
+              {COPY.footerDisclaimer}
             </p>
-            <p>&copy; 2026</p>
+            <p>&copy; {BRAND.year}</p>
           </div>
         </div>
       </footer>

@@ -1,4 +1,4 @@
-# Patent Pulse — Agent Operating Rules
+# Invention Index 8 — Agent Operating Rules
 
 These rules apply to any AI agent (Hermes, Claude Code, Codex, etc.)
 working in this repository. They supplement the generic agent persona

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { BRAND, EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Patent Pulse",
-  description: "Privacy Policy for Patent Pulse.",
+  title: `Privacy Policy`,
+  description: `Privacy Policy for ${BRAND.name}.`,
 };
 
 export default function PrivacyPage() {
@@ -74,7 +75,7 @@ export default function PrivacyPage() {
             Third-party processors
           </h2>
           <p className="text-gray-600 leading-relaxed mb-3">
-            We use the following services to operate Patent Pulse:
+            We use the following services to operate {BRAND.name}:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-gray-600">
             <li>
@@ -146,10 +147,10 @@ export default function PrivacyPage() {
           <p className="text-gray-600 leading-relaxed">
             For GDPR inquiries, contact{" "}
             <a
-              href="mailto:privacy@patentpulse.dev"
+              href={`mailto:${EMAIL.privacy}`}
               className="text-primary-600 hover:text-primary-700 underline"
             >
-              privacy@patentpulse.dev
+              {EMAIL.privacy}
             </a>
             .
           </p>
@@ -162,10 +163,10 @@ export default function PrivacyPage() {
           <p className="text-gray-600 leading-relaxed">
             Privacy questions? Email{" "}
             <a
-              href="mailto:privacy@patentpulse.dev"
+              href={`mailto:${EMAIL.privacy}`}
               className="text-primary-600 hover:text-primary-700 underline"
             >
-              privacy@patentpulse.dev
+              {EMAIL.privacy}
             </a>
           </p>
         </section>

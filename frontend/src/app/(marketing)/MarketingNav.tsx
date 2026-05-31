@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { BRAND } from "@/lib/brand";
 
 export function MarketingNav() {
   const [open, setOpen] = useState(false);
@@ -13,9 +14,9 @@ export function MarketingNav() {
           {/* Logo */}
           <Link
             href="/"
-            className="text-xl font-bold text-primary-700 hover:text-primary-800 transition-colors"
+            className="flex items-center gap-2 text-xl font-bold text-gray-900 hover:text-primary-600 transition-colors"
           >
-            Patent Pulse
+            <span>{BRAND.compactName}</span>
           </Link>
 
           {/* Desktop links */}

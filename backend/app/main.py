@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Patent Pulse API",
-    description="Patent intelligence and summarization system",
+    title="Invention Index 8 API",
+    description="Invention intelligence and opportunity indexing system",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -113,7 +113,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 @app.get("/")
 async def root() -> dict:
     return {
-        "name": "Patent Pulse API",
+        "name": "Invention Index 8 API",
         "version": "1.0.0",
         "docs": "/docs",
     }

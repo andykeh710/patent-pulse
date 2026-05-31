@@ -5,12 +5,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-navy: #0a0e27;
+  --brand-electric: #6366f1;
+  --brand-violet: #8b5cf6;
+  --brand-cyan: #06b6d4;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0a0a1e;
+    --foreground: #e2e8f0;
   }
 }
 
@@ -21,8 +25,172 @@ body {
     "Helvetica Neue", Arial, sans-serif;
 }
 
+/* ─── Premium Reusable Effects ─── */
+
+@layer components {
+  /* Glass panel for cards */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+  }
+
+  /* Gradient border on hover */
+  .gradient-border-hover {
+    position: relative;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .gradient-border-hover:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1), 0 0 40px rgba(99, 102, 241, 0.05);
+  }
+
+  /* Patent scan hover sweep */
+  .scan-hover {
+    position: relative;
+    overflow: hidden;
+  }
+  .scan-hover::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(99, 102, 241, 0.3),
+      rgba(6, 182, 212, 0.3),
+      transparent
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .scan-hover:hover::after {
+    opacity: 1;
+  }
+
+  /* Signal pulse indicator */
+  .signal-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brand-electric);
+    box-shadow: 0 0 8px var(--brand-electric);
+    animation: signalPulse 2s ease-in-out infinite;
+  }
+  @keyframes signalPulse {
+    0%, 100% { box-shadow: 0 0 4px var(--brand-electric); }
+    50% { box-shadow: 0 0 12px var(--brand-electric), 0 0 20px rgba(99,102,241,0.3); }
+  }
+
+  /* Index 8 badge */
+  .index-eight-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4), 0 0 24px rgba(139, 92, 246, 0.2);
+  }
+
+  /* CTA shine button */
+  .shine-cta {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    transition: all 0.2s ease;
+  }
+  .shine-cta::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+  .shine-cta:hover::before {
+    left: 100%;
+  }
+  .shine-cta:hover {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+  }
+  .shine-cta:active {
+    transform: translateY(0);
+  }
+
+  /* Signal card — premium dashboard card */
+  .signal-card {
+    background: white;
+    border: 1px solid rgba(99, 102, 241, 0.08);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+  }
+  .signal-card:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 4px 24px rgba(99, 102, 241, 0.08);
+    transform: translateY(-2px);
+  }
+
+  /* Hero grid background */
+  .hero-grid-bg {
+    background-color: #0a0e27;
+    background-image:
+      linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Hero signal orb */
+  .hero-signal-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  /* Gradient text utility */
+  .text-gradient-brand {
+    background: linear-gradient(135deg, #818cf8, #6366f1, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* ─── Respect reduced motion ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-pulse,
+  .shine-cta::before,
+  .hero-signal-orb,
+  .scan-hover::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

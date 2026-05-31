@@ -1,7 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0284c7"/>
-  <text x="600" y="260" text-anchor="middle" font-size="72" font-family="system-ui,-apple-system,sans-serif" font-weight="bold" fill="white">Patent Pulse</text>
-  <text x="600" y="340" text-anchor="middle" font-size="32" font-family="system-ui,-apple-system,sans-serif" fill="#bae6fd">Patent intelligence with the receipts</text>
-  <line x1="400" y1="400" x2="800" y2="400" stroke="#38bdf8" stroke-width="2"/>
-  <text x="600" y="460" text-anchor="middle" font-size="20" font-family="system-ui,-apple-system,sans-serif" fill="#7dd3fc">USPTO · EPO · WIPO · Evidence-backed · Updated weekly</text>
+  <rect width="1200" height="630" fill="#0a0e27"/>
+  <!-- Subtle grid -->
+  <g stroke="rgba(99,102,241,0.06)" stroke-width="1">
+    <line x1="0" y1="60" x2="1200" y2="60"/>
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="360" x2="1200" y2="360"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="540" x2="1200" y2="540"/>
+  </g>
+  <!-- Orbs -->
+  <circle cx="300" cy="200" r="180" fill="rgba(99,102,241,0.08)" filter="blur(60px)"/>
+  <circle cx="900" cy="450" r="220" fill="rgba(139,92,246,0.06)" filter="blur(80px)"/>
+  <circle cx="600" cy="315" r="140" fill="rgba(6,182,212,0.05)" filter="blur(50px)"/>
+  <!-- Brand -->
+  <text x="600" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="64" font-weight="700" fill="white">Invention Index
+    <tspan fill="#818cf8">8</tspan>
+  </text>
+  <text x="600" y="320" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="rgba(165,180,252,0.7)">Track the world's invention signals.</text>
+  <text x="600" y="380" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="rgba(165,180,252,0.4)">inventionindex8.com</text>
 </svg>

@@ -154,7 +154,7 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             result = await send_email(
                 db_session=session,
                 to=user.email,
-                subject="Your Patent Pulse Weekly Digest",
+                subject="Your Invention Index 8 Weekly Digest",
                 template_name="weekly_digest.html",
                 template_kwargs={
                     "greeting": f"Weekly Digest — {week_start} to {week_end}",

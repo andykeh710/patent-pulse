@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { authApi } from "@/lib/api";
+import { BRAND } from "@/lib/brand";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ export default function LoginPage() {
             .
           </p>
           <Link href="/" className="text-sm text-blue-600 hover:underline block">
-            Back to Patent Pulse
+            Back to {BRAND.name}
           </Link>
         </div>
       </div>
@@ -84,7 +85,7 @@ export default function LoginPage() {
         </form>
 
         <Link href="/" className="text-sm text-blue-600 hover:underline block text-center">
-          Back to Patent Pulse
+          Back to {BRAND.name}
         </Link>
       </div>
     </div>

@@ -39,7 +39,7 @@ COMMIT_CHUNK = 25  # commit to DB every N patents to avoid transaction timeouts
     max_retries=2,
     default_retry_delay=60,
 )
-def enrich_batch(self, batch_size: int = 100) -> dict:
+def enrich_batch(self, batch_size: int = 500) -> dict:
     """
     Fetch abstracts and claims from EPO OPS + Google Patents for patents missing content.
 
@@ -136,8 +136,6 @@ async def _enrich_batch_async(batch_size: int) -> dict:
                     PatentPublication.description_text.is_(None),
                 )
             )
-            .where(PatentPublication.office == "USPTO")
-            .where(PatentPublication.estimated_expiry_date >= datetime.utcnow().date())
             .order_by(
                 PatentPublication.estimated_expiry_date.asc().nullslast(),
                 PatentPublication.interesting_score.desc().nullslast(),
@@ -156,7 +154,6 @@ async def _enrich_batch_async(batch_size: int) -> dict:
                     PatentPublication.description_text.is_(None),
                 )
             )
-            .where(PatentPublication.office == "USPTO")
         )
         total_remaining = count_result.scalar() or 0
 
@@ -195,6 +192,7 @@ async def _enrich_batch_async(batch_size: int) -> dict:
 
                         if abstract:
                             values["abstract"] = abstract
+                            values["abstract_source"] = "epo_ops"
                             stats["abstracts_added"] += 1
                             got_content = True
                             got_abstract = True
@@ -207,6 +205,7 @@ async def _enrich_batch_async(batch_size: int) -> dict:
 
                         if gp_data.get("claims_text"):
                             values["claims_text"] = gp_data["claims_text"]
+                            values["claims_source"] = "google_patents"
                             stats["claims_added"] += 1
                             got_content = True
 
@@ -218,6 +217,7 @@ async def _enrich_batch_async(batch_size: int) -> dict:
                         # If EPO didn't have abstract, try Google Patents
                         if not abstract and gp_data.get("abstract"):
                             values["abstract"] = gp_data["abstract"]
+                            values["abstract_source"] = "google_patents"
                             stats["abstracts_added"] += 1
                             got_content = True
                             got_abstract = True

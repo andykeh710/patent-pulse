@@ -65,5 +65,5 @@ async def _check_resend() -> str:
         await asyncio.wait_for(asyncio.to_thread(urllib.request.urlopen, req, timeout=2), timeout=3)
         return "ok"
     except Exception:
-        logger.warning("Health: Resend check failed", exc_info=True)
+        logger.info("Health: Resend check skipped (API not configured or unreachable)")
         return "unreachable"

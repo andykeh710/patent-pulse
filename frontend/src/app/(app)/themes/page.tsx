@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
-import useSWR from "swr";
 import { useThemes, useThemePatents } from "@/hooks/useThemes";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { StarterTopics } from "@/components/ui/StarterTopics";
 import { topicsApi } from "@/lib/api";
 import type { Topic } from "@/lib/types";
 
@@ -211,14 +210,29 @@ export default function ThemesPage() {
           ))}
         </div>
       ) : !themes || themes.length === 0 ? (
-        <div className="rounded-lg bg-gray-50 py-12 text-center mb-6">
-          <p className="text-gray-500">No topics configured yet</p>
-          <p className="text-sm text-gray-400 mt-1">
-            Create a topic above or seed defaults via{" "}
-            <Link href="/admin/ai-runs" className="text-primary-600 hover:underline">
-              Admin
-            </Link>
-          </p>
+        <div className="rounded-lg bg-white border border-gray-200 p-8 text-center mb-6">
+          <div className="max-w-md mx-auto">
+            <div className="text-3xl mb-3">🔬</div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Your patent intelligence starts here
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Choose a starter topic below or create your own. When new patents match
+              your topics, they&apos;ll appear here automatically.
+            </p>
+            <StarterTopics
+              showHeading={false}
+              onCreated={() => mutate()}
+            />
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <Button
+                onClick={() => setShowCreate(true)}
+                variant="default"
+              >
+                Or create your own topic
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
 

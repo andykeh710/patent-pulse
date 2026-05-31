@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { BRAND, EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Contact — Patent Pulse",
-  description: "Get in touch with Patent Pulse.",
+  title: `Contact`,
+  description: `Get in touch with ${BRAND.name}.`,
 };
 
 export default function ContactPage() {
@@ -16,10 +17,10 @@ export default function ContactPage() {
       </p>
 
       <a
-        href="mailto:support@patentpulse.dev"
+        href={`mailto:${EMAIL.support}`}
         className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
       >
-        Email support@patentpulse.dev
+        Email {EMAIL.support}
       </a>
 
       <div className="mt-16 border-t border-gray-200 pt-8">
@@ -30,19 +31,19 @@ export default function ContactPage() {
           <p>
             Privacy inquiries:{" "}
             <a
-              href="mailto:privacy@patentpulse.dev"
+              href={`mailto:${EMAIL.privacy}`}
               className="text-primary-600 hover:text-primary-700 underline"
             >
-              privacy@patentpulse.dev
+              {EMAIL.privacy}
             </a>
           </p>
           <p>
             Legal:{" "}
             <a
-              href="mailto:legal@patentpulse.dev"
+              href={`mailto:${EMAIL.legal}`}
               className="text-primary-600 hover:text-primary-700 underline"
             >
-              legal@patentpulse.dev
+              {EMAIL.legal}
             </a>
           </p>
         </div>
