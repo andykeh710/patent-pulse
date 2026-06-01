@@ -21,8 +21,12 @@ function VerifyContent() {
     let cancelled = false;
     (async () => {
       try {
-        await authApi.verify(token);
-        if (!cancelled) router.push("/");
+        const res = await authApi.verify(token);
+        const data = await res.json();
+        if (data.session_token) {
+          document.cookie = `auth_session=${data.session_token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+        }
+        if (!cancelled) router.push("/today");
       } catch {
         if (!cancelled) {
           setStatus("error");

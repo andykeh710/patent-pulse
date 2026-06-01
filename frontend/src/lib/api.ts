@@ -420,9 +420,7 @@ export const authApi = {
     }),
 
   verify: (token: string) =>
-    fetch(`/api/v1/auth/verify?token=${encodeURIComponent(token)}`, {
-      redirect: "manual",
-    }).then((r) => {
+    fetch(`/api/v1/auth/verify?token=${encodeURIComponent(token)}`).then((r) => {
       if (!r.ok) throw new Error("Invalid token");
       return r;
     }),

@@ -47,14 +47,15 @@ export function SourceAttribution({ office, docId }: SourceAttributionProps) {
     <p className="text-xs text-gray-400 mt-2">
       Source:{" "}
       {url ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-gray-500"
+        <span
+          role="link"
+          tabIndex={0}
+          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+          onKeyDown={(e) => e.key === "Enter" && window.open(url, "_blank", "noopener,noreferrer")}
+          className="underline hover:text-gray-500 cursor-pointer"
         >
           {label}
-        </a>
+        </span>
       ) : (
         <span>{label}</span>
       )}
