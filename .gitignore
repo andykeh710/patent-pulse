@@ -91,3 +91,6 @@ backend/celerybeat-schedule
 # Portable distribution (generated)
 patent-pulse-portable.zip
 patent-pulse-portable/
+
+# Brainstorming visual companion mockups (local only)
+.superpowers/
