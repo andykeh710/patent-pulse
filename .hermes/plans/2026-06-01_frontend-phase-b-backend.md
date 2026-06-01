@@ -41,122 +41,135 @@ backend/tests/services/test_briefing.py                          # NEW
 
 ## Tasks
 
-### Task 1: Fix /companies/[name] 500 (V1 BLOCKER)
+### Task 1: Fix /companies/[name] 500 (V1 BLOCKER — FRONTEND ISSUE per Phase 0 preflight)
 
 **Files:**
-- Modify: `backend/app/api/v1/companies.py`
-- Create/Modify: `backend/tests/api/test_companies.py`
+- Likely modify: `frontend/src/app/(app)/companies/[name]/page.tsx` (route handler)
+- Possibly modify: `frontend/src/lib/api.ts` (client fetch path)
+- Possibly modify: `frontend/middleware.ts` (if present)
 
-This task uses the Phase 0 preflight report's reproduction details to drive a targeted fix.
+**Important: Phase 0 preflight (2026-06-01) confirmed the backend returns HTTP 200 for company queries.** The 500 originates in the frontend — likely a Next.js route handler, fetch URL encoding, or middleware issue.
 
-- [ ] **Step 1: Read the preflight reproduction findings**
+This task uses the Phase 0 preflight report's reproduction details to drive a targeted fix. Backend tests under `backend/tests/api/test_companies.py` are still valuable as a regression guard but are not where the fix lives.
 
-```bash
-grep -A 30 "## 6. /companies/\[name\] 500" .hermes/plans/2026-06-01_frontend-overhaul-preflight.md
-```
+- [ ] **Step 1: Reproduce the 500 against the running stack**
 
-The hypothesis from preflight informs the fix direction.
-
-- [ ] **Step 2: Write a failing test for the actual broken case**
-
-In `backend/tests/api/test_companies.py`:
-
-```python
-import pytest
-from httpx import AsyncClient
-
-@pytest.mark.asyncio
-async def test_get_company_detail_with_spaces_in_name(async_client: AsyncClient, seeded_company):
-    """Reproduces the 500: company names with spaces/punctuation should return 200."""
-    response = await async_client.get(f"/api/v1/companies/{seeded_company.assignee_url_encoded}")
-    assert response.status_code == 200
-    assert response.json()["assignee"] == seeded_company.assignee
-
-@pytest.mark.asyncio
-async def test_get_company_detail_with_inc_suffix(async_client: AsyncClient):
-    """Companies like 'Apple Inc.' should resolve."""
-    response = await async_client.get("/api/v1/companies/Apple%20Inc%2E")
-    # 200 if data exists, 404 if not — never 500
-    assert response.status_code in (200, 404)
-
-@pytest.mark.asyncio
-async def test_get_company_detail_missing(async_client: AsyncClient):
-    """Unknown company returns 404, not 500."""
-    response = await async_client.get("/api/v1/companies/NonexistentCompanyXYZ123")
-    assert response.status_code == 404
-```
-
-- [ ] **Step 3: Run tests to verify failure**
+Reproduce both the frontend and backend paths separately to confirm where the 500 originates:
 
 ```bash
-docker compose exec backend pytest backend/tests/api/test_companies.py -v
+# Backend path — preflight reported 200
+curl -s -o /dev/null -w "backend: %{http_code}\n" "http://localhost:8000/api/v1/companies/Apple%20Inc%2E"
+
+# Frontend path — preflight reported 500
+curl -s -o /dev/null -w "frontend: %{http_code}\n" "http://localhost:3000/companies/Apple%20Inc%2E"
 ```
 
-Expected: FAIL with 500 on the first test (matching the preflight reproduction).
+Expected: backend = 200, frontend = 500. If both are 200, the issue self-resolved (still confirm in browser). If both are 500, re-investigate backend.
 
-- [ ] **Step 4: Read the companies.py endpoint**
+- [ ] **Step 2: Inspect the frontend route file**
 
 ```bash
-cat backend/app/api/v1/companies.py
+cat frontend/src/app/\(app\)/companies/\[name\]/page.tsx
 ```
 
-Identify where the 500 is thrown. Likely candidates:
-- URL decoding not handling `%2E` (period) or `%20` (space)
-- Query assumes normalized form but receives encoded form
-- Assignee lookup uses `ILIKE` but with unescaped special chars
-- Missing null check on a related object (e.g., company has no patents)
+Look for:
+- Missing or broken URL decoding (e.g., `params.name` used raw without `decodeURIComponent`)
+- Fetch path that double-encodes or doesn't encode (e.g., `${NEXT_PUBLIC_API_URL}/companies/${params.name}` without re-encoding)
+- A throwing operation on the response (e.g., `data.assignee.toLowerCase()` where assignee is undefined)
+- Server-side rendering issue (e.g., `useSearchParams` used in a server component)
 
-- [ ] **Step 5: Implement the fix**
+- [ ] **Step 3: Capture the Next.js server log**
 
-The fix depends on the actual root cause from Step 4. Common shape:
-
-```python
-from urllib.parse import unquote
-
-@router.get("/companies/{name}")
-async def get_company_detail(name: str, db: AsyncSession = Depends(get_db)):
-    # URL-decode then normalize for lookup (matches Bug 4 normalization from V1 close-out)
-    decoded = unquote(name)
-    normalized = normalize_company_name(decoded)  # from backend/app/services/normalization.py if exists, else inline
-    result = await db.execute(
-        select(...).where(
-            func.lower(func.regexp_replace(
-                Patent.assignee,
-                r'[ ,.]+(inc|corp|ltd|llc|gmbh|sa|ag|co)\.?$',
-                '',
-                'i'
-            )) == normalized
-        )
-    )
-    rows = result.all()
-    if not rows:
-        raise HTTPException(404, "Company not found")
-    return assemble_company_response(rows)
-```
-
-The exact change depends on the existing structure. Preserve the existing return shape.
-
-- [ ] **Step 6: Run tests to verify pass**
+If frontend is in dev mode, the server log shows the full stack trace:
 
 ```bash
-docker compose exec backend pytest backend/tests/api/test_companies.py -v
+docker compose logs frontend --tail=50 | tail -30
 ```
 
-Expected: all 3 tests pass.
+Look for the stack trace that produces the 500. The error file/line identifies the fix point.
 
-- [ ] **Step 7: Re-run full backend test suite to confirm no regression**
+- [ ] **Step 4: Implement the fix**
+
+The fix depends on the root cause from Steps 2–3. Common shapes:
+
+**If URL decoding is the issue** (e.g., `Apple Inc.` arrives as `Apple%20Inc%2E` and isn't decoded before passing to the API):
+
+```typescript
+import { decode } from "lucia-encoding";  // or just use built-in decodeURIComponent
+
+export default function CompanyPage({ params }: { params: { name: string } }) {
+  const decodedName = decodeURIComponent(params.name);
+  const { company, isLoading } = useCompanyDetail(decodedName);
+  // ...
+}
+```
+
+**If the API fetch path is wrong** (e.g., passing already-encoded value through `encodeURIComponent` again):
+
+```typescript
+// In frontend/src/lib/api.ts or wherever the company fetch lives:
+const url = `/api/v1/companies/${encodeURIComponent(name)}`;  // name should be plain, not pre-encoded
+```
+
+**If a null/undefined access throws**:
+
+Add explicit null guards. Render an empty state if data is incomplete rather than throwing.
+
+- [ ] **Step 5: Write a frontend smoke test**
+
+Create `frontend/src/app/(app)/companies/[name]/page.test.tsx`:
+
+```typescript
+import { render, screen, waitFor } from "@testing-library/react";
+import CompanyPage from "./page";
+
+// Mock the data hook
+jest.mock("@/lib/hooks/useCompanyDetail", () => ({
+  useCompanyDetail: (name: string) => ({
+    company: { assignee: name, patent_count: 0 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+describe("CompanyPage", () => {
+  it("renders without crash for a company name with spaces", async () => {
+    render(<CompanyPage params={{ name: "Apple%20Inc%2E" }} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Apple Inc./)).toBeInTheDocument();
+    });
+  });
+
+  it("renders empty state for company with no data", async () => {
+    render(<CompanyPage params={{ name: "Nonexistent" }} />);
+    // Should show empty state or "no data" — not 500
+    await waitFor(() => {
+      expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
+    });
+  });
+});
+```
+
+- [ ] **Step 6: Verify 5 representative companies render at 200**
 
 ```bash
-docker compose exec backend pytest backend/tests/ -q
+for name in "Apple%20Inc%2E" "NVIDIA" "Tesla" "Microsoft%20Corporation" "Samsung"; do
+  echo "$name: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/companies/$name)"
+done
 ```
 
-Expected: 341 baseline + 3 new = 344 passing.
+Expected: 200 for each (or 404 if data missing — but never 500).
+
+- [ ] **Step 7: (Optional) Add backend regression test**
+
+Even though the backend isn't the cause, harden it with a test so this doesn't regress later. Skip if it would just duplicate existing backend tests.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add backend/app/api/v1/companies.py backend/tests/api/test_companies.py
-git commit -m "fix(backend): /companies/[name] 500 on names with spaces/punctuation"
+git add frontend/src/app/\(app\)/companies/\[name\]/page.tsx frontend/src/app/\(app\)/companies/\[name\]/page.test.tsx
+# Plus any other frontend files touched
+git commit -m "fix(frontend): /companies/[name] 500 root cause (URL decoding / fetch path)"
 ```
 
 ---
