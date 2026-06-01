@@ -463,6 +463,52 @@ async def admin_system_health(
 # ── Data health ──────────────────────────────────────────────
 
 
+@router.get("/llm-provider")
+async def admin_llm_provider(
+    admin: _UserModel = Depends(require_admin),
+):
+    """Check current LLM provider."""
+    return {
+        "provider": settings.llm_provider or "deepseek",
+        "model": settings.deepseek_chat_model if (settings.llm_provider or "deepseek") == "deepseek" else settings.claude_model,
+        "deepseek_configured": bool(settings.deepseek_api_key),
+        "anthropic_configured": bool(settings.anthropic_api_key),
+    }
+
+
+@router.post("/llm-provider")
+async def admin_set_llm_provider(
+    payload: dict[str, str],
+    admin: _UserModel = Depends(require_admin),
+):
+    """Switch LLM provider. Writes to a runtime override. Requires restart."""
+    provider = (payload.get("provider") or "").lower()
+    if provider not in ("deepseek", "anthropic"):
+        raise HTTPException(400, "provider must be 'deepseek' or 'anthropic'")
+    # Write to app.env for persistence across restarts
+    import os
+    env_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "app.env")
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "app.env"))
+    try:
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+        with open(env_path, "w") as f:
+            found = False
+            for line in lines:
+                if line.startswith("LLM_PROVIDER="):
+                    f.write(f"LLM_PROVIDER={provider}\n")
+                    found = True
+                else:
+                    f.write(line)
+            if not found:
+                f.write(f"\nLLM_PROVIDER={provider}\n")
+        # Update runtime setting
+        settings.llm_provider = provider
+        return {"provider": provider, "restart_required": True}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to update: {e}")
+
+
 @router.get("/data-health")
 async def admin_data_health(
     admin: _UserModel = Depends(require_admin),

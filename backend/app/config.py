@@ -87,6 +87,16 @@ class Settings(BaseSettings):
     claude_haiku_input_usd_per_mtok: float = 0.8
     claude_haiku_output_usd_per_mtok: float = 4.0
 
+    # DeepSeek — OpenAI-compatible API
+    deepseek_api_key: str = ""
+    deepseek_chat_model: str = "deepseek-chat"           # V3 — fast, cheap
+    deepseek_reasoner_model: str = "deepseek-reasoner"   # R1 — reasoning
+    deepseek_input_usd_per_mtok: float = 0.27            # $0.27/M input
+    deepseek_output_usd_per_mtok: float = 1.10           # $1.10/M output
+
+    # LLM provider: "anthropic" | "deepseek"  
+    llm_provider: str = "deepseek"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

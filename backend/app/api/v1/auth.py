@@ -107,12 +107,20 @@ async def request_link(
 
         magic_link = f"{settings.magic_link_base_url}/login/verify?token={raw_token}"
 
-        # Dev mode: log the magic link so the developer can test.
-        if settings.email_send_mode == "dev" or settings.environment != "production":
-            logger.info("🔑 Magic link for %s: %s", email, magic_link)
-
-        # FUTURE (S6-5): send via Resend.
-        # For now, devs use the logged link.
+        # Send magic link via Resend
+        from app.email.sender import send_email
+        await send_email(
+            db_session=session,
+            to=email,
+            subject=f"Sign in to {getattr(settings, 'app_name', 'Invention Index 8')}",
+            template_name="magic_link.html",
+            template_kwargs={
+                "magic_link_url": magic_link,
+                "magic_link_base_url": settings.magic_link_base_url,
+            },
+            user_id=user.id,
+            email_type="magic_link",
+        )
 
     except Exception as e:
         logger.error("Magic-link request failed for %s: %s", email, e)
@@ -127,7 +135,7 @@ async def verify(
     token: str,
     session=Depends(get_db),
 ):
-    """Verify a magic-link token and set a session cookie."""
+    """Verify a magic-link token and return a session token."""
     if not token:
         raise HTTPException(status_code=400, detail="Missing token")
 
@@ -135,9 +143,8 @@ async def verify(
     if not token_row:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    response = RedirectResponse(url="/", status_code=302)
-    _set_session_cookie(response, token_row.user_id)
-    return response
+    session_jwt = _issue_session_jwt(token_row.user_id)
+    return JSONResponse(content={"ok": True, "session_token": session_jwt})
 
 
 @router.get("/me", response_model=UserResponse)

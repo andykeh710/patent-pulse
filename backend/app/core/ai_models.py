@@ -49,8 +49,8 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    display_name: Mapped[str] = mapped_column(String(128))
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(__import__("uuid").uuid4()))
+    display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     email: Mapped[str | None] = mapped_column(String(256))
     tier: Mapped[str] = mapped_column(String(16), default="free", index=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

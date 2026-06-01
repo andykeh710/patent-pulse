@@ -39,6 +39,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 import anthropic
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,7 +72,15 @@ CHARS_PER_TOKEN = 4.0
 
 
 def _model_for_tier(tier: ModelTier) -> str:
-    """Map logical tier → concrete Anthropic model id."""
+    """Map logical tier → concrete model id based on configured provider."""
+    provider = (settings.llm_provider or "deepseek").lower()
+    if provider == "deepseek":
+        if tier in ("summary",):
+            return settings.deepseek_chat_model
+        if tier in ("tag", "narrative", "rerank"):
+            return settings.deepseek_chat_model
+        return settings.deepseek_chat_model
+    # Anthropic (default)
     if tier in ("summary",):
         return settings.claude_model
     if tier in ("tag", "narrative", "rerank"):
@@ -82,6 +91,11 @@ def _model_for_tier(tier: ModelTier) -> str:
 def _pricing_for_model(model: str) -> tuple[float, float]:
     """Return (input_usd_per_mtok, output_usd_per_mtok) for a model."""
     m = (model or "").lower()
+    if "deepseek" in m:
+        return (
+            settings.deepseek_input_usd_per_mtok,
+            settings.deepseek_output_usd_per_mtok,
+        )
     if "sonnet" in m or "opus" in m:
         return (
             settings.claude_sonnet_input_usd_per_mtok,
@@ -178,7 +192,7 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Wrapper around Anthropic with DB-backed content-addressed cache."""
+    """Wrapper around Anthropic / DeepSeek with DB-backed content-addressed cache."""
 
     def __init__(
         self,
@@ -188,6 +202,8 @@ class LLMClient:
         self._api_key = api_key if api_key is not None else settings.anthropic_api_key
         self._default_mode: LLMMode = mode or settings.llm_mode
         self._anthropic: anthropic.Anthropic | None = None
+        self._deepseek_key: str = settings.deepseek_api_key
+        self._provider: str = (settings.llm_provider or "deepseek").lower()
 
     # -- Anthropic client is lazy so replay-only flows never need a key. --
 
@@ -200,9 +216,74 @@ class LLMClient:
             self._anthropic = anthropic.Anthropic(api_key=self._api_key)
         return self._anthropic
 
+    async def _call_deepseek(
+        self,
+        *,
+        model: str,
+        system: str,
+        user_message: str,
+        max_tokens: int,
+    ) -> tuple[str, int, int]:
+        """Call DeepSeek (OpenAI-compatible) API. Returns (text, input_tokens, output_tokens)."""
+        if not self._deepseek_key:
+            raise RuntimeError("deepseek_api_key is not configured")
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                "https://api.deepseek.com/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self._deepseek_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.0,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            choice = data["choices"][0]
+            text = choice["message"]["content"]
+            usage = data.get("usage", {})
+            return (
+                text,
+                usage.get("prompt_tokens", 0),
+                usage.get("completion_tokens", 0),
+            )
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def _make_failed_artifact(
+        self,
+        *,
+        session: AsyncSession,
+        request: LLMRequest,
+        spec,
+        model: str,
+        input_hash: str,
+        error: str,
+    ) -> AIArtifact:
+        """Create an AIArtifact row for a failed call (caller must add + commit)."""
+        return AIArtifact(
+            patent_publication_id=request.patent_publication_id,
+            run_id=request.run_id,
+            artifact_type=request.artifact_type,
+            artifact_version=1,
+            model=model,
+            prompt_name=spec.name,
+            prompt_version=spec.version,
+            prompt_hash=spec.prompt_hash,
+            input_hash=input_hash,
+            subject_key=request.subject_key,
+            status="failed",
+            error_message=error,
+        )
 
     async def complete(
         self, session: AsyncSession, request: LLMRequest
@@ -258,46 +339,58 @@ class LLMClient:
         if request.extra_system:
             system_prompt = f"{system_prompt}\n\n{request.extra_system}"
 
-        client = self._get_anthropic()
         start = datetime.utcnow()
-        try:
-            message = await asyncio.to_thread(
-                client.messages.create,
-                model=model,
-                max_tokens=request.max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
-        except anthropic.APIError as e:
-            logger.error(f"Anthropic API error for {request.artifact_type}: {e}")
-            # Persist a failed artifact so callers can see the failure history.
-            failed = AIArtifact(
-                patent_publication_id=request.patent_publication_id,
-                run_id=request.run_id,
-                artifact_type=request.artifact_type,
-                artifact_version=await self._next_artifact_version(
-                    session=session,
-                    artifact_type=request.artifact_type,
-                    patent_publication_id=request.patent_publication_id,
-                    subject_key=request.subject_key,
-                ),
-                model=model,
-                prompt_name=spec.name,
-                prompt_version=spec.version,
-                prompt_hash=spec.prompt_hash,
-                input_hash=input_hash,
-                subject_key=request.subject_key,
-                status="failed",
-                error_message=str(e)[:4000],
-            )
-            session.add(failed)
-            await session.commit()
-            raise
 
-        raw_text = message.content[0].text if message.content else ""
-        usage = getattr(message, "usage", None)
-        input_tokens = getattr(usage, "input_tokens", 0) if usage else 0
-        output_tokens = getattr(usage, "output_tokens", 0) if usage else 0
+        if self._provider == "deepseek":
+            try:
+                raw_text, input_tokens, output_tokens = await self._call_deepseek(
+                    model=model,
+                    system=system_prompt,
+                    user_message=user_prompt,
+                    max_tokens=request.max_tokens,
+                )
+            except httpx.HTTPStatusError as e:
+                logger.error(f"DeepSeek API error for {request.artifact_type}: {e} {e.response.text[:500]}")
+                failed = self._make_failed_artifact(
+                    session=session, request=request, spec=spec,
+                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                )
+                session.add(failed)
+                await session.commit()
+                raise
+            except Exception as e:
+                logger.error(f"DeepSeek call failed for {request.artifact_type}: {e}")
+                failed = self._make_failed_artifact(
+                    session=session, request=request, spec=spec,
+                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                )
+                session.add(failed)
+                await session.commit()
+                raise
+        else:
+            client = self._get_anthropic()
+            try:
+                message = await asyncio.to_thread(
+                    client.messages.create,
+                    model=model,
+                    max_tokens=request.max_tokens,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_prompt}],
+                )
+            except anthropic.APIError as e:
+                logger.error(f"Anthropic API error for {request.artifact_type}: {e}")
+                failed = self._make_failed_artifact(
+                    session=session, request=request, spec=spec,
+                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                )
+                session.add(failed)
+                await session.commit()
+                raise
+
+            raw_text = message.content[0].text if message.content else ""
+            usage = getattr(message, "usage", None)
+            input_tokens = getattr(usage, "input_tokens", 0) if usage else 0
+            output_tokens = getattr(usage, "output_tokens", 0) if usage else 0
         actual_cost = estimate_cost_usd(
             model=model,
             input_tokens=input_tokens,
