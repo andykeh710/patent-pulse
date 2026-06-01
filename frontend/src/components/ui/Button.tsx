@@ -1,47 +1,44 @@
-"use client";
+import { ReactNode, ButtonHTMLAttributes } from "react";
 
-import { type ReactNode } from "react";
-
-interface ButtonProps {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  onClick?: () => void;
-  variant?: "default" | "outline" | "ghost";
-  size?: "sm" | "md" | "lg";
-  disabled?: boolean;
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "default" | "outline";
+  size?: "sm" | "md";
   className?: string;
-  type?: "button" | "submit" | "reset";
 }
 
 export function Button({
   children,
-  onClick,
-  variant = "default",
+  variant = "primary",
   size = "md",
-  disabled = false,
   className = "",
-  type = "button",
+  ...props
 }: ButtonProps) {
-  const base = "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
+  const base =
+    "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal-glow)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:opacity-50 disabled:cursor-not-allowed";
 
-  const variantStyles: Record<string, string> = {
-    default: "bg-gray-900 text-white hover:bg-gray-800",
-    outline: "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50",
-    ghost: "text-gray-900 hover:bg-gray-100",
+  const sizes = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2",
   };
 
-  const sizeStyles: Record<string, string> = {
-    sm: "h-8 px-3 text-sm",
-    md: "h-10 px-4 text-sm",
-    lg: "h-12 px-6 text-base",
+  const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
+    primary:
+      "bg-gradient-to-r from-[var(--signal-blue)] to-[var(--signal-violet)] text-white hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0",
+    secondary:
+      "border border-[var(--border-strong)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--signal-blue)]/40",
+    ghost:
+      "text-[var(--text-muted)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)]",
+    outline:
+      "border border-[var(--border-strong)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--signal-blue)]/40",
+    default:
+      "bg-[var(--bg-glass)] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-glass-strong)]",
+    danger:
+      "bg-red-500/10 border border-red-400/30 text-red-400 hover:bg-red-500/20",
   };
 
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`${base} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
-    >
+    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
       {children}
     </button>
   );

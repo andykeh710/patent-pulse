@@ -66,11 +66,11 @@ export function FreshnessBanner({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 ${className}`}
+      className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] ${className}`}
     >
       {items.map((item, i) => (
         <span key={i}>
-          <span className="text-gray-500">{item.label}:</span>{" "}
+          <span className="text-[var(--text-secondary)]">{item.label}:</span>{" "}
           {item.value}
         </span>
       ))}

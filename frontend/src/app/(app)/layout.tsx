@@ -1,10 +1,12 @@
-import { NavSidebar } from "./NavSidebar";
+import { TopNav } from "@/components/nav/TopNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
-      <NavSidebar />
-      <main className="flex-1 ml-64 p-8">{children}</main>
+    <div className="min-h-screen bg-[var(--bg-base)]">
+      <TopNav />
+      <main className="pt-14 px-6 max-w-[1440px] mx-auto">
+        {children}
+      </main>
     </div>
   );
 }

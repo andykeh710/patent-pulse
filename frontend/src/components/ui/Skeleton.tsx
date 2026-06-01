@@ -9,14 +9,17 @@ interface SkeletonProps {
 export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-gray-200", className)}
+      className={cn(
+        "animate-pulse rounded-md bg-[var(--bg-glass)]",
+        className
+      )}
     />
   );
 }
 
 export function PatentCardSkeleton() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-[var(--bg-glass)] backdrop-blur-md rounded-lg border border-[var(--border-subtle)] p-4">
       <div className="flex justify-between items-start mb-3">
         <Skeleton className="h-5 w-3/4" />
         <Skeleton className="h-6 w-16 rounded-full" />

@@ -52,7 +52,7 @@ export function SourceAttribution({ office, docId }: SourceAttributionProps) {
           tabIndex={0}
           onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
           onKeyDown={(e) => e.key === "Enter" && window.open(url, "_blank", "noopener,noreferrer")}
-          className="underline hover:text-gray-500 cursor-pointer"
+          className="underline hover:text-[var(--text-secondary)] cursor-pointer"
         >
           {label}
         </span>

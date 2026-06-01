@@ -16,11 +16,11 @@ export function Badge({
   className,
 }: BadgeProps) {
   const variantClasses = {
-    default: "bg-gray-100 text-gray-700",
-    success: "bg-green-100 text-green-700",
-    warning: "bg-yellow-100 text-yellow-700",
-    danger: "bg-red-100 text-red-700",
-    speculative: "bg-amber-100 text-amber-700 border border-amber-300",
+    default: "bg-[var(--text-muted)]/12 text-[var(--text-muted)]",
+    success: "bg-[var(--score-high)]/12 text-[var(--score-high)]",
+    warning: "bg-[var(--warning)]/12 text-[var(--warning)]",
+    danger: "bg-red-400/12 text-red-400",
+    speculative: "bg-[var(--warning)]/12 text-[var(--warning)] border border-[var(--warning)]/30",
   };
 
   const sizeClasses = {

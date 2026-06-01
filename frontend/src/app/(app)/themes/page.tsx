@@ -84,7 +84,7 @@ export default function ThemesPage() {
             Tracked technology areas and their matched patents
           </p>
         </div>
-        <Button onClick={() => setShowCreate(!showCreate)} variant="default" size="sm">
+        <Button onClick={() => setShowCreate(!showCreate)} variant="default">
           {showCreate ? "Cancel" : "Create Topic"}
         </Button>
       </div>
@@ -144,7 +144,7 @@ export default function ThemesPage() {
             </div>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <Button type="submit" variant="default" size="sm" disabled={creating || !formName.trim()}>
+            <Button type="submit" variant="default" disabled={creating || !formName.trim()}>
               {creating ? "Creating..." : "Create Topic"}
             </Button>
             <p className="text-xs text-gray-400">

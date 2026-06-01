@@ -1,0 +1,37 @@
+/* Invention Index 8 — design tokens. Single source of truth for colors. */
+
+:root {
+  /* Base surfaces */
+  --bg-base: #0A0E27;
+  --bg-elevated: #11162A;
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-glass-strong: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text-primary: #E8ECF7;
+  --text-secondary: #C7D2FE;
+  --text-muted: #94A3B8;
+  --text-disabled: #64748B;
+
+  /* Signal */
+  --signal-blue: #6366F1;
+  --signal-violet: #8B5CF6;
+  --signal-cyan: #06B6D4;
+  --signal-glow: #818CF8;
+
+  /* Semantic */
+  --score-high: #34D399;
+  --score-medium: #F59E0B;
+  --score-low: #94A3B8;
+  --warning: #F59E0B;
+
+  /* Briefing item-type accents */
+  --type-trend: var(--signal-blue);
+  --type-notable: var(--score-high);
+  --type-company: #7DD3FC;
+  --type-expiring: var(--warning);
+  --type-foryou: var(--signal-violet);
+  --type-news: var(--signal-violet);
+}
