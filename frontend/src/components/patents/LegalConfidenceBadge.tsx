@@ -27,8 +27,8 @@ export function LegalConfidenceBadge({
       className={
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " +
         (isConfirmed
-          ? "bg-blue-100 text-blue-700"
-          : "bg-gray-100 text-gray-600 border border-dashed border-gray-300")
+          ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+          : "bg-gray-100 text-gray-600 border border-dashed border-[var(--border-default)]")
       }
       title={
         isConfirmed

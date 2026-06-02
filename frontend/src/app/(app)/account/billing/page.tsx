@@ -7,10 +7,10 @@ import useSWR from "swr";
 import type { BillingSubscription, Tier } from "@/lib/types";
 
 const TIER_COLORS: Record<Tier, string> = {
-  free: "bg-gray-100 text-gray-700",
-  basic: "bg-blue-100 text-blue-700",
-  lifetime: "bg-purple-100 text-purple-700",
-  enterprise: "bg-amber-100 text-amber-700",
+  free: "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
+  basic: "bg-[var(--accent-muted)] text-[var(--accent)]",
+  lifetime: "bg-[var(--accent-muted)] text-[var(--type-foryou)]",
+  enterprise: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
 };
 
 const PLANS = [
@@ -44,7 +44,7 @@ export default function BillingPage() {
     () => billingApi.getSubscription()
   );
 
-  if (isLoading) return <div className="p-8 text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="p-8 text-[var(--text-muted)]">Loading...</div>;
   if (!isAuthenticated) {
     router.push("/login");
     return null;
@@ -73,12 +73,12 @@ export default function BillingPage() {
       <h1 className="text-xl font-bold">Billing</h1>
 
       {success === "true" && (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+        <div className="bg-[var(--score-high-bg)] border border-[var(--score-high)]/30 text-[var(--score-high)] px-4 py-3 rounded">
           Payment received. Your account will update shortly.
         </div>
       )}
       {canceled === "true" && (
-        <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded">
+        <div className="bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-secondary)] px-4 py-3 rounded">
           Checkout canceled. No charges made.
         </div>
       )}
@@ -86,36 +86,36 @@ export default function BillingPage() {
       {/* Current tier */}
       <div className="border rounded p-4 space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Current plan:</span>
+          <span className="text-sm text-[var(--text-muted)]">Current plan:</span>
           <span className={`px-2 py-0.5 rounded text-xs font-semibold ${TIER_COLORS[currentTier]}`}>
             {currentTier.toUpperCase()}
           </span>
         </div>
         {sub && sub.status && (
-          <p className="text-sm text-gray-600">Status: {sub.status}</p>
+          <p className="text-sm text-[var(--text-secondary)]">Status: {sub.status}</p>
         )}
         {currentTier === "lifetime" && (
-          <p className="text-sm text-gray-600">Lifetime access — no renewal needed.</p>
+          <p className="text-sm text-[var(--text-secondary)]">Lifetime access — no renewal needed.</p>
         )}
         {sub?.current_period_end && currentTier !== "lifetime" && currentTier !== "free" && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--text-secondary)]">
             {sub.cancel_at_period_end ? "Cancels on " : "Renews on "}
             {new Date(sub.current_period_end).toLocaleDateString()}
           </p>
         )}
         {sub?.cancel_at_period_end && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded text-sm">
+          <div className="bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 text-[var(--score-medium)] px-3 py-2 rounded text-sm">
             Your subscription is set to cancel at the end of the current period.
           </div>
         )}
         {currentTier === "free" && (
-          <p className="text-sm text-gray-500">Upgrade to unlock more features.</p>
+          <p className="text-sm text-[var(--text-muted)]">Upgrade to unlock more features.</p>
         )}
 
         {(currentTier === "basic" || currentTier === "enterprise") && sub?.stripe_customer_id && (
           <button
             onClick={handleManage}
-            className="mt-2 px-4 py-2 bg-gray-700 text-white rounded text-sm hover:bg-gray-800"
+            className="mt-2 px-4 py-2 bg-gray-700 text-white rounded text-sm hover:bg-[var(--bg-elevated)]"
           >
             Manage Subscription (Stripe Portal)
           </button>
@@ -133,7 +133,7 @@ export default function BillingPage() {
             <div>
               <h3 className="font-semibold">{plan.name}</h3>
               <p className="text-lg font-bold">{plan.price}</p>
-              <ul className="text-sm text-gray-600 mt-1 space-y-0.5">
+              <ul className="text-sm text-[var(--text-secondary)] mt-1 space-y-0.5">
                 {plan.features.map((f) => (
                   <li key={f}>• {f}</li>
                 ))}
@@ -141,7 +141,7 @@ export default function BillingPage() {
             </div>
             <button
               onClick={() => handleUpgrade(plan.tier)}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              className="px-4 py-2 bg-[var(--accent)] text-white rounded text-sm hover:bg-blue-700"
             >
               Upgrade
             </button>

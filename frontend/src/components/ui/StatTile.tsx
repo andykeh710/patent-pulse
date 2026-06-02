@@ -10,7 +10,7 @@ interface StatTileProps {
 export function StatTile({ label, value, subtext, accent = "default" }: StatTileProps) {
   const accentBorder = {
     default: "border-[var(--border-subtle)]",
-    signal: "border-[var(--signal-blue)]/40",
+    signal: "border-[var(--accent)]/40",
     warning: "border-[var(--warning)]/40",
   }[accent];
 

@@ -18,7 +18,7 @@ type SearchMode = "fulltext" | "semantic";
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
       <SearchContent />
     </Suspense>
   );
@@ -80,9 +80,9 @@ function SearchContent() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Search Patents</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Search Patents</h1>
         <FreshnessBanner show={["patents"]} className="mt-2" />
-        <p className="text-gray-600 mt-1">
+        <p className="text-[var(--text-secondary)] mt-1">
           Find patents by keyword or describe what you&apos;re looking for
         </p>
       </div>
@@ -100,13 +100,13 @@ function SearchContent() {
                   ? "Search by title, abstract, or keywords..."
                   : "Describe the technology you're looking for..."
               }
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full rounded-lg border border-[var(--border-default)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
             />
           </div>
           <button
             type="submit"
             disabled={query.trim().length < 3}
-            className="px-6 py-3 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-3 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Search
           </button>
@@ -114,14 +114,14 @@ function SearchContent() {
 
         {/* Mode toggle */}
         <div className="mt-3 flex items-center gap-3">
-          <span className="text-xs text-gray-500">Search mode:</span>
+          <span className="text-xs text-[var(--text-muted)]">Search mode:</span>
           <button
             type="button"
             onClick={() => { setMode("fulltext"); setSubmitted(""); }}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               mode === "fulltext"
-                ? "bg-primary-100 text-primary-700"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
             }`}
           >
             Keyword Search
@@ -131,14 +131,14 @@ function SearchContent() {
             onClick={() => { setMode("semantic"); setSubmitted(""); }}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               mode === "semantic"
-                ? "bg-primary-100 text-primary-700"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
             }`}
           >
             Semantic Search
           </button>
           {mode === "semantic" && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--text-muted)]">
               Uses AI embeddings to find patents by meaning
             </span>
           )}
@@ -147,12 +147,12 @@ function SearchContent() {
 
       {/* Results */}
       {!submitted ? (
-        <div className="rounded-lg bg-gray-50 py-16 text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="rounded-lg bg-[var(--bg-base)] py-16 text-center">
+          <svg className="mx-auto h-12 w-12 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <p className="text-gray-500 mt-3">Enter a search query to find patents</p>
-          <p className="text-sm text-gray-400 mt-1">Minimum 3 characters</p>
+          <p className="text-[var(--text-muted)] mt-3">Enter a search query to find patents</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">Minimum 3 characters</p>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -161,9 +161,9 @@ function SearchContent() {
           ))}
         </div>
       ) : !hasResults ? (
-        <div className="rounded-lg bg-gray-50 py-12 text-center">
-          <p className="text-gray-500">No patents found for &ldquo;{submitted}&rdquo;</p>
-          <p className="text-sm text-gray-400 mt-1">
+        <div className="rounded-lg bg-[var(--bg-base)] py-12 text-center">
+          <p className="text-[var(--text-muted)]">No patents found for &ldquo;{submitted}&rdquo;</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
             {mode === "fulltext"
               ? "Try different keywords or switch to semantic search"
               : "Try rephrasing your description or switch to keyword search"}
@@ -171,7 +171,7 @@ function SearchContent() {
         </div>
       ) : mode === "fulltext" && fulltextResults ? (
         <>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-[var(--text-muted)] mb-4">
             {fulltextResults.total.toLocaleString()} results for &ldquo;{submitted}&rdquo;
             {fulltextResults.pages > 1 && ` · page ${fulltextResults.page} of ${fulltextResults.pages}`}
           </p>
@@ -185,17 +185,17 @@ function SearchContent() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
               >
                 Previous
               </button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-[var(--text-secondary)]">
                 Page {page} / {fulltextResults.pages}
               </span>
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page >= fulltextResults.pages}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
               >
                 Next
               </button>
@@ -204,7 +204,7 @@ function SearchContent() {
         </>
       ) : semanticResults ? (
         <>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-[var(--text-muted)] mb-4">
             Search across {BRAND.name}&apos;s indexed publications using keywords or semantic similarity
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -215,7 +215,7 @@ function SearchContent() {
                   <Badge
                     variant="default"
                     size="sm"
-                    className="bg-purple-100 text-purple-800 border-purple-200"
+                    className="bg-[var(--accent-muted)] text-[var(--type-foryou)] border-[var(--type-foryou)]/30"
                   >
                     {(result.similarity * 100).toFixed(0)}% match
                   </Badge>

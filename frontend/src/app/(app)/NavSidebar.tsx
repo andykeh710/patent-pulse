@@ -76,14 +76,14 @@ export function NavSidebar() {
   };
 
   return (
-    <nav className="w-64 bg-white border-r border-gray-200 p-4 fixed h-full">
+    <nav className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] p-4 fixed h-full">
       <div className="mb-8">
         <Link href="/" className="inline-flex items-center gap-2 group">
-          <span className="text-xl font-bold text-primary-700 group-hover:text-primary-600 transition-colors">
+          <span className="text-xl font-bold text-[var(--accent)] group-hover:text-[var(--accent)] transition-colors">
             {BRAND.compactName}
           </span>
         </Link>
-        <p className="text-sm text-gray-500 mt-1">Invention Intelligence</p>
+        <p className="text-sm text-[var(--text-muted)] mt-1">Invention Intelligence</p>
       </div>
 
       <ul className="space-y-1">
@@ -93,8 +93,8 @@ export function NavSidebar() {
               href={item.href}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 isActive(item.href)
-                  ? "bg-primary-50 text-primary-700 font-medium"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               }`}
             >
               <svg
@@ -115,8 +115,8 @@ export function NavSidebar() {
           </li>
         ))}
 
-        <li className="pt-4 mt-4 border-t border-gray-200">
-          <span className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <li className="pt-4 mt-4 border-t border-[var(--border-subtle)]">
+          <span className="px-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
             Admin
           </span>
         </li>
@@ -127,8 +127,8 @@ export function NavSidebar() {
               href={item.href}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 isActive(item.href)
-                  ? "bg-primary-50 text-primary-700 font-medium"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               }`}
             >
               <svg
@@ -150,19 +150,19 @@ export function NavSidebar() {
         ))}
       </ul>
 
-      <div className="mt-6 pt-4 border-t border-gray-200">
+      <div className="mt-6 pt-4 border-t border-[var(--border-subtle)]">
         {isAuthenticated ? (
           <div className="space-y-1">
-            <p className="text-xs text-gray-500 truncate px-3">{user?.email}</p>
+            <p className="text-xs text-[var(--text-muted)] truncate px-3">{user?.email}</p>
             <Link
               href="/account"
-              className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+              className="flex items-center px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
             >
               Account
             </Link>
             <Link
               href="/account/billing"
-              className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+              className="flex items-center px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
             >
               Billing
             </Link>
@@ -170,7 +170,7 @@ export function NavSidebar() {
         ) : (
           <Link
             href="/login"
-            className="flex items-center px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+            className="flex items-center px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
           >
             Sign In
           </Link>

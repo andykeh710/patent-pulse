@@ -8,8 +8,8 @@ import { AuthProvider } from "@/lib/AuthContext";
 
 export const metadata: Metadata = {
   title: {
-    default: `${BRAND.name} — ${COPY.tagline}`,
-    template: `%s — ${BRAND.name}`,
+    default: `${BRAND.name}: ${COPY.tagline}`,
+    template: `%s: ${BRAND.name}`,
   },
   description: COPY.description,
   metadataBase: new URL(BRAND.url),
@@ -35,6 +35,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="antialiased bg-[var(--bg-base)] min-h-screen text-[var(--text-primary)]">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[var(--z-tooltip)] focus:px-4 focus:py-2 focus:bg-[var(--accent)] focus:text-white focus:rounded-[var(--radius-md)]">
+          Skip to content
+        </a>
         <AuthProvider>
           {children}
         </AuthProvider>

@@ -21,12 +21,12 @@ interface BriefingItemProps {
 }
 
 const typeConfig: Record<BriefingItemType, { emoji: string; borderVar: string; bgVar: string }> = {
-  trend:    { emoji: "📈", borderVar: "var(--type-trend)",    bgVar: "var(--signal-blue)" },
+  trend:    { emoji: "📈", borderVar: "var(--type-trend)",    bgVar: "var(--accent)" },
   notable:  { emoji: "🔍", borderVar: "var(--type-notable)",  bgVar: "var(--score-high)" },
   company:  { emoji: "🏢", borderVar: "var(--type-company)",  bgVar: "var(--type-company)" },
   expiring: { emoji: "⏳", borderVar: "var(--type-expiring)", bgVar: "var(--warning)" },
-  foryou:   { emoji: "✨", borderVar: "var(--type-foryou)",   bgVar: "var(--signal-violet)" },
-  news:     { emoji: "📰", borderVar: "var(--type-news)",     bgVar: "var(--signal-violet)" },
+  foryou:   { emoji: "✨", borderVar: "var(--type-foryou)",   bgVar: "var(--accent)" },
+  news:     { emoji: "📰", borderVar: "var(--type-news)",     bgVar: "var(--accent)" },
 };
 
 export function BriefingItem({

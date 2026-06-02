@@ -45,14 +45,14 @@ export function EmptyState({
         action.href ? (
           <a
             href={action.href}
-            className="mt-4 text-sm text-[var(--signal-blue)] hover:text-[var(--signal-glow)] font-medium transition-colors"
+            className="mt-4 text-sm text-[var(--accent)] hover:text-[var(--accent)] font-medium transition-colors"
           >
             {action.label}
           </a>
         ) : action.onClick ? (
           <button
             onClick={action.onClick}
-            className="mt-4 text-sm text-[var(--signal-blue)] hover:text-[var(--signal-glow)] font-medium transition-colors"
+            className="mt-4 text-sm text-[var(--accent)] hover:text-[var(--accent)] font-medium transition-colors"
           >
             {action.label}
           </button>

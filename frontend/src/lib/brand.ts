@@ -19,7 +19,7 @@ export const COPY = {
     "Track filing trends, company R&D moves, notable patents, and emerging opportunity zones from global patent data.",
   heroHeadline: "Track the world's invention signals.",
   heroSubheadline:
-    "Invention Index 8 turns patent activity into readable market intelligence — surfacing filing trends, company moves, expiring opportunities, and notable inventions before they become obvious.",
+    "Invention Index 8 turns patent activity into readable market intelligence. Surfacing filing trends, company moves, expiring opportunities, and notable inventions before they become obvious.",
   disclaimer:
     "Invention Index 8 provides research intelligence only. It does not provide legal, patentability, investment, or financial advice.",
   footerDisclaimer:

@@ -12,9 +12,9 @@ interface PillProps {
 }
 
 const toneMap: Record<PillTone, { bg: string; text: string; border: string }> = {
-  indigo: { bg: "bg-[var(--signal-blue)]/12", text: "text-[var(--signal-blue)]", border: "border-[var(--signal-blue)]/30" },
-  violet: { bg: "bg-[var(--signal-violet)]/12", text: "text-[var(--signal-violet)]", border: "border-[var(--signal-violet)]/30" },
-  cyan:   { bg: "bg-[var(--signal-cyan)]/12",  text: "text-[var(--signal-cyan)]",  border: "border-[var(--signal-cyan)]/30" },
+  indigo: { bg: "bg-[var(--accent)]/12", text: "text-[var(--accent)]", border: "border-[var(--accent)]/30" },
+  violet: { bg: "bg-[var(--type-foryou)]/12", text: "text-[var(--type-foryou)]", border: "border-[var(--type-foryou)]/30" },
+  cyan:   { bg: "bg-[var(--type-company)]/12",  text: "text-[var(--type-company)]",  border: "border-[var(--type-company)]/30" },
   green:  { bg: "bg-[var(--score-high)]/12",   text: "text-[var(--score-high)]",   border: "border-[var(--score-high)]/30" },
   amber:  { bg: "bg-[var(--warning)]/12",       text: "text-[var(--warning)]",       border: "border-[var(--warning)]/30" },
   red:    { bg: "bg-red-500/12",                text: "text-red-400",                border: "border-red-400/30" },

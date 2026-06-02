@@ -5,16 +5,16 @@ import { BRAND } from "@/lib/brand";
 export default function LimitationsPage() {
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+      <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
         About {BRAND.name}
       </h1>
 
       <div className="space-y-8">
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
             What {BRAND.name} Is
           </h2>
-          <p className="text-gray-600 leading-relaxed">
+          <p className="text-[var(--text-secondary)] leading-relaxed">
             {BRAND.name} is a patent intelligence tool that helps users discover
             trends, opportunities, and insights from patent filings. It uses
             publicly available patent data from the USPTO, EPO, and WIPO,
@@ -24,10 +24,10 @@ export default function LimitationsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
             What {BRAND.name} Is Not
           </h2>
-          <p className="text-gray-600 leading-relaxed">
+          <p className="text-[var(--text-secondary)] leading-relaxed">
             {BRAND.name} is <strong>not legal advice</strong>. It is not a
             substitute for professional patent counsel. The information provided
             should be treated as informational analysis, not as actionable legal
@@ -35,8 +35,8 @@ export default function LimitationsPage() {
           </p>
         </section>
 
-        <section className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-          <h2 className="text-lg font-semibold text-amber-800 mb-3">
+        <section className="bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg p-5">
+          <h2 className="text-lg font-semibold text-[var(--score-medium)] mb-3">
             Important Limitations
           </h2>
           <ul className="space-y-3 text-sm text-amber-900">
@@ -108,26 +108,26 @@ export default function LimitationsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
             Data Sources
           </h2>
-          <ul className="space-y-2 text-sm text-gray-600">
+          <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
             <li className="flex items-start gap-2">
-              <span className="text-gray-400">•</span>
+              <span className="text-[var(--text-muted)]">•</span>
               <span>
                 <strong>USPTO</strong> — United States Patent and Trademark
                 Office. Grants and applications via the Open Data Portal.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-gray-400">•</span>
+              <span className="text-[var(--text-muted)]">•</span>
               <span>
                 <strong>EPO OPS</strong> — European Patent Office Open Patent
                 Services. Publication data, family information, and abstracts.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-gray-400">•</span>
+              <span className="text-[var(--text-muted)]">•</span>
               <span>
                 <strong>WIPO PATENTSCOPE</strong> — World Intellectual Property
                 Organization. PCT international applications.
@@ -137,10 +137,10 @@ export default function LimitationsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
             Recommended Verification
           </h2>
-          <p className="text-gray-600 leading-relaxed mb-3">
+          <p className="text-[var(--text-secondary)] leading-relaxed mb-3">
             Before acting on any patent information from {BRAND.name}, we
             recommend verifying through official registers:
           </p>
@@ -150,7 +150,7 @@ export default function LimitationsPage() {
                 href="https://patentcenter.uspto.gov/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-800 hover:underline"
+                className="text-[var(--accent)] hover:text-text-[var(--accent-hover)] hover:underline"
               >
                 USPTO Patent Center →
               </a>
@@ -160,7 +160,7 @@ export default function LimitationsPage() {
                 href="https://worldwide.espacenet.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-800 hover:underline"
+                className="text-[var(--accent)] hover:text-text-[var(--accent-hover)] hover:underline"
               >
                 Espacenet (EPO) →
               </a>
@@ -170,7 +170,7 @@ export default function LimitationsPage() {
                 href="https://patentscope.wipo.int/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-800 hover:underline"
+                className="text-[var(--accent)] hover:text-text-[var(--accent-hover)] hover:underline"
               >
                 WIPO PATENTSCOPE →
               </a>
@@ -180,7 +180,7 @@ export default function LimitationsPage() {
                 href="https://patents.google.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-800 hover:underline"
+                className="text-[var(--accent)] hover:text-text-[var(--accent-hover)] hover:underline"
               >
                 Google Patents →
               </a>
@@ -188,8 +188,8 @@ export default function LimitationsPage() {
           </ul>
         </section>
 
-        <div className="border-t border-gray-200 pt-6">
-          <p className="text-xs text-gray-400">
+        <div className="border-t border-[var(--border-subtle)] pt-6">
+          <p className="text-xs text-[var(--text-muted)]">
             {BRAND.name} provides informational patent intelligence only. Nothing
             in this product constitutes legal advice. Consult a qualified patent
             attorney before making decisions based on patent data.

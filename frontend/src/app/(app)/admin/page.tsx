@@ -39,7 +39,7 @@ export default function AdminPage() {
     ([url]) => fetch(url, { credentials: "include" }).then((r) => { if (!r.ok) throw r.status; return r.json(); })
   );
 
-  if (isLoading) return <div className="p-8 text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="p-8 text-[var(--text-muted)]">Loading...</div>;
   if (!isAuthenticated) { router.push("/login"); return null; }
 
   const handleTierOverride = async () => {
@@ -67,23 +67,23 @@ export default function AdminPage() {
       ) : (
         <>
           <div className="flex gap-2 border-b">
-            <button onClick={() => setTab("users")} className={`px-3 py-2 text-sm ${tab === "users" ? "border-b-2 border-blue-600 font-semibold" : "text-gray-500"}`}>Users</button>
-            <button onClick={() => setTab("exports")} className={`px-3 py-2 text-sm ${tab === "exports" ? "border-b-2 border-blue-600 font-semibold" : "text-gray-500"}`}>Exports</button>
+            <button onClick={() => setTab("users")} className={`px-3 py-2 text-sm ${tab === "users" ? "border-b-2 border-blue-600 font-semibold" : "text-[var(--text-muted)]"}`}>Users</button>
+            <button onClick={() => setTab("exports")} className={`px-3 py-2 text-sm ${tab === "exports" ? "border-b-2 border-blue-600 font-semibold" : "text-[var(--text-muted)]"}`}>Exports</button>
           </div>
 
           {tab === "users" && usersData && usersData.users && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-gray-500">
+                  <tr className="border-b text-left text-[var(--text-muted)]">
                     <th className="pb-2">Email</th><th className="pb-2">Tier</th><th className="pb-2">Status</th><th className="pb-2">Period End</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usersData.users.map((u: AdminUser) => (
-                    <tr key={u.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedUser(u)}>
+                    <tr key={u.id} className="border-b hover:bg-[var(--bg-base)] cursor-pointer" onClick={() => setSelectedUser(u)}>
                       <td className="py-2">{u.email || u.id}</td>
-                      <td className="py-2"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100">{u.tier}</span></td>
+                      <td className="py-2"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-[var(--bg-elevated)]">{u.tier}</span></td>
                       <td className="py-2">{u.billing_status || "-"}</td>
                       <td className="py-2">{u.current_period_end ? new Date(u.current_period_end).toLocaleDateString() : "-"}</td>
                     </tr>
@@ -99,7 +99,7 @@ export default function AdminPage() {
                     <option value="lifetime">Lifetime</option><option value="enterprise">Enterprise</option>
                   </select>
                   <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" className="border rounded px-2 py-1 text-sm w-full" />
-                  <button onClick={handleTierOverride} disabled={!tierValue} className="px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50">Apply</button>
+                  <button onClick={handleTierOverride} disabled={!tierValue} className="px-3 py-1 bg-[var(--accent)] text-white rounded text-sm disabled:opacity-50">Apply</button>
                 </div>
               )}
             </div>
@@ -108,7 +108,7 @@ export default function AdminPage() {
           {tab === "exports" && exports && (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500">
+                <tr className="border-b text-left text-[var(--text-muted)]">
                   <th className="pb-2">User</th><th className="pb-2">Type</th><th className="pb-2">Scope</th><th className="pb-2">Size</th><th className="pb-2">When</th>
                 </tr>
               </thead>

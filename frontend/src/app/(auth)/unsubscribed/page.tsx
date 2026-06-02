@@ -9,16 +9,16 @@ function Content() {
   const theme = searchParams.get("theme") || "this topic";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Unsubscribed</h1>
-        <p className="text-gray-600">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+      <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border-subtle)] p-8 max-w-md w-full text-center space-y-4">
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Unsubscribed</h1>
+        <p className="text-[var(--text-secondary)]">
           You&apos;ve been unsubscribed from <strong>{theme}</strong>. You can
           resubscribe anytime from your account page.
         </p>
         <Link
           href="/account"
-          className="inline-block text-sm text-blue-600 hover:underline"
+          className="inline-block text-sm text-[var(--accent)] hover:underline"
         >
           Go to Account
         </Link>

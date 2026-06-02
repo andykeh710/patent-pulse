@@ -17,7 +17,7 @@ export function ExpirySummaryCards({ data, isLoading }: ExpirySummaryCardsProps)
     {
       label: "Total with Expiry",
       value: data?.total_with_expiry ?? null,
-      color: "text-gray-900",
+      color: "text-[var(--text-primary)]",
     },
     {
       label: "Expiring Soon",
@@ -42,10 +42,10 @@ export function ExpirySummaryCards({ data, isLoading }: ExpirySummaryCardsProps)
         {cards.map((card) => (
           <div
             key={card.label}
-            className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse"
+            className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 animate-pulse"
           >
-            <div className="h-3 bg-gray-200 rounded w-20 mb-2" />
-            <div className="h-6 bg-gray-200 rounded w-12" />
+            <div className="h-3 bg-[var(--bg-surface)] rounded w-20 mb-2" />
+            <div className="h-6 bg-[var(--bg-surface)] rounded w-12" />
           </div>
         ))}
       </div>
@@ -57,9 +57,9 @@ export function ExpirySummaryCards({ data, isLoading }: ExpirySummaryCardsProps)
       {cards.map((card) => (
         <div
           key={card.label}
-          className="bg-white rounded-lg border border-gray-200 p-4"
+          className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4"
         >
-          <p className="text-xs text-gray-500 uppercase tracking-wider">
+          <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">
             {card.label}
           </p>
           <p className={`text-2xl font-bold mt-1 ${card.color}`}>

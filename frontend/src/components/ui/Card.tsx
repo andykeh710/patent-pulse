@@ -9,18 +9,18 @@ interface CardProps {
 
 export function Card({
   children,
-  variant = "glass",
+  variant = "default",
   interactive = false,
   className = "",
 }: CardProps) {
-  const base = "rounded-xl border p-4";
+  const base = "rounded-[var(--radius-lg)] border p-5";
   const variants = {
-    default: "bg-[var(--bg-base)] border-[var(--border-subtle)]",
-    glass: "bg-[var(--bg-glass)] backdrop-blur-md border-[var(--border-subtle)]",
-    elevated: "bg-[var(--bg-elevated)] border-[var(--border-strong)]",
+    default: "bg-[var(--bg-surface)] border-[var(--border-subtle)]",
+    glass: "bg-[var(--bg-glass)] border-[var(--border-subtle)]",
+    elevated: "bg-[var(--bg-elevated)] border-[var(--border-default)] shadow-[var(--shadow-sm)]",
   };
   const interactiveClasses = interactive
-    ? "scan-hover gradient-border-hover cursor-pointer transition-transform hover:-translate-y-0.5 duration-200"
+    ? "surface-interactive cursor-pointer"
     : "";
 
   return (

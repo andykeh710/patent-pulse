@@ -12,15 +12,15 @@ import type {
 // ── helpers ──────────────────────────────────────────────────────────
 
 const TIER_COLORS: Record<string, string> = {
-  strong: "bg-green-100 text-green-800 border-green-300",
-  medium: "bg-amber-100 text-amber-800 border-amber-300",
-  weak: "bg-gray-100 text-gray-600 border-gray-300",
+  strong: "bg-[var(--score-high-bg)] text-[var(--score-high)] border-green-300",
+  medium: "bg-[var(--score-medium-bg)] text-[var(--score-medium)] border-amber-300",
+  weak: "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-default)]",
 };
 
 function scoreColor(score: number): string {
-  if (score >= 70) return "bg-green-100 text-green-800 border-green-400";
-  if (score >= 40) return "bg-amber-100 text-amber-800 border-amber-400";
-  return "bg-gray-100 text-gray-600 border-gray-300";
+  if (score >= 70) return "bg-[var(--score-high-bg)] text-[var(--score-high)] border-green-400";
+  if (score >= 40) return "bg-[var(--score-medium-bg)] text-[var(--score-medium)] border-amber-400";
+  return "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-default)]";
 }
 
 function scoreLabel(score: number): string {
@@ -37,13 +37,13 @@ function EvidenceRow({ item }: { item: UsageEvidenceItem }) {
   const tierColor = TIER_COLORS[item.evidence_tier] || TIER_COLORS.weak;
 
   return (
-    <div className="border border-gray-100 rounded p-3 text-sm">
+    <div className="border border-[var(--border-subtle)] rounded p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-gray-900 truncate font-medium">
+          <p className="text-[var(--text-primary)] truncate font-medium">
             {item.source_patent_title || "Untitled patent"}
           </p>
-          <p className="text-gray-500 text-xs">
+          <p className="text-[var(--text-muted)] text-xs">
             {item.source_patent_assignee || "Unknown assignee"}
             {item.source_patent_filing_date &&
               ` · ${item.source_patent_filing_date.slice(0, 4)}`}
@@ -51,7 +51,7 @@ function EvidenceRow({ item }: { item: UsageEvidenceItem }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {item.similarity_score != null && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--text-muted)]">
               {(item.similarity_score * 100).toFixed(0)}%
             </span>
           )}
@@ -62,19 +62,19 @@ function EvidenceRow({ item }: { item: UsageEvidenceItem }) {
           </span>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-xs text-[var(--accent)] hover:underline"
           >
             {expanded ? "less" : "more"}
           </button>
         </div>
       </div>
       {expanded && (
-        <div className="mt-2 text-xs text-gray-500 space-y-1">
+        <div className="mt-2 text-xs text-[var(--text-muted)] space-y-1">
           {item.matched_cpc.length > 0 && (
             <p>
               Shared CPC:{" "}
               {item.matched_cpc.map((c) => (
-                <code key={c} className="bg-gray-100 px-1 rounded text-xs mr-1">
+                <code key={c} className="bg-[var(--bg-elevated)] px-1 rounded text-xs mr-1">
                   {c}
                 </code>
               ))}
@@ -139,7 +139,7 @@ function NarrativeSection({
 
   if (score < 40) {
     return (
-      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-500">
+      <div className="mt-4 p-4 bg-[var(--bg-base)] rounded-lg border border-[var(--border-subtle)] text-sm text-[var(--text-muted)]">
         Not enough evidence for narrative generation (score {score.toFixed(0)}
         /100). At least 40 points of evidence are needed.
       </div>
@@ -152,7 +152,7 @@ function NarrativeSection({
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="text-sm px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           {generating
             ? hasCachedNarrativeRow
@@ -161,19 +161,19 @@ function NarrativeSection({
             : "Analyze Usage Signals"}
         </button>
       ) : (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-gray-700 mb-2 leading-relaxed">
+        <div className="bg-blue-50 border border-[var(--accent)]/30 rounded-lg p-4">
+          <p className="text-sm text-[var(--text-secondary)] mb-2 leading-relaxed">
             {narrative.summary}
           </p>
           {narrative.evidence_summary && (
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-[var(--text-muted)] mb-2">
               {narrative.evidence_summary}
             </p>
           )}
           {narrative.limitations.length > 0 && (
             <div className="mt-2 space-y-1">
               {narrative.limitations.map((lim, i) => (
-                <p key={i} className="text-xs text-amber-700 flex gap-1">
+                <p key={i} className="text-xs text-[var(--score-medium)] flex gap-1">
                   <span>⚠</span> {lim}
                 </p>
               ))}
@@ -186,13 +186,13 @@ function NarrativeSection({
             </p>
           )}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--text-muted)]">
               AI-generated analysis{narrative.cached ? " (cached)" : ""}
             </span>
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-[var(--accent)] hover:underline"
             >
               {generating ? "Regenerating…" : "Regenerate"}
             </button>
@@ -216,23 +216,23 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
   if (isLoading) {
     return (
       <div className="space-y-3 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-32" />
-        <div className="h-4 bg-gray-200 rounded w-64" />
-        <div className="h-24 bg-gray-200 rounded" />
+        <div className="h-8 bg-[var(--bg-surface)] rounded w-32" />
+        <div className="h-4 bg-[var(--bg-surface)] rounded w-64" />
+        <div className="h-24 bg-[var(--bg-surface)] rounded" />
       </div>
     );
   }
 
   if (error instanceof ApiError && error.status === 404) {
     return (
-      <div className="text-center py-12 text-gray-500 space-y-2">
+      <div className="text-center py-12 text-[var(--text-muted)] space-y-2">
         <p className="font-medium">Usage signals not yet assessed</p>
         <p className="text-sm max-w-md mx-auto">
           This patent has not been processed for usage signal analysis yet.
           Once an embedding is generated and assessment runs, evidence-based
           signals will appear here.
         </p>
-        <p className="text-xs text-gray-400 mt-4">
+        <p className="text-xs text-[var(--text-muted)] mt-4">
           Evidence is patent-based only — no product-level verification has
           been performed. Verify independently before making business or legal
           decisions.
@@ -243,11 +243,11 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
 
   if (error || !data) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-[var(--text-muted)]">
         <p>Unable to load usage signals.</p>
         <button
           onClick={() => mutate()}
-          className="text-sm text-blue-600 hover:underline mt-2"
+          className="text-sm text-[var(--accent)] hover:underline mt-2"
         >
           Retry
         </button>
@@ -271,26 +271,26 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
           {signal.score.toFixed(0)} / 100 · {scoreLabel(signal.score)}
         </span>
         {signal.confidence === "high" && (
-          <span className="text-xs text-green-700">High confidence</span>
+          <span className="text-xs text-[var(--score-high)]">High confidence</span>
         )}
       </div>
 
       {/* ── evidence summary ── */}
       {hasEvidence && (
-        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
           <span>{signal.evidence_count} evidence pieces</span>
           {signal.strong_count > 0 && (
-            <span className="text-green-700">
+            <span className="text-[var(--score-high)]">
               {signal.strong_count} strong
             </span>
           )}
           {signal.medium_count > 0 && (
-            <span className="text-amber-700">
+            <span className="text-[var(--score-medium)]">
               {signal.medium_count} medium
             </span>
           )}
           {signal.weak_count > 0 && (
-            <span className="text-gray-500">
+            <span className="text-[var(--text-muted)]">
               {signal.weak_count} weak
             </span>
           )}
@@ -305,7 +305,7 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
       {/* ── evidence list ── */}
       {hasEvidence && signal.evidence.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-700">Evidence</h3>
+          <h3 className="text-sm font-medium text-[var(--text-secondary)]">Evidence</h3>
           {signal.evidence.map((item) => (
             <EvidenceRow key={item.id} item={item} />
           ))}
@@ -323,7 +323,7 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
 
       {/* ── empty state ── */}
       {!hasEvidence && (
-        <div className="text-center py-8 text-gray-500 space-y-2">
+        <div className="text-center py-8 text-[var(--text-muted)] space-y-2">
           <p className="font-medium">No Usage Signals Detected</p>
           <p className="text-sm max-w-md mx-auto">
             Based on similar newer patents only (citation analysis pending).
@@ -331,7 +331,7 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
             not mean the technology is unused — evidence is patent-based
             only. Product-level usage is not tracked.
           </p>
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-[var(--text-muted)] mt-4">
             Evidence is patent-based only — no product-level verification
             has been performed. Verify independently before making business
             or legal decisions.
@@ -341,7 +341,7 @@ export function UsageSignalsPanel({ patentId }: { patentId: string }) {
 
       {/* ── disclaimer ── */}
       {hasEvidence && (
-        <div className="mt-4 text-xs text-gray-400 border-t pt-3 space-y-1">
+        <div className="mt-4 text-xs text-[var(--text-muted)] border-t pt-3 space-y-1">
           <p>
             Evidence is patent-based only — no product-level verification
             has been performed.

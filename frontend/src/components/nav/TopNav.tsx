@@ -24,7 +24,7 @@ export function TopNav() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-14 bg-[var(--bg-base)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
+    <nav className="fixed top-0 left-0 right-0 z-[var(--z-sticky)] h-14 bg-[var(--bg-base)]/85 backdrop-blur-xl border-b border-[var(--border-subtle)]">
       <div className="max-w-[1440px] mx-auto px-6 h-full flex items-center justify-between">
         {/* Left: brand + nav */}
         <div className="flex items-center gap-8">
@@ -37,9 +37,9 @@ export function TopNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-sm transition-colors ${
                   isActive(item.href)
-                    ? "bg-[var(--signal-blue)]/10 text-[var(--signal-blue)] font-medium"
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)] font-medium"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)]"
                 }`}
               >

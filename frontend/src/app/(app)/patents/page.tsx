@@ -12,7 +12,7 @@ const OFFICES = ["US", "EP", "WO", "JP", "CN", "KR"] as const;
 
 export default function PatentsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
       <PatentsContent />
     </Suspense>
   );
@@ -95,8 +95,8 @@ function PatentsContent() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Patents</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Patents</h1>
+          <p className="text-[var(--text-secondary)] mt-1">
             {data?.total ? `${data.total} patents` : "Browse all patents"}
           </p>
         </div>
@@ -105,7 +105,7 @@ function PatentsContent() {
           <select
             value={params.sort_by}
             onChange={(e) => handleSortChange(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             <option value="publication_date">Publication Date</option>
             <option value="interesting_score">Interest Score</option>
@@ -116,34 +116,34 @@ function PatentsContent() {
       </div>
 
       {/* Filter controls */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="mb-4 p-4 bg-[var(--bg-base)] rounded-lg border border-[var(--border-subtle)]">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">CPC Prefix</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">CPC Prefix</label>
             <input
               type="text"
               placeholder="e.g. G06F"
               value={filters.cpc_prefix}
               onChange={(e) => handleFilterChange("cpc_prefix", e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Assignee</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Assignee</label>
             <input
               type="text"
               placeholder="e.g. Google"
               value={filters.assignee}
               onChange={(e) => handleFilterChange("assignee", e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Office</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Office</label>
             <select
               value={filters.office}
               onChange={(e) => handleFilterChange("office", e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm w-28 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
               <option value="">All</option>
               {OFFICES.map((o) => (
@@ -152,7 +152,7 @@ function PatentsContent() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Score Min</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Score Min</label>
             <input
               type="number"
               min="0"
@@ -160,11 +160,11 @@ function PatentsContent() {
               placeholder="0"
               value={filters.min_score}
               onChange={(e) => handleFilterChange("min_score", e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Score Max</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Score Max</label>
             <input
               type="number"
               min="0"
@@ -172,13 +172,13 @@ function PatentsContent() {
               placeholder="100"
               value={filters.max_score}
               onChange={(e) => handleFilterChange("max_score", e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
           </div>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg hover:bg-white"
+              className="px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-glass)]"
             >
               Clear
             </button>
@@ -213,17 +213,17 @@ function PatentsContent() {
               <button
                 onClick={() => handlePageChange(params.page! - 1)}
                 disabled={params.page === 1}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
               >
                 Previous
               </button>
-              <span className="px-4 py-2 text-sm text-gray-600">
+              <span className="px-4 py-2 text-sm text-[var(--text-secondary)]">
                 Page {params.page} of {data.pages}
               </span>
               <button
                 onClick={() => handlePageChange(params.page! + 1)}
                 disabled={params.page === data.pages}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
               >
                 Next
               </button>

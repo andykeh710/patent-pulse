@@ -19,10 +19,10 @@ export function PatentCard({ patent }: PatentCardProps) {
   return (
     <Link
       href={`/patents/${patent.id}`}
-      className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-primary-300 hover:shadow-md transition-all"
+      className="block bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] transition-all"
     >
       <div className="flex justify-between items-start gap-3 mb-2">
-        <h3 className="font-medium text-gray-900 leading-tight">
+        <h3 className="font-medium text-[var(--text-primary)] leading-tight">
           {truncate(patent.title, 80) || "Untitled Patent"}
         </h3>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -32,7 +32,7 @@ export function PatentCard({ patent }: PatentCardProps) {
       </div>
 
       {patent.summary_what_it_is && (
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        <p className="text-sm text-[var(--text-secondary)] mb-3 line-clamp-2">
           {patent.summary_what_it_is}
         </p>
       )}
@@ -62,10 +62,10 @@ export function PatentCard({ patent }: PatentCardProps) {
         )}
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
         <div className="flex items-center gap-2">
           {patent.doc_id && (
-            <Badge variant="default" size="sm" className="bg-gray-100 text-gray-600 font-mono">
+            <Badge variant="default" size="sm" className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] font-mono">
               {patent.doc_id.split(":")[0]}
             </Badge>
           )}
@@ -86,7 +86,7 @@ export function PatentCard({ patent }: PatentCardProps) {
               href={patent.figure_page_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary-600 hover:text-primary-700 flex items-center gap-1"
+              className="text-[var(--accent)] hover:text-[var(--accent)] flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
               title="View patent figures at Google Patents"
             >

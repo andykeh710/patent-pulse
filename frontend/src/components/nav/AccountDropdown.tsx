@@ -36,7 +36,7 @@ export function AccountDropdown() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
       >
-        <span className="w-6 h-6 rounded-full bg-[var(--signal-blue)]/20 flex items-center justify-center text-xs">
+        <span className="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-xs">
           {user?.email?.[0]?.toUpperCase() || "?"}
         </span>
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +45,7 @@ export function AccountDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg shadow-lg py-1 z-50">
+        <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg shadow-[var(--shadow-md)] py-1 z-50">
           <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
             <p className="text-xs text-[var(--text-primary)] truncate">{user?.email}</p>
           </div>

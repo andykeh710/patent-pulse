@@ -13,7 +13,7 @@ export default function AccountPage() {
   const router = useRouter();
 
   if (isLoading) {
-    return <div className="animate-pulse h-40 bg-gray-100 rounded" />;
+    return <div className="animate-pulse h-40 bg-[var(--bg-elevated)] rounded" />;
   }
 
   if (!isAuthenticated) {
@@ -25,15 +25,15 @@ export default function AccountPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Account</h1>
-          <p className="text-gray-600 text-sm">{user?.email}</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Account</h1>
+          <p className="text-[var(--text-secondary)] text-sm">{user?.email}</p>
         </div>
         <button
           onClick={async () => {
             await logout();
             router.push("/");
           }}
-          className="text-sm px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="text-sm px-4 py-2 border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-glass)]"
         >
           Sign out
         </button>
@@ -82,7 +82,7 @@ function DangerZone() {
       <hr className="my-8 border-red-200" />
       <div>
         <h2 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h2>
-        <p className="text-sm text-gray-600 mb-3">
+        <p className="text-sm text-[var(--text-secondary)] mb-3">
           Permanently delete your account and all associated data. This
           action cannot be undone.
         </p>
@@ -96,11 +96,11 @@ function DangerZone() {
 
       {open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">
+          <div className="bg-[var(--bg-surface)] rounded-xl p-6 max-w-md w-full shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">
               Delete your account?
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[var(--text-secondary)]">
               This will permanently delete your account, subscriptions,
               API keys, and billing records. Email delivery history will
               be anonymized. Type your email to confirm.
@@ -110,7 +110,7 @@ function DangerZone() {
               placeholder="your@email.com"
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             />
             {error && (
               <p className="text-xs text-red-600">{error}</p>
@@ -122,7 +122,7 @@ function DangerZone() {
                   setConfirmEmail("");
                   setError("");
                 }}
-                className="text-sm px-4 py-2 border rounded-lg hover:bg-gray-50"
+                className="text-sm px-4 py-2 border rounded-lg hover:bg-[var(--bg-glass)]"
               >
                 Cancel
               </button>
@@ -158,16 +158,16 @@ function SubscriptionsSection() {
   const loading = !subscriptions || !themes;
 
   if (loading) {
-    return <div className="animate-pulse h-24 bg-gray-100 rounded" />;
+    return <div className="animate-pulse h-24 bg-[var(--bg-elevated)] rounded" />;
   }
 
   const themeMap = new Map(themes.map((t) => [t.id, t]));
 
   if (!subscriptions.length) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-[var(--text-muted)]">
         <p>You&apos;re not subscribed to any topics yet.</p>
-        <Link href="/themes" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+        <Link href="/themes" className="text-sm text-[var(--accent)] hover:underline mt-2 inline-block">
           Browse topics to subscribe
         </Link>
       </div>
@@ -177,32 +177,32 @@ function SubscriptionsSection() {
   return (
     <div>
       {/* Billing */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Billing</h2>
+      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Billing</h2>
       <div className="mb-6 p-4 border rounded">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-[var(--text-secondary)]">
           Current tier: <span className="font-semibold">{billing?.tier ?? "free"}</span>
           {billing?.status && ` · ${billing.status}`}
         </p>
-        <Link href="/account/billing" className="text-sm text-blue-600 hover:underline">
+        <Link href="/account/billing" className="text-sm text-[var(--accent)] hover:underline">
           Manage billing →
         </Link>
       </div>
 
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Your Subscriptions</h2>
+      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Your Subscriptions</h2>
       <div className="space-y-3">
         {subscriptions.map((sub) => {
           const theme = themeMap.get(sub.theme_id);
           return (
             <div
               key={sub.id}
-              className="border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-4"
+              className="border border-[var(--border-subtle)] rounded-lg p-4 flex items-center justify-between gap-4"
             >
               <div className="min-w-0">
-                <p className="font-medium text-gray-900 truncate">
+                <p className="font-medium text-[var(--text-primary)] truncate">
                   {theme?.name || "Unknown topic"}
                 </p>
-                <p className="text-xs text-gray-500 space-x-2">
-                  <span className={sub.mode === "instant_alert" ? "text-orange-600" : "text-blue-600"}>
+                <p className="text-xs text-[var(--text-muted)] space-x-2">
+                  <span className={sub.mode === "instant_alert" ? "text-orange-600" : "text-[var(--accent)]"}>
                     {sub.mode === "instant_alert" ? "Instant" : "Weekly Digest"}
                   </span>
                   {sub.min_score != null && (
@@ -225,7 +225,7 @@ function SubscriptionsSection() {
                     await subscriptionsApi.update(sub.id, { paused: !sub.paused });
                     mutate();
                   }}
-                  className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                  className="text-xs px-2 py-1 border rounded hover:bg-[var(--bg-glass)]"
                 >
                   {sub.paused ? "Resume" : "Pause"}
                 </button>
@@ -235,7 +235,7 @@ function SubscriptionsSection() {
                     await subscriptionsApi.update(sub.id, { mode: newMode });
                     mutate();
                   }}
-                  className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                  className="text-xs px-2 py-1 border rounded hover:bg-[var(--bg-glass)]"
                 >
                   Switch
                 </button>

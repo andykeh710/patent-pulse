@@ -20,7 +20,7 @@ export function OpportunityScoreBadge({
   if (score === null) {
     return (
       <span
-        className={`inline-flex items-center rounded-full font-medium bg-gray-100 text-gray-500 ${
+        className={`inline-flex items-center rounded-full font-medium bg-gray-100 text-[var(--text-muted)] ${
           size === "md" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs"
         }`}
         title="Opportunity score not yet computed"

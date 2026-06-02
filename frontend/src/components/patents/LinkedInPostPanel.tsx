@@ -59,8 +59,8 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
   // --- Render: loading draft from server ---
   if (draftLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center gap-3 text-gray-400">
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+        <div className="flex items-center gap-3 text-[var(--text-muted)]">
           <Spinner size="sm" />
           <span className="text-sm">Loading saved draft...</span>
         </div>
@@ -87,8 +87,8 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
   // --- Render: loading ---
   if (isGenerating) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center gap-3 text-gray-500">
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+        <div className="flex items-center gap-3 text-[var(--text-muted)]">
           <Spinner size="sm" />
           <span>Generating LinkedIn post...</span>
         </div>
@@ -99,8 +99,8 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
   // --- Render: error ---
   if (error && !artifact) {
     return (
-      <div className="bg-white rounded-lg border border-red-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-2">LinkedIn Post</h2>
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-red-200 p-6">
+        <h2 className="font-semibold text-[var(--text-primary)] mb-2">LinkedIn Post</h2>
         <p className="text-sm text-red-600 mb-4">{error}</p>
         <Button onClick={handleGenerateSafe} variant="outline" size="sm">
           Retry
@@ -112,16 +112,16 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
   // --- Render: empty (no draft, no generation yet) ---
   if (!artifact) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">LinkedIn Post</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+        <h2 className="font-semibold text-[var(--text-primary)] mb-4">LinkedIn Post</h2>
+        <p className="text-sm text-[var(--text-muted)] mb-4">
           Generate a professional LinkedIn post about this patent — includes
           a compelling hook, key insights, and source citation.
         </p>
 
         {/* Tone selector */}
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
             Tone
           </label>
           <div className="flex gap-2">
@@ -131,8 +131,8 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
                 onClick={() => setTone(t.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   tone === t.value
-                    ? "bg-primary-100 text-primary-700 border border-primary-300"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent"
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                    : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
                 }`}
               >
                 {t.label}
@@ -186,9 +186,9 @@ function DraftView({
   copied: boolean;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-900">LinkedIn Post</h2>
+        <h2 className="font-semibold text-[var(--text-primary)]">LinkedIn Post</h2>
         <div className="flex items-center gap-2">
           <Button onClick={onCopy} variant="outline" size="sm">
             {copied ? "Copied!" : "Copy"}
@@ -199,14 +199,14 @@ function DraftView({
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+      <div className="bg-[var(--bg-base)] rounded-lg p-4 mb-4">
+        <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed">
           {postMarkdown}
         </pre>
       </div>
 
       {sourceCitation && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+        <div className="mb-4 p-3 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded text-xs text-[var(--score-medium)]">
           {sourceCitation}
         </div>
       )}
@@ -214,7 +214,7 @@ function DraftView({
       <AISourceFooter />
 
       <div className="mt-4 flex items-center gap-3">
-        <label className="text-xs font-medium text-gray-500">Tone for regenerate:</label>
+        <label className="text-xs font-medium text-[var(--text-muted)]">Tone for regenerate:</label>
         <div className="flex gap-2">
           {TONES.map((t) => (
             <button
@@ -222,8 +222,8 @@ function DraftView({
               onClick={() => onToneChange(t.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 tone === t.value
-                  ? "bg-primary-100 text-primary-700 border border-primary-300"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent"
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                  : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
               }`}
             >
               {t.label}
@@ -253,17 +253,17 @@ function SuccessView({
   copied: boolean;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold text-gray-900">LinkedIn Post</h2>
+          <h2 className="font-semibold text-[var(--text-primary)]">LinkedIn Post</h2>
           <span
             className={`text-xs font-medium px-2 py-1 rounded-full ${
               artifact.tone === "curiosity"
-                ? "bg-purple-100 text-purple-700"
+                ? "bg-[var(--accent-muted)] text-[var(--type-foryou)]"
                 : artifact.tone === "news"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-green-100 text-green-700"
+                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                : "bg-[var(--score-high-bg)] text-[var(--score-high)]"
             }`}
           >
             {artifact.tone}
@@ -281,20 +281,20 @@ function SuccessView({
 
       {/* Hook */}
       {artifact.hook && (
-        <p className="text-sm font-medium text-primary-700 mb-3 italic">
+        <p className="text-sm font-medium text-[var(--accent)] mb-3 italic">
           &ldquo;{artifact.hook}&rdquo;
         </p>
       )}
 
       {/* Post body */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+      <div className="bg-[var(--bg-base)] rounded-lg p-4 mb-4">
+        <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed">
           {artifact.post_markdown}
         </pre>
       </div>
 
       {/* Source citation */}
-      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+      <div className="mb-4 p-3 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded text-xs text-[var(--score-medium)]">
         {artifact.source_citation}
       </div>
 
@@ -302,13 +302,13 @@ function SuccessView({
 
       {/* Caveats */}
       {artifact.caveats.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+        <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
             Caveats
           </h3>
           <ul className="space-y-1">
             {artifact.caveats.map((cav, i) => (
-              <li key={i} className="text-xs text-gray-500 flex items-start gap-2">
+              <li key={i} className="text-xs text-[var(--text-muted)] flex items-start gap-2">
                 <span>&bull;</span>
                 {cav}
               </li>
@@ -318,9 +318,9 @@ function SuccessView({
       )}
 
       {/* Tone selector for regenerate */}
-      <div className="mt-4 pt-3 border-t border-gray-100">
+      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
         <div className="flex items-center gap-3">
-          <label className="text-xs font-medium text-gray-500">Tone for regenerate:</label>
+          <label className="text-xs font-medium text-[var(--text-muted)]">Tone for regenerate:</label>
           <div className="flex gap-2">
             {TONES.map((t) => (
               <button
@@ -328,8 +328,8 @@ function SuccessView({
                 onClick={() => onToneChange(t.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   tone === t.value
-                    ? "bg-primary-100 text-primary-700 border border-primary-300"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent"
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                    : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
                 }`}
               >
                 {t.label}

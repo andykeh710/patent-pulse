@@ -37,7 +37,7 @@ function cpcLabel(key: string): string {
 
 export default function TrendDrilldownPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
       <TrendDrilldownContent />
     </Suspense>
   );
@@ -129,10 +129,10 @@ function TrendDrilldownContent() {
   if (!trend) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">
+        <p className="text-[var(--text-muted)]">
           Trend not found for {surface}/{key}.
         </p>
-        <Link href="/trends" className="text-primary-600 mt-2 inline-block">
+        <Link href="/trends" className="text-[var(--accent)] mt-2 inline-block">
           Back to Trends
         </Link>
       </div>
@@ -147,7 +147,7 @@ function TrendDrilldownContent() {
       <div className="mb-6">
         <Link
           href="/trends"
-          className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-flex items-center gap-1"
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] mb-2 inline-flex items-center gap-1"
         >
           ← Back to Trends
         </Link>
@@ -157,34 +157,34 @@ function TrendDrilldownContent() {
             size="sm"
             className={
               surface === "cpc"
-                ? "bg-blue-100 text-blue-800"
+                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
                 : surface === "tag"
-                ? "bg-purple-100 text-purple-800"
-                : "bg-amber-100 text-amber-800"
+                ? "bg-[var(--accent-muted)] text-[var(--type-foryou)]"
+                : "bg-[var(--score-medium-bg)] text-[var(--score-medium)]"
             }
           >
             {surface}
           </Badge>
-          <h1 className="text-2xl font-bold text-gray-900">{label}</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{label}</h1>
         </div>
         <FreshnessBanner show={["trends"]} className="mt-2" />
         <div className="flex items-center gap-4 mt-3">
           <div>
-            <span className="text-xs text-gray-400">z-score</span>
+            <span className="text-xs text-[var(--text-muted)]">z-score</span>
             <div
               className={`text-lg font-bold ${
                 trend.z_score >= 5
-                  ? "text-primary-700"
+                  ? "text-[var(--accent)]"
                   : trend.z_score >= 2
                   ? "text-amber-600"
-                  : "text-gray-600"
+                  : "text-[var(--text-secondary)]"
               }`}
             >
               {trend.z_score.toFixed(1)}
             </div>
           </div>
           <div>
-            <span className="text-xs text-gray-400">growth</span>
+            <span className="text-xs text-[var(--text-muted)]">growth</span>
             <div
               className={`text-lg font-bold ${
                 trend.growth_pct > 0 ? "text-emerald-600" : "text-red-600"
@@ -195,8 +195,8 @@ function TrendDrilldownContent() {
             </div>
           </div>
           <div>
-            <span className="text-xs text-gray-400">patents (4wk)</span>
-            <div className="text-lg font-bold text-gray-900">
+            <span className="text-xs text-[var(--text-muted)]">patents (4wk)</span>
+            <div className="text-lg font-bold text-[var(--text-primary)]">
               {trend.count_4w.toLocaleString()}
             </div>
           </div>
@@ -207,26 +207,26 @@ function TrendDrilldownContent() {
         <div className="lg:col-span-2 space-y-6">
           {/* ── 2. Why this matters ────────────────────────────── */}
           {narrative?.why_now && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+              <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
                 Why This Matters
               </h2>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-[var(--text-secondary)] leading-relaxed">
                 {narrative.why_now}
               </p>
             </div>
           )}
 
           {/* ── 3. Narrative ───────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-[var(--text-primary)]">
                 Trend Analysis
               </h2>
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="text-xs text-primary-600 hover:text-primary-800 font-medium disabled:opacity-50"
+                className="text-xs text-[var(--accent)] hover:text-text-[var(--accent-hover)] font-medium disabled:opacity-50"
               >
                 {isGenerating
                   ? "Generating..."
@@ -237,26 +237,26 @@ function TrendDrilldownContent() {
             </div>
 
             {isGenerating ? (
-              <div className="flex items-center gap-3 text-gray-400 py-4">
-                <div className="animate-spin h-4 w-4 border-2 border-primary-300 border-t-primary-600 rounded-full" />
+              <div className="flex items-center gap-3 text-[var(--text-muted)] py-4">
+                <div className="animate-spin h-4 w-4 border-2 border-border-[var(--accent)]/30 border-t-bg-[var(--accent)] rounded-full" />
                 <span className="text-sm">Generating trend analysis...</span>
               </div>
             ) : narrative?.summary ? (
               <div>
-                <p className="text-gray-700 leading-relaxed">
+                <p className="text-[var(--text-secondary)] leading-relaxed">
                   {narrative.summary}
                 </p>
                 <AISourceFooter />
                 {narrative.caveats.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
+                    <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
                       Caveats
                     </h3>
                     <ul className="space-y-1">
                       {narrative.caveats.map((c, i) => (
                         <li
                           key={i}
-                          className="text-xs text-gray-500 flex items-start gap-2"
+                          className="text-xs text-[var(--text-muted)] flex items-start gap-2"
                         >
                           <span>&bull;</span>
                           {c}
@@ -267,7 +267,7 @@ function TrendDrilldownContent() {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 py-4">
+              <p className="text-sm text-[var(--text-muted)] py-4">
                 No analysis generated yet. Click Analyze to generate an
                 AI-powered trend summary (cached for reuse).
               </p>
@@ -275,8 +275,8 @@ function TrendDrilldownContent() {
           </div>
 
           {/* ── 4. Patents driving this trend ──────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+            <h2 className="font-semibold text-[var(--text-primary)] mb-3">
               Patents Driving This Trend
             </h2>
             {patentsLoading ? (
@@ -286,9 +286,9 @@ function TrendDrilldownContent() {
                 ))}
               </div>
             ) : !patents || patents.items.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">
+              <div className="text-center py-8 text-[var(--text-muted)] text-sm">
                 No patents driving this trend have been identified yet.
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   Trend data depends on weekly computation of patent filing
                   activity. New filings may not appear until the next
                   scheduled refresh.
@@ -303,7 +303,7 @@ function TrendDrilldownContent() {
                 </div>
                 {patents.total > 20 && (
                   <div className="mt-4 flex items-center justify-between text-sm">
-                    <span className="text-gray-500">
+                    <span className="text-[var(--text-muted)]">
                       Page {patentPage} of{" "}
                       {Math.ceil(patents.total / 20)}
                     </span>
@@ -311,14 +311,14 @@ function TrendDrilldownContent() {
                       <button
                         onClick={() => setPatentPage((p) => Math.max(1, p - 1))}
                         disabled={patentPage === 1}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
+                        className="px-3 py-1 rounded border border-[var(--border-default)] disabled:opacity-50 hover:bg-[var(--bg-glass)]"
                       >
                         Previous
                       </button>
                       <button
                         onClick={() => setPatentPage((p) => p + 1)}
                         disabled={patentPage * 20 >= patents.total}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
+                        className="px-3 py-1 rounded border border-[var(--border-default)] disabled:opacity-50 hover:bg-[var(--bg-glass)]"
                       >
                         Next
                       </button>
@@ -330,8 +330,8 @@ function TrendDrilldownContent() {
           </div>
 
           {/* ── 6. Linked expiring patents ─────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+            <h2 className="font-semibold text-[var(--text-primary)] mb-3">
               Expiring Patents in This Area
             </h2>
             {expiryLoading ? (
@@ -341,9 +341,9 @@ function TrendDrilldownContent() {
                 ))}
               </div>
             ) : !expiryData || expiryData.items.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">
+              <div className="text-center py-8 text-[var(--text-muted)] text-sm">
                 No expiring patents tracked in this CPC area.
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   Expiry tracking depends on estimated expiry dates and
                   legal status data. Verify with official registers.
                 </p>
@@ -354,21 +354,21 @@ function TrendDrilldownContent() {
                   <Link
                     key={item.id}
                     href={`/patents/${item.id}`}
-                    className="block p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                    className="block p-3 bg-[var(--bg-base)] rounded hover:bg-[var(--bg-elevated)] transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-[var(--text-primary)] truncate">
                           {item.title || item.doc_id}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-[var(--text-muted)]">
                           {item.doc_id} · {item.assignees?.[0] || "Unknown"}
                           {item.estimated_expiry_date &&
                             ` · Expiry: ${item.estimated_expiry_date}`}
                         </p>
                       </div>
                       {item.opportunity_score != null && (
-                        <span className="text-xs font-bold text-primary-600 ml-2">
+                        <span className="text-xs font-bold text-[var(--accent)] ml-2">
                           {item.opportunity_score.toFixed(0)}
                         </span>
                       )}
@@ -380,15 +380,15 @@ function TrendDrilldownContent() {
           </div>
 
           {/* ── 7. Time-series (deferred — Sprint 4) ──────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+            <h2 className="font-semibold text-[var(--text-primary)] mb-3">
               Filing Activity Over Time
             </h2>
-            <div className="text-center py-8 text-gray-500 text-sm">
+            <div className="text-center py-8 text-[var(--text-muted)] text-sm">
               Time-series view (coming soon). Historical trend data is
               available in the trend_snapshots table but requires a
               /history endpoint not yet built.
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-[var(--text-muted)] mt-1">
                 Current snapshot shows {trend.count_4w} patents in the
                 last 4 weeks and {trend.count_12w} in the last 12 weeks,
                 compared to a 12-month baseline of{" "}
@@ -401,8 +401,8 @@ function TrendDrilldownContent() {
         {/* ── Sidebar ────────────────────────────────────────── */}
         <div className="space-y-6">
           {/* ── 5. Top assignees ──────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+            <h2 className="font-semibold text-[var(--text-primary)] mb-3">
               Top Assignees
             </h2>
             {assigneesLoading ? (
@@ -412,7 +412,7 @@ function TrendDrilldownContent() {
                 ))}
               </div>
             ) : !assignees || assignees.items.length === 0 ? (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-[var(--text-muted)]">
                 No assignee data available for this trend.
               </p>
             ) : (
@@ -424,11 +424,11 @@ function TrendDrilldownContent() {
                   >
                     <Link
                       href={`/companies/${encodeURIComponent(a.assignee)}`}
-                      className="text-primary-600 hover:underline truncate flex-1"
+                      className="text-[var(--accent)] hover:underline truncate flex-1"
                     >
                       {a.assignee}
                     </Link>
-                    <span className="text-gray-400 ml-2">{a.count}</span>
+                    <span className="text-[var(--text-muted)] ml-2">{a.count}</span>
                   </div>
                 ))}
               </div>
@@ -436,27 +436,27 @@ function TrendDrilldownContent() {
           </div>
 
           {/* ── Trend stats ──────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-3">
+          <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+            <h2 className="font-semibold text-[var(--text-primary)] mb-3">
               Trend Stats
             </h2>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-gray-500">Patents (12wk)</dt>
+                <dt className="text-[var(--text-muted)]">Patents (12wk)</dt>
                 <dd className="font-medium">{trend.count_12w}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Baseline (12mo avg)</dt>
+                <dt className="text-[var(--text-muted)]">Baseline (12mo avg)</dt>
                 <dd className="font-medium">{trend.baseline_12mo.toFixed(1)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Assignee Diversity</dt>
+                <dt className="text-[var(--text-muted)]">Assignee Diversity</dt>
                 <dd className="font-medium">
                   {(trend.assignee_diversity * 100).toFixed(0)}%
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">CPC Diversity</dt>
+                <dt className="text-[var(--text-muted)]">CPC Diversity</dt>
                 <dd className="font-medium">
                   {(trend.cpc_diversity * 100).toFixed(0)}%
                 </dd>
@@ -466,8 +466,8 @@ function TrendDrilldownContent() {
 
           {/* ── Related trends ────────────────────────────────── */}
           {narrative?.related_trends && narrative.related_trends.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="font-semibold text-gray-900 mb-3">
+            <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+              <h2 className="font-semibold text-[var(--text-primary)] mb-3">
                 Related Trends
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -483,8 +483,8 @@ function TrendDrilldownContent() {
       </div>
 
       {/* ── Legal caveat ─────────────────────────────────────── */}
-      <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-xs text-amber-800">
+      <div className="mt-8 p-4 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
+        <p className="text-xs text-[var(--score-medium)]">
           <strong>Important:</strong> Trend data is based on patent filing
           activity and does not reflect market adoption. AI-generated
           narratives are heuristic analyses, not investment or legal
@@ -502,25 +502,25 @@ function PatentCardRow({ patent }: { patent: PatentListItem }) {
   return (
     <Link
       href={`/patents/${patent.id}`}
-      className="block p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+      className="block p-3 bg-[var(--bg-base)] rounded hover:bg-[var(--bg-elevated)] transition-colors"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-medium text-[var(--text-primary)] truncate">
             {patent.title || patent.doc_id}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[var(--text-muted)]">
             {patent.doc_id} · {patent.assignees?.[0] || "Unknown"}
           </p>
         </div>
         <div className="flex items-center gap-3 ml-2">
           {patent.opportunity_score != null && (
-            <span className="text-xs font-bold text-primary-600">
+            <span className="text-xs font-bold text-[var(--accent)]">
               {patent.opportunity_score.toFixed(0)}
             </span>
           )}
           {patent.interesting_score != null && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--text-muted)]">
               {patent.interesting_score.toFixed(0)}
             </span>
           )}

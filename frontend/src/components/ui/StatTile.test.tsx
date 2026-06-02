@@ -21,7 +21,7 @@ describe("StatTile", () => {
 
   it("applies signal accent border when accent=signal", () => {
     const { container } = render(<StatTile label="x" value={1} accent="signal" />);
-    expect(container.firstChild).toHaveClass("border-[var(--signal-blue)]/40");
+    expect(container.firstChild).toHaveClass("border-[var(--accent)]/40");
   });
 
   it("applies warning accent border when accent=warning", () => {

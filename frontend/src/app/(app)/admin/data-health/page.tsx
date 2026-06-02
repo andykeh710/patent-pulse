@@ -31,16 +31,16 @@ interface DataHealth {
 }
 
 const PCT_BAR = (pct: number) => {
-  const color = pct > 80 ? "bg-green-500" : pct > 40 ? "bg-amber-500" : "bg-red-500";
+  const color = pct > 80 ? "bg-[var(--score-high-bg)]0" : pct > 40 ? "bg-[var(--score-medium-bg)]0" : "bg-red-500";
   return (
     <div className="flex items-center gap-2">
-      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="w-24 h-2 bg-[var(--bg-surface)] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full ${color}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <span className="text-xs text-gray-500 w-10 text-right">{pct}%</span>
+      <span className="text-xs text-[var(--text-muted)] w-10 text-right">{pct}%</span>
     </div>
   );
 };
@@ -64,17 +64,17 @@ export default function DataHealthPage() {
     })();
   }, []);
 
-  if (loading) return <p className="text-gray-500">Loading data health...</p>;
+  if (loading) return <p className="text-[var(--text-muted)]">Loading data health...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
-  if (!data) return <p className="text-gray-500">No data available.</p>;
+  if (!data) return <p className="text-[var(--text-muted)]">No data available.</p>;
 
   return (
     <div className="max-w-6xl">
       <div className="flex items-center gap-4 mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Data Health</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Data Health</h1>
         <Link
           href="/admin"
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
         >
           ← Admin
         </Link>
@@ -99,16 +99,16 @@ export default function DataHealthPage() {
       </div>
 
       {/* By office */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">By Office</h2>
+      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">By Office</h2>
       <div className="space-y-4 mb-8">
         {data.by_office.map((o) => (
           <div
             key={o.office}
-            className="bg-white border border-gray-200 rounded-lg p-4"
+            className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-4"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="font-semibold text-gray-900">{o.office}</span>
-              <span className="text-sm text-gray-500">
+              <span className="font-semibold text-[var(--text-primary)]">{o.office}</span>
+              <span className="text-sm text-[var(--text-muted)]">
                 {o.total.toLocaleString()} patents
               </span>
             </div>
@@ -127,7 +127,7 @@ export default function DataHealthPage() {
       {/* Provider last success */}
       {Object.keys(data.latest_success_by_provider).length > 0 && (
         <>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
             Last Successful Fetch
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
@@ -135,10 +135,10 @@ export default function DataHealthPage() {
               ([provider, ts]) => (
                 <div
                   key={provider}
-                  className="bg-white border border-gray-200 rounded-lg p-3"
+                  className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-3"
                 >
-                  <p className="text-xs text-gray-500">{provider}</p>
-                  <p className="text-sm font-mono text-gray-700">
+                  <p className="text-xs text-[var(--text-muted)]">{provider}</p>
+                  <p className="text-sm font-mono text-[var(--text-secondary)]">
                     {ts ? new Date(ts).toLocaleString() : "never"}
                   </p>
                 </div>
@@ -198,11 +198,11 @@ function StatCard({
   return (
     <div
       className={`bg-white border rounded-lg p-4 ${
-        warn ? "border-amber-300 bg-amber-50" : "border-gray-200"
+        warn ? "border-amber-300 bg-[var(--score-medium-bg)]" : "border-[var(--border-subtle)]"
       }`}
     >
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-xl font-bold ${warn ? "text-amber-700" : "text-gray-900"}`}>
+      <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
+      <p className={`text-xl font-bold ${warn ? "text-[var(--score-medium)]" : "text-[var(--text-primary)]"}`}>
         {value}
       </p>
     </div>
@@ -212,7 +212,7 @@ function StatCard({
 function Metric({ label, pct }: { label: string; pct: number }) {
   return (
     <div>
-      <p className="text-xs text-gray-400 mb-1">{label}</p>
+      <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
       {PCT_BAR(pct)}
     </div>
   );

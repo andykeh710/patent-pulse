@@ -10,11 +10,8 @@ export function BrandMark() {
         Index
       </span>
       <span
-        className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white ml-0.5"
-        style={{
-          background: "linear-gradient(135deg, var(--signal-blue), var(--signal-violet))",
-          boxShadow: "0 0 10px rgba(99,102,241,0.4), 0 0 18px rgba(139,92,246,0.2)",
-        }}
+        className="inline-flex items-center justify-center w-6 h-6 rounded-[var(--radius-sm)] text-xs font-bold text-white ml-0.5"
+        style={{ background: "var(--accent)" }}
       >
         8
       </span>

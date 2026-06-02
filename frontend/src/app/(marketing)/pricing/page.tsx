@@ -38,11 +38,11 @@ function Check() {
 
 function Faq({ q, a }: { q: string; a: string }) {
   return (
-    <details className="group border-b border-gray-200 pb-6">
+    <details className="group border-b border-[var(--border-subtle)] pb-6">
       <summary className="flex items-center justify-between cursor-pointer marker:content-none">
-        <h3 className="text-sm font-semibold text-gray-900 pr-4">{q}</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] pr-4">{q}</h3>
         <svg
-          className="w-5 h-5 text-gray-400 flex-shrink-0 group-open:rotate-180 transition-transform"
+          className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0 group-open:rotate-180 transition-transform"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -55,7 +55,7 @@ function Faq({ q, a }: { q: string; a: string }) {
           />
         </svg>
       </summary>
-      <p className="mt-3 text-sm text-gray-600 leading-relaxed">{a}</p>
+      <p className="mt-3 text-sm text-[var(--text-secondary)] leading-relaxed">{a}</p>
     </details>
   );
 }
@@ -193,10 +193,10 @@ export default function PricingPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] mb-4">
           Pricing
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-[var(--text-secondary)]">
           Start free. Upgrade when you need more.
         </p>
       </div>
@@ -254,24 +254,24 @@ export default function PricingPage() {
       </div>
 
       {/* ─── Feature matrix ─── */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-16">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl overflow-hidden mb-16">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left p-4 font-semibold text-gray-900">
+              <tr className="bg-[var(--bg-base)] border-b border-[var(--border-subtle)]">
+                <th className="text-left p-4 font-semibold text-[var(--text-primary)]">
                   Feature
                 </th>
-                <th className="p-4 text-center font-semibold text-gray-900">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
                   Free
                 </th>
-                <th className="p-4 text-center font-semibold text-gray-900">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
                   Basic
                 </th>
-                <th className="p-4 text-center font-semibold text-gray-900 bg-primary-50">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)] bg-bg-[var(--bg-elevated)]">
                   Lifetime
                 </th>
-                <th className="p-4 text-center font-semibold text-gray-900">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
                   Enterprise
                 </th>
               </tr>
@@ -279,15 +279,15 @@ export default function PricingPage() {
             <tbody className="divide-y divide-gray-100">
               {MATRIX.map((row, i) => (
                 <tr key={row.feature} className={i % 2 === 0 ? "" : "bg-gray-50/50"}>
-                  <td className="p-4 text-gray-700 font-medium">
+                  <td className="p-4 text-[var(--text-secondary)] font-medium">
                     {row.feature}
                   </td>
-                  <td className="p-4 text-center text-gray-600">{row.free}</td>
-                  <td className="p-4 text-center text-gray-600">{row.basic}</td>
-                  <td className="p-4 text-center text-gray-600 bg-primary-50/50">
+                  <td className="p-4 text-center text-[var(--text-secondary)]">{row.free}</td>
+                  <td className="p-4 text-center text-[var(--text-secondary)]">{row.basic}</td>
+                  <td className="p-4 text-center text-[var(--text-secondary)] bg-bg-[var(--bg-elevated)]/50">
                     {row.lifetime}
                   </td>
-                  <td className="p-4 text-center text-gray-600">
+                  <td className="p-4 text-center text-[var(--text-secondary)]">
                     {row.enterprise}
                   </td>
                 </tr>
@@ -299,7 +299,7 @@ export default function PricingPage() {
 
       {/* ─── FAQ ─── */}
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-8">
           Frequently asked questions
         </h2>
         <div className="space-y-6">
@@ -310,15 +310,15 @@ export default function PricingPage() {
       </div>
 
       {/* ─── Bottom CTA ─── */}
-      <div className="text-center mt-16 pt-12 border-t border-gray-200">
-        <p className="text-gray-600 mb-4">Ready to get started?</p>
+      <div className="text-center mt-16 pt-12 border-t border-[var(--border-subtle)]">
+        <p className="text-[var(--text-secondary)] mb-4">Ready to get started?</p>
         <Link
           href="/login"
-          className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent)] transition-colors"
         >
           Get started free
         </Link>
-        <p className="mt-3 text-sm text-gray-400">No credit card required</p>
+        <p className="mt-3 text-sm text-[var(--text-muted)]">No credit card required</p>
       </div>
     </div>
   );

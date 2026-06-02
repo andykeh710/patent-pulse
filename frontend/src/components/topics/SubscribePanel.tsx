@@ -15,12 +15,12 @@ export function SubscribePanel({ theme }: Props) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="h-20 bg-gray-100 rounded animate-pulse" />;
+    return <div className="h-20 bg-[var(--bg-elevated)] rounded animate-pulse" />;
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
+      <div className="bg-blue-50 border border-[var(--accent)]/30 rounded-lg p-4 text-sm text-[var(--accent)]">
         <Link href="/login" className="underline font-medium">
           Sign in
         </Link>{" "}
@@ -99,18 +99,18 @@ function SubscribeForm({ theme }: { theme: Topic }) {
 
   if (existing) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3 text-sm">
+      <div className="bg-[var(--score-high-bg)] border border-[var(--score-high)]/30 rounded-lg p-4 space-y-3 text-sm">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+          <span className="px-2 py-0.5 bg-[var(--score-high-bg)] text-[var(--score-high)] rounded-full text-xs font-medium">
             {existing.mode === "instant_alert" ? "Instant" : "Weekly Digest"}
           </span>
           {existing.min_score != null && (
-            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
+            <span className="px-2 py-0.5 bg-[var(--bg-elevated)] text-[var(--text-secondary)] rounded-full text-xs">
               min score: {existing.min_score}
             </span>
           )}
           {existing.paused && (
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs">
+            <span className="px-2 py-0.5 bg-[var(--score-medium-bg)] text-[var(--score-medium)] rounded-full text-xs">
               Paused
             </span>
           )}
@@ -120,7 +120,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
           <button
             onClick={handleTogglePause}
             disabled={pausing}
-            className="text-xs px-3 py-1 border rounded hover:bg-gray-50"
+            className="text-xs px-3 py-1 border rounded hover:bg-[var(--bg-glass)]"
           >
             {existing.paused ? "Resume" : "Pause"}
           </button>
@@ -128,7 +128,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
           {existing.mode !== "instant_alert" && (
             <button
               onClick={() => handleChangeMode("instant_alert")}
-              className="text-xs px-3 py-1 border rounded hover:bg-gray-50"
+              className="text-xs px-3 py-1 border rounded hover:bg-[var(--bg-glass)]"
             >
               Switch to Instant
             </button>
@@ -136,7 +136,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
           {existing.mode !== "weekly_digest" && (
             <button
               onClick={() => handleChangeMode("weekly_digest")}
-              className="text-xs px-3 py-1 border rounded hover:bg-gray-50"
+              className="text-xs px-3 py-1 border rounded hover:bg-[var(--bg-glass)]"
             >
               Switch to Weekly
             </button>
@@ -154,8 +154,8 @@ function SubscribeForm({ theme }: { theme: Topic }) {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4 text-sm">
-      <h3 className="font-medium text-gray-900">Subscribe</h3>
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-4 space-y-4 text-sm">
+      <h3 className="font-medium text-[var(--text-primary)]">Subscribe</h3>
 
       <div className="flex gap-4">
         <label className="flex items-center gap-1">
@@ -181,7 +181,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
       </div>
 
       <div>
-        <label className="text-xs text-gray-500">
+        <label className="text-xs text-[var(--text-muted)]">
           Minimum opportunity score (optional): {minScore ?? "none"}
         </label>
         <input
@@ -196,7 +196,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
           }}
           className="w-full"
         />
-        <div className="flex justify-between text-xs text-gray-400">
+        <div className="flex justify-between text-xs text-[var(--text-muted)]">
           <span>0 (all matches)</span>
           <span>100 (best only)</span>
         </div>
@@ -205,7 +205,7 @@ function SubscribeForm({ theme }: { theme: Topic }) {
       <button
         onClick={handleSubscribe}
         disabled={subscribing}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+        className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
       >
         {subscribing ? "Subscribing…" : "Subscribe"}
       </button>

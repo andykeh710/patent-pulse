@@ -1,37 +1,78 @@
-/* Invention Index 8 — design tokens. Single source of truth for colors. */
+/* ═══════════════════════════════════════════════════════════════════
+   Invention Index 8 — Design Tokens v2
+   Palantir-inspired dark palette. Restrained, data-forward, professional.
+   ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Base surfaces */
-  --bg-base: #0A0E27;
-  --bg-elevated: #11162A;
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --bg-glass-strong: rgba(255, 255, 255, 0.06);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* ── Base surfaces ── */
+  --bg-base: #08090D;
+  --bg-elevated: #101318;
+  --bg-surface: #151920;
+  --bg-overlay: rgba(0, 0, 0, 0.60);
 
-  /* Text */
-  --text-primary: #E8ECF7;
-  --text-secondary: #C7D2FE;
-  --text-muted: #94A3B8;
-  --text-disabled: #64748B;
+  /* ── Glass / translucent surfaces (double-bezel inner cores) ── */
+  --bg-glass: rgba(255, 255, 255, 0.025);
+  --bg-glass-strong: rgba(255, 255, 255, 0.045);
 
-  /* Signal */
-  --signal-blue: #6366F1;
-  --signal-violet: #8B5CF6;
-  --signal-cyan: #06B6D4;
-  --signal-glow: #818CF8;
+  /* ── Borders (elevation-aware) ── */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  /* Semantic */
+  /* ── Text ── */
+  --text-primary: #E4E6EC;
+  --text-secondary: #9BA1B0;
+  --text-muted: #636A7A;
+  --text-disabled: #464C59;
+
+  /* ── Brand accent (cool steel-blue — analytical, not decorative) ── */
+  --accent: #6B8CFF;
+  --accent-hover: #8BA4FF;
+  --accent-muted: rgba(107, 140, 255, 0.12);
+  --accent-glow: rgba(107, 140, 255, 0.18);
+
+  /* ── Semantic: confidence tiers ── */
   --score-high: #34D399;
+  --score-high-bg: rgba(52, 211, 153, 0.10);
   --score-medium: #F59E0B;
-  --score-low: #94A3B8;
+  --score-medium-bg: rgba(245, 158, 11, 0.10);
+  --score-low: #9BA1B0;
+  --score-low-bg: rgba(155, 161, 176, 0.08);
   --warning: #F59E0B;
 
-  /* Briefing item-type accents */
-  --type-trend: var(--signal-blue);
+  /* ── Semantic: expiry status ── */
+  --expiry-active-estimated: #34D399;
+  --expiry-expiring-soon: #F59E0B;
+  --expiry-lapsed-possible: #F97316;
+  --expiry-lapsed-confirmed: #EF4444;
+  --expiry-expired-estimated: #9BA1B0;
+  --expiry-unknown: #636A7A;
+
+  /* ── Briefing item-type accents (functional, not decorative) ── */
+  --type-trend: var(--accent);
   --type-notable: var(--score-high);
-  --type-company: #7DD3FC;
+  --type-company: #61AEEE;
   --type-expiring: var(--warning);
-  --type-foryou: var(--signal-violet);
-  --type-news: var(--signal-violet);
+  --type-foryou: #A78BFA;
+  --type-news: #A78BFA;
+
+  /* ── Radii (consistent shape lock) ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows (tinted, never pure black) ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.50);
+
+  /* ── Z-index scale ── */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
 }

@@ -15,7 +15,7 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
         <div className="flex items-center gap-2 mb-4">
           <Skeleton className="h-5 w-5 rounded-full" />
           <Skeleton className="h-5 w-32" />
@@ -31,10 +31,10 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
 
   if (!summary) {
     return (
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
+      <div className="bg-[var(--bg-base)] rounded-lg border border-[var(--border-subtle)] p-6 text-center">
         <div className="animate-pulse flex flex-col items-center">
           <svg
-            className="w-8 h-8 text-primary-500 mb-2"
+            className="w-8 h-8 text-bg-[var(--bg-elevated)]0 mb-2"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -46,19 +46,19 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
               d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
             />
           </svg>
-          <p className="text-gray-600 font-medium">Generating AI Summary...</p>
-          <p className="text-sm text-gray-500 mt-1">This may take a few moments</p>
+          <p className="text-[var(--text-secondary)] font-medium">Generating AI Summary...</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">This may take a few moments</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] overflow-hidden">
+      <div className="bg-[var(--bg-elevated)] px-6 py-3 border-b border-bg-[var(--accent-muted)]">
         <div className="flex items-center gap-2">
           <svg
-            className="w-5 h-5 text-primary-600"
+            className="w-5 h-5 text-[var(--accent)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -70,41 +70,41 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
               d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
             />
           </svg>
-          <span className="font-medium text-primary-700">AI Summary</span>
+          <span className="font-medium text-[var(--accent)]">AI Summary</span>
         </div>
       </div>
 
       <div className="p-6 space-y-5">
         <div>
-          <p className="text-lg font-medium text-gray-900 leading-relaxed">
+          <p className="text-lg font-medium text-[var(--text-primary)] leading-relaxed">
             {summary.what_it_is}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+            <h4 className="text-sm font-medium text-[var(--text-muted)] mb-1">
               Problem Solved
             </h4>
-            <p className="text-gray-700">{summary.problem_solved}</p>
+            <p className="text-[var(--text-secondary)]">{summary.problem_solved}</p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+            <h4 className="text-sm font-medium text-[var(--text-muted)] mb-1">
               How It Works
             </h4>
-            <p className="text-gray-700">{summary.how_it_works}</p>
+            <p className="text-[var(--text-secondary)]">{summary.how_it_works}</p>
           </div>
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-500 mb-1">
+          <h4 className="text-sm font-medium text-[var(--text-muted)] mb-1">
             Commercial Significance
           </h4>
-          <p className="text-gray-700">{summary.commercial_significance}</p>
+          <p className="text-[var(--text-secondary)]">{summary.commercial_significance}</p>
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-500 mb-2">
+          <h4 className="text-sm font-medium text-[var(--text-muted)] mb-2">
             Who Should Care
           </h4>
           <div className="flex flex-wrap gap-2">
@@ -117,8 +117,8 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
         </div>
 
         {summary.novel_applications.length > 0 && (
-          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-            <h4 className="text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+          <div className="bg-[var(--score-medium-bg)] rounded-lg p-4 border border-[var(--score-medium)]/30">
+            <h4 className="text-sm font-medium text-[var(--score-medium)] mb-2 flex items-center gap-2">
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -147,7 +147,7 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
           </div>
         )}
 
-        <div className="flex items-start gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+        <div className="flex items-start gap-2 text-sm text-[var(--text-muted)] bg-[var(--bg-base)] rounded-lg p-3">
           <svg
             className="w-4 h-4 mt-0.5 flex-shrink-0"
             fill="none"
@@ -168,7 +168,7 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
           <div>
             <button
               onClick={() => setShowSources(!showSources)}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+              className="text-sm text-[var(--accent)] hover:text-[var(--accent)] font-medium flex items-center gap-1"
             >
               {showSources ? "Hide" : "Show"} source references
               <svg
@@ -191,12 +191,12 @@ export function AISummaryPanel({ summary, isLoading }: AISummaryPanelProps) {
                 {summary.source_spans.map((span, i) => (
                   <div
                     key={i}
-                    className="bg-gray-50 rounded p-3 border-l-4 border-gray-300"
+                    className="bg-[var(--bg-base)] rounded p-3 border border-[var(--border-default)]"
                   >
-                    <p className="text-sm text-gray-600 italic">
+                    <p className="text-sm text-[var(--text-secondary)] italic">
                       &ldquo;{span.quote}&rdquo;
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
                       Source: {span.field}
                     </p>
                   </div>

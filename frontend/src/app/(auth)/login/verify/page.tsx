@@ -44,21 +44,21 @@ function VerifyContent() {
 
   if (status === "verifying") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+        <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border-subtle)] p-8 max-w-md w-full text-center space-y-4">
           <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
-          <p className="text-gray-600">Verifying your magic link…</p>
+          <p className="text-[var(--text-secondary)]">Verifying your magic link…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Sign-in failed</h1>
-        <p className="text-gray-600">{errorMessage}</p>
-        <a href="/login" className="text-sm text-blue-600 hover:underline">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+      <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border-subtle)] p-8 max-w-md w-full text-center space-y-4">
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Sign-in failed</h1>
+        <p className="text-[var(--text-secondary)]">{errorMessage}</p>
+        <a href="/login" className="text-sm text-[var(--accent)] hover:underline">
           Try again
         </a>
       </div>
@@ -71,7 +71,7 @@ export default function VerifyPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <p className="text-gray-500">Loading…</p>
+          <p className="text-[var(--text-muted)]">Loading…</p>
         </div>
       }
     >

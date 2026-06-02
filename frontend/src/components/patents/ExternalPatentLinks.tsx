@@ -74,10 +74,10 @@ export function ExternalPatentLinks({
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 hover:underline transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:text-text-[var(--accent-hover)] hover:underline transition-colors"
           title={`Open on ${link.label}`}
         >
-          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-100 text-gray-500 text-[10px] font-bold">
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-100 text-[var(--text-muted)] text-[10px] font-bold">
             {link.icon}
           </span>
           {link.label}

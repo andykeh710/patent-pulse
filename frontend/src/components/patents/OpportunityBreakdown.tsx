@@ -21,7 +21,7 @@ export function OpportunityBreakdown({
 }: OpportunityBreakdownProps) {
   if (!breakdown) {
     return (
-      <div className="rounded-md border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-500">
+      <div className="rounded-md border border-dashed border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-muted)]">
         Opportunity score not yet computed.
       </div>
     );
@@ -37,10 +37,10 @@ export function OpportunityBreakdown({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <h4 className="text-sm font-semibold text-gray-900">
+        <h4 className="text-sm font-semibold text-[var(--text-primary)]">
           Opportunity score breakdown
         </h4>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[var(--text-muted)]">
           v{breakdown.version} · {Math.round(breakdown.score)}/100
         </span>
       </div>
@@ -52,17 +52,17 @@ export function OpportunityBreakdown({
           return (
             <div key={c.name} className="text-xs">
               <div className="mb-0.5 flex items-center justify-between">
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-[var(--text-secondary)]">
                   {humanizeTag(c.name)}
                 </span>
-                <span className="tabular-nums text-gray-500">
+                <span className="tabular-nums text-[var(--text-muted)]">
                   {subPct}% · weight {Math.round(c.weight * 100)}% ·{" "}
-                  <span className="font-semibold text-gray-700">
+                  <span className="font-semibold text-[var(--text-secondary)]">
                     {contribPct}% of score
                   </span>
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded bg-gray-100">
+              <div className="h-1.5 w-full overflow-hidden rounded bg-[var(--bg-elevated)]">
                 <div
                   className={
                     "h-full rounded " +
@@ -81,7 +81,7 @@ export function OpportunityBreakdown({
       </div>
 
       {topN && entries.length > visible.length && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-[var(--text-muted)]">
           + {entries.length - visible.length} more components
         </div>
       )}

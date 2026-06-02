@@ -29,7 +29,7 @@ import { FilterNumber, FilterSelect, FilterText } from "./_filters";
 
 const TABS: { id: OpportunityTab; label: string; helper: string }[] = [
   { id: "top", label: "Top", helper: "Highest opportunity_score across all patents" },
-  { id: "expired", label: "Expired", helper: "Already expired — public-domain reuse" },
+  { id: "expired", label: "Expired", helper: "Already expired. Public-domain reuse." },
   { id: "revival", label: "Revival", helper: "Public-domain or AI revival candidates" },
   { id: "cross_industry", label: "Cross-industry", helper: "Patents flagged as transferable across industries" },
   { id: "startup", label: "Startup", helper: "Startup or low-competition opportunities" },
@@ -58,7 +58,7 @@ interface FiltersState {
 
 export default function OpportunityPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
       <OpportunityContent />
     </Suspense>
   );
@@ -137,16 +137,16 @@ function OpportunityContent() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Opportunity</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Opportunity</h1>
         <FreshnessBanner show={["patents", "summaries"]} className="mt-2" />
-        <p className="text-gray-600 mt-1">
+        <p className="text-[var(--text-secondary)] mt-1">
           Patents ranked by rules-based opportunity_score. Tabs drill into specific
           opportunity types; combine with filters to narrow further.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="mb-4 border-b border-gray-200">
+      <div className="mb-4 border-b border-[var(--border-subtle)]">
         <nav className="flex flex-wrap gap-1" aria-label="Opportunity tabs">
           {TABS.map((t) => {
             const count = tabCounts
@@ -165,13 +165,13 @@ function OpportunityContent() {
                 className={
                   "border-b-2 px-3 py-2 text-sm font-medium transition-colors " +
                   (active
-                    ? "border-primary-500 text-primary-700"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800")
+                    ? "border-[var(--accent)] text-[var(--accent)]"
+                    : "border-transparent text-[var(--text-muted)] hover:border-[var(--border-default)] hover:text-[var(--text-primary)]")
                 }
               >
                 {t.label}
                 {count !== undefined && (
-                  <span className="ml-1.5 inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-[var(--bg-elevated)] px-1.5 py-0.5 text-xs text-[var(--text-secondary)]">
                     {count}
                   </span>
                 )}
@@ -182,7 +182,7 @@ function OpportunityContent() {
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3">
         <FilterSelect
           label="Opportunity tag"
           value={filters.opportunity_tag || ""}
@@ -236,14 +236,14 @@ function OpportunityContent() {
         />
 
         <div className="ml-auto flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-500">Sort</label>
+          <label className="text-xs font-medium text-[var(--text-muted)]">Sort</label>
           <select
             value={sort}
             onChange={(e) => {
               setSort(e.target.value as OpportunitySort);
               setPage(1);
             }}
-            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="rounded-lg border border-[var(--border-default)] px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {SORTS.map((o) => (
               <option key={o.id} value={o.id}>
@@ -263,7 +263,7 @@ function OpportunityContent() {
         </div>
       ) : data && data.items.length > 0 ? (
         <>
-          <div className="mb-3 text-sm text-gray-500">
+          <div className="mb-3 text-sm text-[var(--text-muted)]">
             {data.total} {pluralize(data.total, "opportunity", "opportunities")} ·
             page {data.page} of {data.pages || 1}
           </div>
@@ -272,11 +272,11 @@ function OpportunityContent() {
               <Link
                 key={item.id}
                 href={`/patents/${item.id}`}
-                className="block rounded-lg border border-gray-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-md"
+                className="block rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition hover:border-[var(--accent)]/30"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                       <span className="font-mono">{item.doc_id}</span>
                       <span>•</span>
                       <span>{formatDate(item.grant_date || item.publication_date)}</span>
@@ -285,11 +285,11 @@ function OpportunityContent() {
                         legalStatus={item.legal_status}
                       />
                     </div>
-                    <h3 className="mt-1 font-medium text-gray-900">
+                    <h3 className="mt-1 font-medium text-[var(--text-primary)]">
                       {item.title || "Untitled patent"}
                     </h3>
                     {item.summary_what_it_is && (
-                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                      <p className="mt-1 line-clamp-2 text-sm text-[var(--text-secondary)]">
                         {item.summary_what_it_is}
                       </p>
                     )}
@@ -310,7 +310,7 @@ function OpportunityContent() {
                   </div>
                 ) : null}
 
-                <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                <div className="mt-3 flex items-center justify-between text-xs text-[var(--text-muted)]">
                   <span>
                     {item.assignees[0] || "Unknown assignee"}
                     {item.assignees.length > 1 ? ` +${item.assignees.length - 1}` : ""}
@@ -336,18 +336,18 @@ function OpportunityContent() {
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-base)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-[var(--text-secondary)]">
                 Page {data.page} / {data.pages}
               </span>
               <button
                 type="button"
                 disabled={page >= data.pages}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-base)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -355,10 +355,10 @@ function OpportunityContent() {
           )}
         </>
       ) : (
-        <div className="rounded-lg bg-gray-50 py-12 text-center text-gray-500">
+        <div className="rounded-lg bg-[var(--bg-base)] py-12 text-center text-[var(--text-muted)]">
           No opportunities match these filters yet. Try widening the cohort or
           recompute opportunity scores via{" "}
-          <Link href="/admin/ai-runs" className="text-primary-600 hover:underline">
+          <Link href="/admin/ai-runs" className="text-[var(--accent)] hover:underline">
             Admin → AI Runs
           </Link>
           .

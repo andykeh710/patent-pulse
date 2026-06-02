@@ -1,70 +1,81 @@
 "use client";
 
-export function BriefingPreview() {
-  const items = [
-    {
-      docId: "USPTO:20260144033",
-      score: 89,
-      tier: "strong",
-      confidence: "high",
-    },
-    {
-      docId: "USPTO:20260144068",
-      score: 86,
-      tier: "strong",
-      confidence: "high",
-      selfCite: true,
-    },
-    {
-      docId: "USPTO:20260144041",
-      score: 82,
-      tier: "strong",
-      confidence: "medium",
-    },
-    {
-      docId: "USPTO:20260144022",
-      score: 78,
-      tier: "medium",
-      confidence: "high",
-    },
-    {
-      docId: "USPTO:20260144055",
-      score: 75,
-      tier: "medium",
-      confidence: "medium",
-    },
-  ];
+const PREVIEW_ITEMS = [
+  {
+    docId: "US 12,144,033",
+    signal: "3x filing surge in quantum error correction",
+    score: 89,
+    tier: "strong" as const,
+    confidence: "high",
+  },
+  {
+    docId: "US 12,144,068",
+    signal: "New entrant in AI chip packaging",
+    score: 86,
+    tier: "strong" as const,
+    confidence: "high",
+    selfCite: true,
+  },
+  {
+    docId: "US 12,144,041",
+    signal: "Cross-citation spike from Nvidia, Intel",
+    score: 82,
+    tier: "strong" as const,
+    confidence: "medium",
+  },
+  {
+    docId: "US 12,144,022",
+    signal: "Assignee expanding into medical imaging",
+    score: 78,
+    tier: "medium" as const,
+    confidence: "high",
+  },
+  {
+    docId: "US 12,144,055",
+    signal: "Divisional filing suggests portfolio build",
+    score: 75,
+    tier: "medium" as const,
+    confidence: "medium",
+  },
+];
 
+export function BriefingPreview() {
   const tierColor = (t: string) =>
     t === "strong"
-      ? "bg-green-100 text-green-800"
-      : "bg-amber-100 text-amber-800";
+      ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
+      : "bg-[var(--score-medium-bg)] text-[var(--score-medium)]";
 
   return (
-    <div className="w-[340px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+    <div className="w-[360px] surface-card rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] overflow-hidden" aria-label="Weekly briefing preview">
       {/* Header */}
-      <div className="bg-primary-600 text-white px-5 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wider opacity-90">
-          Your weekly briefing
+      <div className="bg-[var(--accent)] px-5 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/90">
+          Weekly briefing preview
         </p>
-        <p className="text-sm font-medium mt-0.5">G06F · Computing</p>
+        <p className="text-xs text-white/70 mt-0.5">
+          Computing &amp; AI patents · G06F
+        </p>
       </div>
 
       {/* Items */}
-      <div className="divide-y divide-gray-100">
-        {items.map((item, i) => (
+      <div className="divide-y divide-[var(--border-subtle)]">
+        {PREVIEW_ITEMS.map((item, i) => (
           <div
             key={item.docId}
             className={`px-5 py-3 ${i >= 2 ? "opacity-40" : ""}`}
+            aria-label={`Patent ${item.docId}: ${item.signal}`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-mono text-gray-500">
+              <span className="text-xs font-mono text-[var(--text-muted)]">
                 {item.docId}
               </span>
-              <span className="text-xs font-bold text-primary-700">
+              <span className="text-xs font-bold text-[var(--accent)]">
                 Score {item.score}
               </span>
             </div>
+            <p className="text-xs text-[var(--text-secondary)] mb-1.5 leading-snug">
+              {item.signal}
+            </p>
             <div className="flex items-center gap-2">
               <span
                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${tierColor(
@@ -73,12 +84,12 @@ export function BriefingPreview() {
               >
                 {item.tier}
               </span>
-              <span className="text-[10px] text-gray-400">
+              <span className="text-[10px] text-[var(--text-muted)]">
                 confidence: {item.confidence}
               </span>
               {item.selfCite && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
-                  ⚠ self-citation risk
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/40">
+                  self-citation risk
                 </span>
               )}
             </div>
@@ -87,9 +98,9 @@ export function BriefingPreview() {
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-right">
-        <span className="text-xs text-primary-600 font-medium">
-          {items.length - 2} more · view all →
+      <div className="px-5 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] text-right">
+        <span className="text-xs text-[var(--accent)] font-medium">
+          {PREVIEW_ITEMS.length - 2} more signals · view all →
         </span>
       </div>
     </div>

@@ -98,15 +98,15 @@ export default function AIRunsPage() {
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Runs</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">AI Runs</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
             Cost-visible cohort runner. Every LLM call is cached as an{" "}
-            <code className="bg-gray-100 px-1 rounded">AIArtifact</code>; replays
+            <code className="bg-[var(--bg-elevated)] px-1 rounded">AIArtifact</code>; replays
             cost $0.
           </p>
         </div>
         {meta && (
-          <div className="text-xs text-gray-500 text-right">
+          <div className="text-xs text-[var(--text-muted)] text-right">
             <div>
               <span className="font-medium">user:</span> {meta.default_user_id}
             </div>
@@ -122,15 +122,15 @@ export default function AIRunsPage() {
       </header>
 
       {/* Configure run */}
-      <section className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Configure run</h2>
+      <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Configure run</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Task type">
             <select
               value={taskType}
               onChange={(e) => setTaskType(e.target.value as AITaskType)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
             >
               {TASK_TYPES.map((t) => (
                 <option key={t.value} value={t.value} disabled={!t.supported}>
@@ -144,7 +144,7 @@ export default function AIRunsPage() {
             <select
               value={runMode}
               onChange={(e) => setRunMode(e.target.value as AIRunMode)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
             >
               {RUN_MODES.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -152,7 +152,7 @@ export default function AIRunsPage() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-[var(--text-muted)] mt-1">
               {RUN_MODES.find((m) => m.value === runMode)?.help}
             </p>
           </Field>
@@ -169,7 +169,7 @@ export default function AIRunsPage() {
                 onChange={(e) =>
                   setCohort({ ...cohort, cpc_prefix: e.target.value || null })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Grant year from">
@@ -184,7 +184,7 @@ export default function AIRunsPage() {
                       : null,
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Grant year to">
@@ -199,7 +199,7 @@ export default function AIRunsPage() {
                       : null,
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Expiry within (days)">
@@ -215,7 +215,7 @@ export default function AIRunsPage() {
                       : null,
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Has abstract">
@@ -230,7 +230,7 @@ export default function AIRunsPage() {
                         : e.target.value === "true",
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               >
                 <option value="">any</option>
                 <option value="true">yes</option>
@@ -249,7 +249,7 @@ export default function AIRunsPage() {
                         : e.target.value === "true",
                   })
                 }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
               >
                 <option value="">any</option>
                 <option value="true">yes</option>
@@ -268,7 +268,7 @@ export default function AIRunsPage() {
                       limit: e.target.value ? Number(e.target.value) : null,
                     })
                   }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-[var(--border-default)] px-3 py-2 text-sm"
                 />
               </Field>
             )}
@@ -279,12 +279,12 @@ export default function AIRunsPage() {
           <button
             onClick={onEstimate}
             disabled={estLoading || phaseUnsupported}
-            className="rounded-md bg-primary-600 text-white px-4 py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--accent)] text-white px-4 py-2 text-sm font-medium hover:bg-[var(--accent)] disabled:opacity-50"
           >
             {estLoading ? "Estimating…" : "Preview cost"}
           </button>
           {phaseUnsupported && (
-            <span className="text-xs text-amber-700">
+            <span className="text-xs text-[var(--score-medium)]">
               Run creation for this task type lands in a later phase.
             </span>
           )}
@@ -296,10 +296,10 @@ export default function AIRunsPage() {
 
       {/* Estimate preview */}
       {estimate && (
-        <section className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6 space-y-4">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Cost preview</h2>
-            <div className="text-2xl font-bold text-gray-900">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Cost preview</h2>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">
               ${estimate.est_cost_usd.toFixed(4)}
             </div>
           </div>
@@ -336,7 +336,7 @@ export default function AIRunsPage() {
 
           {!estimate.requires_full_batch_phrase &&
             estimate.requires_confirmation && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-900">
+              <div className="bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-md p-3 text-sm text-amber-900">
                 Estimated cost (${estimate.est_cost_usd.toFixed(4)}) exceeds the
                 auto-approve threshold ($
                 {estimate.auto_approve_threshold_usd.toFixed(2)}). Review before
@@ -354,7 +354,7 @@ export default function AIRunsPage() {
             </button>
             <button
               onClick={() => setEstimate(null)}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+              className="rounded-md border border-[var(--border-default)] px-4 py-2 text-sm font-medium hover:bg-[var(--bg-glass)]"
             >
               Cancel
             </button>
@@ -364,10 +364,10 @@ export default function AIRunsPage() {
       )}
 
       {/* Run history */}
-      <section className="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
+      <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6 space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Recent runs</h2>
-          <span className="text-xs text-gray-500">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Recent runs</h2>
+          <span className="text-xs text-[var(--text-muted)]">
             {history?.total ?? 0} total
           </span>
         </div>
@@ -386,7 +386,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium text-gray-700 uppercase tracking-wide">
+      <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">
         {label}
       </span>
       <div className="mt-1">{children}</div>
@@ -397,10 +397,10 @@ function Field({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs text-gray-500 uppercase tracking-wide">
+      <div className="text-xs text-[var(--text-muted)] uppercase tracking-wide">
         {label}
       </div>
-      <div className="text-sm font-mono text-gray-900 mt-1 break-all">
+      <div className="text-sm font-mono text-[var(--text-primary)] mt-1 break-all">
         {value}
       </div>
     </div>
@@ -411,15 +411,15 @@ function RunHistoryTable({ items }: { items: RunSummary[] }) {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   if (items.length === 0) {
     return (
-      <p className="text-sm text-gray-500 py-6 text-center">
+      <p className="text-sm text-[var(--text-muted)] py-6 text-center">
         No runs yet. Configure one above and click <strong>Run</strong> to start.
       </p>
     );
   }
   return (
     <table className="w-full text-sm">
-      <thead className="text-xs text-gray-500 uppercase">
-        <tr className="border-b border-gray-200">
+      <thead className="text-xs text-[var(--text-muted)] uppercase">
+        <tr className="border-b border-[var(--border-subtle)]">
           <th className="text-left py-2 w-8"></th>
           <th className="text-left py-2">When</th>
           <th className="text-left py-2">Task</th>
@@ -437,19 +437,19 @@ function RunHistoryTable({ items }: { items: RunSummary[] }) {
           <>
             <tr
               key={r.id}
-              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+              className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-base)] cursor-pointer"
               onClick={() => setExpandedRunId(expandedRunId === r.id ? null : r.id)}
             >
-              <td className="py-2 text-gray-400">
+              <td className="py-2 text-[var(--text-muted)]">
                 <span className="inline-block w-4">
                   {expandedRunId === r.id ? "▼" : "▶"}
                 </span>
               </td>
-              <td className="py-2 text-gray-600">
+              <td className="py-2 text-[var(--text-secondary)]">
                 {formatDate(r.created_at)}
               </td>
               <td className="py-2 font-medium">{r.task_type}</td>
-              <td className="py-2 text-gray-600">{r.run_mode}</td>
+              <td className="py-2 text-[var(--text-secondary)]">{r.run_mode}</td>
               <td className="py-2">
                 <StatusPill status={r.status} />
               </td>
@@ -467,7 +467,7 @@ function RunHistoryTable({ items }: { items: RunSummary[] }) {
             </tr>
             {expandedRunId === r.id && (
               <tr>
-                <td colSpan={10} className="bg-gray-50 border-b border-gray-100">
+                <td colSpan={10} className="bg-[var(--bg-base)] border-b border-[var(--border-subtle)]">
                   <ArtifactPanel runId={r.id} />
                 </td>
               </tr>
@@ -481,8 +481,8 @@ function RunHistoryTable({ items }: { items: RunSummary[] }) {
 
 function ArtifactPanel({ runId }: { runId: string }) {
   const { data, isLoading } = useRunArtifacts(runId, 50, 0);
-  if (isLoading) return <div className="p-4 text-sm text-gray-500">Loading artifacts…</div>;
-  if (!data || data.items.length === 0) return <div className="p-4 text-sm text-gray-500">No artifacts found.</div>;
+  if (isLoading) return <div className="p-4 text-sm text-[var(--text-muted)]">Loading artifacts…</div>;
+  if (!data || data.items.length === 0) return <div className="p-4 text-sm text-[var(--text-muted)]">No artifacts found.</div>;
 
   const complete = data.items.filter((a) => a.status === "complete").length;
   const failed = data.items.filter((a) => a.status === "failed").length;
@@ -492,18 +492,18 @@ function ArtifactPanel({ runId }: { runId: string }) {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center gap-4 text-xs text-gray-600">
+      <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
         <span><strong>{data.total}</strong> artifacts</span>
         <span className="text-emerald-700">{complete} complete</span>
         {failed > 0 && <span className="text-red-700">{failed} failed</span>}
-        {pending > 0 && <span className="text-gray-500">{pending} pending</span>}
+        {pending > 0 && <span className="text-[var(--text-muted)]">{pending} pending</span>}
         <span>{totalTokens.toLocaleString()} tokens</span>
         <span>${totalCost.toFixed(4)}</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-gray-500 uppercase">
-            <tr className="border-b border-gray-200">
+          <thead className="text-[var(--text-muted)] uppercase">
+            <tr className="border-b border-[var(--border-subtle)]">
               <th className="text-left py-1">Patent</th>
               <th className="text-left py-1">Type</th>
               <th className="text-left py-1">Status</th>
@@ -526,8 +526,8 @@ function ArtifactPanel({ runId }: { runId: string }) {
 function ArtifactRow({ artifact }: { artifact: ArtifactSummary }) {
   const [showJson, setShowJson] = useState(false);
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-1 font-mono text-gray-600">
+    <tr className="border-b border-[var(--border-subtle)]">
+      <td className="py-1 font-mono text-[var(--text-secondary)]">
         {artifact.patent_publication_id ? artifact.patent_publication_id.slice(0, 8) + "…" : "—"}
       </td>
       <td className="py-1">{artifact.artifact_type}</td>
@@ -538,15 +538,15 @@ function ArtifactRow({ artifact }: { artifact: ArtifactSummary }) {
         {artifact.content_json_preview ? (
           <button
             onClick={(e) => { e.stopPropagation(); setShowJson(!showJson); }}
-            className="text-primary-600 hover:underline"
+            className="text-[var(--accent)] hover:underline"
           >
             {showJson ? "Hide JSON" : "View JSON"}
           </button>
         ) : (
-          <span className="text-gray-400">No preview</span>
+          <span className="text-[var(--text-muted)]">No preview</span>
         )}
         {showJson && artifact.content_json_preview && (
-          <pre className="mt-1 p-2 bg-gray-800 text-gray-100 rounded text-[10px] overflow-auto max-h-40 max-w-md">
+          <pre className="mt-1 p-2 bg-[var(--bg-elevated)] text-gray-100 rounded text-[10px] overflow-auto max-h-40 max-w-md">
             {JSON.stringify(artifact.content_json_preview, null, 2)}
           </pre>
         )}
@@ -557,13 +557,13 @@ function ArtifactRow({ artifact }: { artifact: ArtifactSummary }) {
 
 function StatusPill({ status }: { status: string }) {
   const colorMap: Record<string, string> = {
-    pending: "bg-gray-100 text-gray-700",
-    running: "bg-blue-100 text-blue-700",
+    pending: "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
+    running: "bg-[var(--accent-muted)] text-[var(--accent)]",
     succeeded: "bg-emerald-100 text-emerald-700",
     failed: "bg-red-100 text-red-700",
-    cancelled: "bg-amber-100 text-amber-800",
+    cancelled: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
   };
-  const cls = colorMap[status] ?? "bg-gray-100 text-gray-700";
+  const cls = colorMap[status] ?? "bg-[var(--bg-elevated)] text-[var(--text-secondary)]";
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
       {status}

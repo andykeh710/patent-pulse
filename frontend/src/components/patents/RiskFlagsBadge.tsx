@@ -25,7 +25,7 @@ function severity(flag: string): "high" | "med" | "low" {
 
 function severityClass(s: "high" | "med" | "low"): string {
   if (s === "high") return "bg-red-100 text-red-700 border border-red-300";
-  if (s === "med") return "bg-amber-100 text-amber-800";
+  if (s === "med") return "bg-[var(--score-medium-bg)] text-[var(--score-medium)]";
   return "bg-gray-100 text-gray-700";
 }
 

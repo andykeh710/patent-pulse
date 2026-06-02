@@ -18,142 +18,77 @@ body {
   background: var(--bg-base);
 }
 
-/* ─── Premium Reusable Effects ─── */
+/* ─── Design System Utilities ─── */
 
 @layer components {
-  /* Glass panel for cards */
-  .glass-panel {
-    background: var(--bg-glass);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  /* Card surface — clean, no glass default */
+  .surface-card {
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
   }
 
-  /* Gradient border on hover */
-  .gradient-border-hover {
-    position: relative;
-    border: 1px solid rgba(99, 102, 241, 0.15);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  .gradient-border-hover:hover {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1), 0 0 40px rgba(99, 102, 241, 0.05);
+  /* Elevated card — for modals, dropdowns, tooltips */
+  .surface-elevated {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
   }
 
-  /* Patent scan hover sweep */
-  .scan-hover {
-    position: relative;
-    overflow: hidden;
+  /* Double-bezel outer shell (high-end §4.A pattern) */
+  .bezel-outer {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    padding: 2px;
+    border-radius: var(--radius-xl);
   }
-  .scan-hover::after {
-    content: "";
-    position: absolute;
-    top: -4px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(99, 102, 241, 0.3),
-      rgba(6, 182, 212, 0.3),
-      transparent
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  .scan-hover:hover::after {
-    opacity: 1;
+  .bezel-inner {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: calc(var(--radius-xl) - 2px);
   }
 
-  /* Signal pulse indicator */
-  .signal-pulse {
+  /* Subtle highlight — inner 1px border for glass/bezel depth */
+  .highlight-inner {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* Interactive surface hover */
+  .surface-interactive {
+    transition: background-color 200ms ease, border-color 200ms ease,
+      transform 200ms ease;
+  }
+  .surface-interactive:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border-default);
+  }
+  .surface-interactive:active {
+    transform: scale(0.985);
+  }
+
+  /* Status indicator dot */
+  .status-dot {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: var(--signal-blue);
-    box-shadow: 0 0 8px var(--signal-blue);
-    animation: signalPulse 2s ease-in-out infinite;
   }
-  @keyframes signalPulse {
-    0%, 100% { box-shadow: 0 0 4px var(--signal-blue); }
-    50% { box-shadow: 0 0 12px var(--signal-blue), 0 0 20px rgba(99,102,241,0.3); }
+  .status-dot--live {
+    background: var(--score-high);
   }
 
-  /* Index 8 badge */
-  .index-eight-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    font-weight: 700;
-    font-size: 14px;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4), 0 0 24px rgba(139, 92, 246, 0.2);
+  /* Link underline — subtle, no color bleed */
+  .link-underline {
+    text-decoration: none;
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-size: 0 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 200ms ease;
   }
-
-  /* CTA shine button */
-  .shine-cta {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    transition: all 0.2s ease;
-  }
-  .shine-cta::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.15),
-      transparent
-    );
-    transition: left 0.5s ease;
-  }
-  .shine-cta:hover::before {
-    left: 100%;
-  }
-  .shine-cta:hover {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-    transform: translateY(-1px);
-  }
-  .shine-cta:active {
-    transform: translateY(0);
-  }
-
-  /* Hero grid background */
-  .hero-grid-bg {
-    background-color: #0a0e27;
-    background-image:
-      linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-  }
-
-  /* Hero signal orb */
-  .hero-signal-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    pointer-events: none;
-  }
-
-  /* Gradient text utility */
-  .text-gradient-brand {
-    background: linear-gradient(135deg, #818cf8, #6366f1, #8b5cf6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .link-underline:hover {
+    background-size: 100% 1px;
   }
 }
 
@@ -163,14 +98,27 @@ body {
   }
 }
 
-/* ─── Respect reduced motion ─── */
+/* ─── Scrollbar — dark, minimal ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
 
+/* ─── Respect reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
-  .signal-pulse,
-  .shine-cta::before,
-  .hero-signal-orb,
-  .scan-hover::after {
-    animation: none !important;
-    transition: none !important;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

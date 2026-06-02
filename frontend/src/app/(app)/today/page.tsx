@@ -31,22 +31,22 @@ import type {
 function FilingTrendHighlight({ data }: { data: FilingTrendCard | null }) {
   if (!data) return null;
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Trend</span>
-        <span className="text-xs text-gray-400">Filing momentum</span>
+        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-[var(--accent)]">Trend</span>
+        <span className="text-xs text-[var(--text-muted)]">Filing momentum</span>
       </div>
       <Link
         href={`/trends/${data.trend_surface}/${data.trend_key}`}
-        className="text-sm font-semibold text-gray-900 hover:text-primary-700"
+        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
       >
         {data.trend_label}
       </Link>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-[var(--text-muted)] mt-1">
         {data.count_4w} patents (4wk) · z-score {data.z_score}
       </p>
       {data.top_assignees.length > 0 && (
-        <p className="text-xs text-gray-500 mt-1 truncate">
+        <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
           Top: {data.top_assignees.join(", ")}
         </p>
       )}
@@ -57,17 +57,17 @@ function FilingTrendHighlight({ data }: { data: FilingTrendCard | null }) {
 function ExpiringOppHighlight({ data }: { data: ExpiringOpportunityCard | null }) {
   if (!data) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Expiry</span>
-          <span className="text-xs text-gray-400">High-opportunity window</span>
+          <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-medium-bg)] text-[var(--score-medium)]">Expiry</span>
+          <span className="text-xs text-[var(--text-muted)]">High-opportunity window</span>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-[var(--text-muted)]">
           No high-value patents expiring within 90 days yet.
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-[var(--text-muted)] mt-1">
           As v3 scoring reaches more patents, this card will populate.{" "}
-          <Link href="/expiry" className="text-primary-600 hover:underline">
+          <Link href="/expiry" className="text-[var(--accent)] hover:underline">
             Browse all expiry data →
           </Link>
         </p>
@@ -75,18 +75,18 @@ function ExpiringOppHighlight({ data }: { data: ExpiringOpportunityCard | null }
     );
   }
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Expiry</span>
-        <span className="text-xs text-gray-400">High-opportunity window</span>
+        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-medium-bg)] text-[var(--score-medium)]">Expiry</span>
+        <span className="text-xs text-[var(--text-muted)]">High-opportunity window</span>
       </div>
       <Link
         href="/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70"
-        className="text-sm font-semibold text-gray-900 hover:text-primary-700"
+        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
       >
         {data.count} high-value patents expiring within 90 days
       </Link>
-      <p className="text-xs text-gray-400 mt-1">{data.caveat}</p>
+      <p className="text-xs text-[var(--text-muted)] mt-1">{data.caveat}</p>
     </div>
   );
 }
@@ -94,28 +94,28 @@ function ExpiringOppHighlight({ data }: { data: ExpiringOpportunityCard | null }
 function NotablePatentHighlight({ data }: { data: NotablePatentCard | null }) {
   if (!data) return null;
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">Notable</span>
-        <span className="text-xs text-gray-400">Recent high-scorer</span>
+        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-high-bg)] text-[var(--score-high)]">Notable</span>
+        <span className="text-xs text-[var(--text-muted)]">Recent high-scorer</span>
       </div>
       <Link
         href={`/patents/${data.id}`}
-        className="text-sm font-semibold text-gray-900 hover:text-primary-700 line-clamp-1"
+        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] line-clamp-1"
       >
         {data.title || data.publication_number}
       </Link>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-[var(--text-muted)] mt-1">
         {data.assignee} · {data.publication_number}
       </p>
       {data.summary_first_sentence && (
-        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+        <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">
           {data.summary_first_sentence}
         </p>
       )}
       <div className="flex items-center gap-2 mt-2">
         {data.limited_source && (
-          <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+          <span className="text-xs text-amber-600 bg-[var(--score-medium-bg)] px-1.5 py-0.5 rounded">
             Limited source text available
           </span>
         )}
@@ -127,18 +127,18 @@ function NotablePatentHighlight({ data }: { data: NotablePatentCard | null }) {
 function CompanyMoveHighlight({ data }: { data: CompanyMoveCard | null }) {
   if (!data) return null;
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">Company</span>
-        <span className="text-xs text-gray-400">Filing surge</span>
+        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-[var(--type-foryou)]">Company</span>
+        <span className="text-xs text-[var(--text-muted)]">Filing surge</span>
       </div>
       <Link
         href={`/companies/${encodeURIComponent(data.assignee)}`}
-        className="text-sm font-semibold text-gray-900 hover:text-primary-700"
+        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
       >
         {data.assignee}
       </Link>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-[var(--text-muted)] mt-1">
         {data.count_this_week} filings this week · +{data.delta} vs 4wk avg
       </p>
     </div>
@@ -158,14 +158,14 @@ function AtAGlanceCard({
     <div
       className={`rounded-lg border p-3 ${
         highlight
-          ? "bg-primary-50 border-primary-200"
-          : "bg-white border-gray-200"
+          ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20"
+          : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
       }`}
     >
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
       <p
         className={`text-lg font-bold truncate ${
-          highlight ? "text-primary-700" : "text-gray-900"
+          highlight ? "text-[var(--accent)]" : "text-[var(--text-primary)]"
         }`}
       >
         {value}
@@ -176,41 +176,41 @@ function AtAGlanceCard({
 
 function FirstTimeOnboarding() {
   return (
-    <div className="rounded-lg bg-white border border-gray-200 p-8 text-center">
+    <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-8 text-center">
       <div className="max-w-lg mx-auto">
         <div className="text-4xl mb-4">📊</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
           Welcome to {BRAND.name}
         </h2>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
           Track patent filings, spot expiring opportunities, and discover
           commercial signals across any technology area. Start by creating
           a topic below — your personalized command center will appear here.
         </p>
         <StarterTopics showHeading={false} />
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-          <div className="rounded-lg bg-gray-50 border border-gray-100 p-4">
+          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
             <div className="text-lg mb-1">🔍</div>
-            <h3 className="font-medium text-sm text-gray-900">Browse all patents</h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <h3 className="font-medium text-sm text-[var(--text-primary)]">Browse all patents</h3>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
               63,000+ patents from USPTO, EPO, and WIPO
             </p>
             <Link
               href="/patents"
-              className="text-xs text-primary-600 hover:underline mt-2 inline-block"
+              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
             >
               Start browsing →
             </Link>
           </div>
-          <div className="rounded-lg bg-gray-50 border border-gray-100 p-4">
+          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
             <div className="text-lg mb-1">📈</div>
-            <h3 className="font-medium text-sm text-gray-900">Explore trends</h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <h3 className="font-medium text-sm text-[var(--text-primary)]">Explore trends</h3>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
               Hot tech areas, growing assignees, and cliff analysis
             </p>
             <Link
               href="/trends"
-              className="text-xs text-primary-600 hover:underline mt-2 inline-block"
+              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
             >
               See trends →
             </Link>
@@ -256,7 +256,7 @@ export default function TodayPage() {
     return (
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Today</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Today</h1>
           <FreshnessBanner className="mt-2" />
         </div>
         <FirstTimeOnboarding />
@@ -268,9 +268,9 @@ export default function TodayPage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Today</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Today</h1>
         <FreshnessBanner className="mt-2" />
-        <p className="text-gray-600 mt-1">
+        <p className="text-[var(--text-secondary)] mt-1">
           Your daily patent intelligence briefing
         </p>
       </div>
@@ -289,12 +289,12 @@ export default function TodayPage() {
       )}
 
       {/* Data freshness note */}
-      <div className="mb-6 text-xs text-gray-400 flex items-center gap-2">
+      <div className="mb-6 text-xs text-[var(--text-muted)] flex items-center gap-2">
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400"></span>
         Patent intelligence updates continuously as enrichment, scoring, and
         summarization jobs complete. Forward citation coverage is affected by
         USPTO availability.{" "}
-        <Link href="/admin/data-health" className="text-primary-600 hover:underline">
+        <Link href="/admin/data-health" className="text-[var(--accent)] hover:underline">
           View pipeline status →
         </Link>
       </div>
@@ -302,7 +302,7 @@ export default function TodayPage() {
       {/* What's New This Week */}
       {highlights && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
             What&apos;s New This Week
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -317,10 +317,10 @@ export default function TodayPage() {
       <div className="space-y-6">
         {/* Your Topics — or prompt to create them */}
         {themes && themes.length > 0 ? (
-          <section className="bg-white rounded-lg border border-gray-200 p-6">
+          <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Your Topics</h2>
-              <Link href="/themes" className="text-sm text-primary-600 hover:text-primary-800">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Topics</h2>
+              <Link href="/themes" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
                 Manage topics →
               </Link>
             </div>
@@ -329,25 +329,25 @@ export default function TodayPage() {
                 <Link
                   key={topic.id}
                   href={`/themes`}
-                  className="rounded-lg border border-gray-200 p-4 hover:border-primary-300 hover:shadow-sm transition-all"
+                  className="rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-sm transition-all"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-medium text-sm text-gray-900 truncate">{topic.name}</h3>
+                    <h3 className="font-medium text-sm text-[var(--text-primary)] truncate">{topic.name}</h3>
                     {!topic.is_active && (
-                      <Badge variant="default" size="sm" className="text-gray-400">inactive</Badge>
+                      <Badge variant="default" size="sm" className="text-[var(--text-muted)]">inactive</Badge>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {topic.cpc_prefixes.slice(0, 3).map((cpc) => (
-                      <span key={cpc} className="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">
+                      <span key={cpc} className="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] rounded px-1.5 py-0.5">
                         {cpc}
                       </span>
                     ))}
                     {topic.cpc_prefixes.length > 3 && (
-                      <span className="text-xs text-gray-400">+{topic.cpc_prefixes.length - 3}</span>
+                      <span className="text-xs text-[var(--text-muted)]">+{topic.cpc_prefixes.length - 3}</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-[var(--text-muted)]">
                     {topic.patent_count} {topic.patent_count === 1 ? "patent" : "patents"} matched
                   </p>
                 </Link>
@@ -355,17 +355,17 @@ export default function TodayPage() {
             </div>
           </section>
         ) : (
-          <section className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-200 p-6">
+          <section className="bg-gradient-to-r from-bg-[var(--bg-elevated)] to-[var(--bg-surface)] rounded-lg border border-border-[var(--accent)]/20 p-6">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-white rounded-lg shadow-sm">
-                <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-[var(--bg-surface)] rounded-lg shadow-sm">
+                <svg className="w-6 h-6 text-bg-[var(--bg-elevated)]0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Your {BRAND.name}</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  <Link href="/themes" className="text-primary-600 hover:underline">
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your {BRAND.name}</h2>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">
+                  <Link href="/themes" className="text-[var(--accent)] hover:underline">
                     Create topics
                   </Link>{" "}
                   to track technology areas that matter to you. Matched patents and
@@ -378,10 +378,10 @@ export default function TodayPage() {
 
         {/* Your saved patents — discoverability for watchlist */}
         {watchlist && watchlist.length > 0 && (
-          <section className="bg-white rounded-lg border border-gray-200 p-6">
+          <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Your Saved Patents</h2>
-              <Link href="/watchlist" className="text-sm text-primary-600 hover:text-primary-800">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Saved Patents</h2>
+              <Link href="/watchlist" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
                 View all ({watchlist.length}) →
               </Link>
             </div>
@@ -390,13 +390,13 @@ export default function TodayPage() {
                 <Link
                   key={item.id}
                   href={`/patents/${item.patent.id}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
                       {item.patent.title || "Untitled patent"}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {item.patent.assignees?.[0] || "Unknown"} · {item.patent.doc_id}
                     </p>
                   </div>
@@ -410,10 +410,10 @@ export default function TodayPage() {
         )}
 
         {/* Top Opportunities */}
-        <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Top Opportunities</h2>
-            <Link href="/opportunity" className="text-sm text-primary-600 hover:text-primary-800">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Top Opportunities</h2>
+            <Link href="/opportunity" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
@@ -425,7 +425,7 @@ export default function TodayPage() {
               ))}
             </div>
           ) : !topOpps?.items?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">
+            <p className="text-sm text-[var(--text-muted)] text-center py-8">
               No opportunity data yet. Run opportunity scoring via Admin → AI Runs.
             </p>
           ) : (
@@ -434,13 +434,13 @@ export default function TodayPage() {
                 <Link
                   key={item.id}
                   href={`/patents/${item.id}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
                       {item.title || "Untitled patent"}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {item.assignees?.[0] || "Unknown"} · {item.doc_id}
                     </p>
                   </div>
@@ -452,10 +452,10 @@ export default function TodayPage() {
         </section>
 
         {/* Emerging Trends */}
-        <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Emerging Trends</h2>
-            <Link href="/trends" className="text-sm text-primary-600 hover:text-primary-800">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Emerging Trends</h2>
+            <Link href="/trends" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
@@ -467,7 +467,7 @@ export default function TodayPage() {
               ))}
             </div>
           ) : !hotTrends?.items?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">
+            <p className="text-sm text-[var(--text-muted)] text-center py-8">
               No trend data yet. Run weekly trend computation first.
             </p>
           ) : (
@@ -475,14 +475,14 @@ export default function TodayPage() {
               {hotTrends.items.slice(0, 5).map((item) => (
                 <div
                   key={`${item.surface}-${item.key}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="default" size="sm">{item.surface}</Badge>
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.key}</p>
+                      <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.key}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {item.count_4w} patents (4wk) · z-score {item.z_score.toFixed(1)}
                     </p>
                   </div>
@@ -496,10 +496,10 @@ export default function TodayPage() {
         </section>
 
         {/* Expiring Opportunities */}
-        <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Expiring Opportunities</h2>
-            <Link href="/expiry" className="text-sm text-primary-600 hover:text-primary-800">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Expiring Opportunities</h2>
+            <Link href="/expiry" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
@@ -511,7 +511,7 @@ export default function TodayPage() {
               ))}
             </div>
           ) : !expiring?.items?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">
+            <p className="text-sm text-[var(--text-muted)] text-center py-8">
               No expiring patents found in the 5-year window.
             </p>
           ) : (
@@ -520,13 +520,13 @@ export default function TodayPage() {
                 <Link
                   key={item.id}
                   href={`/patents/${item.id}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
                       {item.title || "Untitled patent"}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {item.assignees?.[0] || "Unknown"} ·{" "}
                       {item.estimated_expiry_date
                         ? `Expires ${formatDate(item.estimated_expiry_date)}`
@@ -543,10 +543,10 @@ export default function TodayPage() {
         </section>
 
         {/* Companies Moving */}
-        <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Companies Moving</h2>
-            <Link href="/companies" className="text-sm text-primary-600 hover:text-primary-800">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Companies Moving</h2>
+            <Link href="/companies" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
@@ -558,7 +558,7 @@ export default function TodayPage() {
               ))}
             </div>
           ) : !companies?.items?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">
+            <p className="text-sm text-[var(--text-muted)] text-center py-8">
               No company data available yet.
             </p>
           ) : (
@@ -567,16 +567,16 @@ export default function TodayPage() {
                 <Link
                   key={item.name}
                   href={`/companies/${encodeURIComponent(item.name)}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.name}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {item.active_patent_count} active · {item.technology_area_count} tech areas
                       {item.country ? ` · ${item.country}` : ""}
                     </p>
                   </div>
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-green-600" : item.supplier_score >= 35 ? "text-yellow-600" : "text-gray-500"}`}>
+                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-green-600" : item.supplier_score >= 35 ? "text-yellow-600" : "text-[var(--text-muted)]"}`}>
                     {item.supplier_score}
                   </span>
                 </Link>

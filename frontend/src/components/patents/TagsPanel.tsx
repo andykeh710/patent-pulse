@@ -12,15 +12,15 @@ interface TagsPanelProps {
 
 const HORIZON_COPY: Record<TimeHorizon, { label: string; tone: string }> = {
   now: { label: "Now (0–1 yr)", tone: "bg-emerald-100 text-emerald-700" },
-  near_term: { label: "Near term (1–3 yr)", tone: "bg-blue-100 text-blue-700" },
-  long_term: { label: "Long term (3–5+ yr)", tone: "bg-indigo-100 text-indigo-700" },
-  unknown: { label: "Unknown horizon", tone: "bg-gray-100 text-gray-600" },
+  near_term: { label: "Near term (1–3 yr)", tone: "bg-[var(--accent-muted)] text-[var(--accent)]" },
+  long_term: { label: "Long term (3–5+ yr)", tone: "bg-[var(--accent-muted)] text-[var(--accent)]" },
+  unknown: { label: "Unknown horizon", tone: "bg-[var(--bg-elevated)] text-[var(--text-secondary)]" },
 };
 
 export function TagsPanel({ tags, variant = "full" }: TagsPanelProps) {
   if (!tags) {
     return (
-      <div className="rounded-md border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-500">
+      <div className="rounded-md border border-dashed border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-muted)]">
         Tags not yet computed for this patent.
       </div>
     );
@@ -40,7 +40,7 @@ export function TagsPanel({ tags, variant = "full" }: TagsPanelProps) {
         {tags.opportunity_tags.slice(0, 2).map((t) => (
           <span
             key={t}
-            className="inline-flex items-center rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800"
+            className="inline-flex items-center rounded-md bg-[var(--accent-muted)] px-2 py-0.5 text-xs font-medium text-[var(--type-foryou)]"
           >
             {humanizeTag(t)}
           </span>
@@ -69,8 +69,8 @@ export function TagsPanel({ tags, variant = "full" }: TagsPanelProps) {
       </div>
 
       {tags.problem_solved && (
-        <p className="text-sm text-gray-700">
-          <span className="font-semibold text-gray-900">Problem solved: </span>
+        <p className="text-sm text-[var(--text-secondary)]">
+          <span className="font-semibold text-[var(--text-primary)]">Problem solved: </span>
           {tags.problem_solved}
         </p>
       )}
@@ -94,7 +94,7 @@ export function TagsPanel({ tags, variant = "full" }: TagsPanelProps) {
 
       {tags.risk_flags.length > 0 && (
         <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
             Risk flags
           </div>
           <RiskFlagsBadge flags={tags.risk_flags} />
@@ -106,10 +106,10 @@ export function TagsPanel({ tags, variant = "full" }: TagsPanelProps) {
 
 const TONE_CLASSES: Record<string, string> = {
   sky: "bg-sky-50 text-sky-700",
-  violet: "bg-violet-50 text-violet-700",
+  violet: "bg-violet-50 text-[var(--accent)]",
   emerald: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-800",
-  purple: "bg-purple-100 text-purple-800",
+  amber: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
+  purple: "bg-[var(--accent-muted)] text-[var(--type-foryou)]",
   rose: "bg-rose-50 text-rose-700",
 };
 
@@ -123,10 +123,10 @@ function TagRow({
   tone: string;
 }) {
   if (!values.length) return null;
-  const cls = TONE_CLASSES[tone] || "bg-gray-100 text-gray-700";
+  const cls = TONE_CLASSES[tone] || "bg-[var(--bg-elevated)] text-[var(--text-secondary)]";
   return (
     <div>
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
         {label}
       </div>
       <div className="flex flex-wrap gap-1.5">

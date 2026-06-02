@@ -72,7 +72,7 @@ function useExpirySection(params: ExpiryParams | null) {
 
 export default function ExpiryPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
       <ExpiryContent />
     </Suspense>
   );
@@ -208,9 +208,9 @@ function ExpiryContent() {
     <div>
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expiry Radar</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Expiry Radar</h1>
           <FreshnessBanner show={["patents"]} className="mt-2" />
-          <p className="text-gray-600 mt-1">
+          <p className="text-[var(--text-secondary)] mt-1">
             Track patents approaching or past expiration — with confidence
             labels and active family risk awareness.
           </p>
@@ -221,8 +221,8 @@ function ExpiryContent() {
       <ExpirySummaryCards data={summaryData ?? null} isLoading={summaryLoading} />
 
       {/* Legal caveat banner */}
-      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">
+      <div className="mb-6 p-4 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
+        <p className="text-sm text-[var(--score-medium)]">
           <strong>Important:</strong> All expiry indicators are heuristic estimates
           derived from filing metadata. Verify with the issuing patent office
           (USPTO, EPO, WIPO, etc.) before any commercial decision. We do not
@@ -237,7 +237,7 @@ function ExpiryContent() {
           onChange={(e) =>
             setParams((p) => ({ ...p, days_ahead: Number(e.target.value) }))
           }
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm"
         >
           <option value={90}>90 days</option>
           <option value={180}>180 days</option>
@@ -253,7 +253,7 @@ function ExpiryContent() {
           onChange={(e) =>
             setParams((p) => ({ ...p, expiry_status: e.target.value || undefined }))
           }
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm"
         >
           <option value="">All statuses</option>
           <option value="expiring_soon">Expiring Soon</option>
@@ -270,7 +270,7 @@ function ExpiryContent() {
           onChange={(e) =>
             setParams((p) => ({ ...p, confidence: e.target.value || undefined }))
           }
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm"
         >
           <option value="">All confidence</option>
           <option value="confirmed">Confirmed</option>
@@ -279,7 +279,7 @@ function ExpiryContent() {
           <option value="low">Low</option>
         </select>
 
-        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+        <label className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
           <input
             type="checkbox"
             checked={params.active_family_risk === true}
@@ -300,7 +300,7 @@ function ExpiryContent() {
             const [sb, so] = e.target.value.split("|");
             setParams((p) => ({ ...p, sort_by: sb, sort_order: so }));
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm"
         >
           <option value="expiry_urgency|asc">Expiring soonest</option>
           <option value="expiry_opportunity_score|desc">Highest expiry opp.</option>
@@ -360,13 +360,13 @@ function ExpiryContent() {
 
         {/* 5. Patent Cliffs */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
             Patent Cliffs — Technology Openings
           </h2>
           {(!cliffs12 && !cliffs24) ? (
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
-              <p className="text-gray-500 text-sm">No patent cliff data available for this window.</p>
-              <p className="text-xs text-gray-400 mt-1">
+            <div className="bg-[var(--bg-base)] rounded-lg border border-[var(--border-subtle)] p-8 text-center">
+              <p className="text-[var(--text-muted)] text-sm">No patent cliff data available for this window.</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
                 Patent cliffs are detected from CPC clustering of patents with
                 estimated expiry dates. Absence of cliff data does not indicate
                 the absence of expiring patents — verify individual patents with
@@ -400,16 +400,16 @@ function ExpiryContent() {
 
         {/* 7. Needs Legal Verification */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
             Needs Legal Verification
           </h2>
-          <p className="text-sm text-gray-500 mb-3">
+          <p className="text-sm text-[var(--text-muted)] mb-3">
             Patents with active family risk or low-confidence expiry status — treat with caution.
           </p>
 
           {/* 7a: Active family risk */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+            <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
               Active Family Risk
             </h3>
             <ExpiryRadarSection
@@ -423,7 +423,7 @@ function ExpiryContent() {
 
           {/* 7b: Low confidence */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+            <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
               Low Confidence Expiry Status
             </h3>
             <ExpiryRadarSection
@@ -545,14 +545,14 @@ function CSVExportButton({ params }: { params: ExpiryParams }) {
         onClick={handleExport}
         disabled={isDisabled}
         title={tooltip}
-        className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium
-          bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed
+        className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm font-medium
+          bg-[var(--bg-surface)] hover:bg-[var(--bg-base)] disabled:opacity-50 disabled:cursor-not-allowed
           transition-colors"
       >
         {isExporting ? "Exporting..." : "Download CSV"}
       </button>
       {rowCount !== null && !isExporting && (
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-[var(--text-muted)]">
           Exported {rowCount.toLocaleString()} rows
         </span>
       )}
@@ -579,21 +579,21 @@ function CliffCard({ cliff }: { cliff: CliffClusterItem }) {
       : `${cliff.window_months / 12}yr`;
 
   return (
-    <div className="block rounded-lg border border-primary-200 bg-primary-50 p-4">
+    <div className="block rounded-lg border border-border-[var(--accent)]/20 bg-[var(--bg-elevated)] p-4">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-sm font-bold text-primary-700">
+          <span className="font-mono text-sm font-bold text-[var(--accent)]">
             {cliff.key_value}
           </span>
-          <p className="text-xs text-gray-600 mt-0.5">{label}</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">{label}</p>
         </div>
         <Badge variant="default" size="sm">{windowLabel}</Badge>
       </div>
       <div className="mt-2">
-        <span className="text-2xl font-bold text-primary-700">
+        <span className="text-2xl font-bold text-[var(--accent)]">
           {cliff.patent_count}
         </span>
-        <span className="text-xs text-gray-500 ml-1">patents expiring</span>
+        <span className="text-xs text-[var(--text-muted)] ml-1">patents expiring</span>
       </div>
     </div>
   );

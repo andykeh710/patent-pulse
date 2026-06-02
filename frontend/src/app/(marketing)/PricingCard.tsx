@@ -21,27 +21,27 @@ export function PricingCard({
 }) {
   return (
     <div
-      className={`relative bg-white border rounded-xl p-6 flex flex-col ${
+      className={`relative surface-card p-6 flex flex-col ${
         highlighted
-          ? "border-primary-500 ring-2 ring-primary-500 shadow-lg"
-          : "border-gray-200"
+          ? "border-[var(--accent)] ring-1 ring-[var(--accent)]"
+          : ""
       }`}
     >
       {badge && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-semibold bg-primary-600 text-white">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-[var(--radius-full)] text-xs font-semibold bg-[var(--accent)] text-white">
           {badge}
         </span>
       )}
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+        <h3 className="text-lg font-semibold text-[var(--text-primary)]">{name}</h3>
         <div className="mt-2">
-          <span className="text-3xl font-bold text-gray-900">{price}</span>
-          {period && <span className="text-sm text-gray-500">{period}</span>}
+          <span className="text-3xl font-bold text-[var(--text-primary)]">{price}</span>
+          {period && <span className="text-sm text-[var(--text-muted)]">{period}</span>}
         </div>
       </div>
       <ul className="space-y-2 mb-6 flex-1">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+          <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
             <CheckIcon />
             {f}
           </li>
@@ -49,10 +49,10 @@ export function PricingCard({
       </ul>
       <Link
         href={href}
-        className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+        className={`inline-flex items-center justify-center px-4 py-2 rounded-[var(--radius-md)] text-sm font-semibold transition-colors ${
           highlighted
-            ? "bg-primary-600 text-white hover:bg-primary-700"
-            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+            : "bg-[var(--bg-glass)] text-[var(--text-secondary)] hover:bg-[var(--bg-glass-strong)]"
         }`}
       >
         {cta}
@@ -64,7 +64,7 @@ export function PricingCard({
 export function CheckIcon() {
   return (
     <svg
-      className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0"
+      className="w-4 h-4 text-[var(--score-high)] mt-0.5 flex-shrink-0"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"

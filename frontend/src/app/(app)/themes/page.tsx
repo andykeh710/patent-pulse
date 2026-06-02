@@ -79,8 +79,8 @@ export default function ThemesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Topics</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Topics</h1>
+          <p className="text-[var(--text-secondary)] mt-1">
             Tracked technology areas and their matched patents
           </p>
         </div>
@@ -93,53 +93,53 @@ export default function ThemesPage() {
       {showCreate && (
         <form
           onSubmit={handleCreate}
-          className="mb-6 bg-white rounded-lg border border-primary-200 p-6"
+          className="mb-6 bg-[var(--bg-surface)] rounded-lg border border-border-[var(--accent)]/20 p-6"
         >
-          <h2 className="font-semibold text-gray-900 mb-4">New Topic</h2>
+          <h2 className="font-semibold text-[var(--text-primary)] mb-4">New Topic</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Name *</label>
               <input
                 type="text"
                 required
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder='e.g. "AI Agents & LLMs"'
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
               <input
                 type="text"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="What this topic tracks"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                CPC Prefixes <span className="text-gray-400 text-xs">(comma-separated)</span>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                CPC Prefixes <span className="text-[var(--text-muted)] text-xs">(comma-separated)</span>
               </label>
               <input
                 type="text"
                 value={formCpc}
                 onChange={(e) => setFormCpc(e.target.value)}
                 placeholder="G06N, G06F, H04L"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Keywords <span className="text-gray-400 text-xs">(comma-separated)</span>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                Keywords <span className="text-[var(--text-muted)] text-xs">(comma-separated)</span>
               </label>
               <input
                 type="text"
                 value={formKeywords}
                 onChange={(e) => setFormKeywords(e.target.value)}
                 placeholder="agent, LLM, autonomous, reasoning"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function ThemesPage() {
             <Button type="submit" variant="default" disabled={creating || !formName.trim()}>
               {creating ? "Creating..." : "Create Topic"}
             </Button>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-[var(--text-muted)]">
               After creation, run theme matching via Admin → AI Runs to populate matches.
             </p>
           </div>
@@ -157,7 +157,7 @@ export default function ThemesPage() {
       {/* System Themes section */}
       {systemThemes.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
             System Themes
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -180,7 +180,7 @@ export default function ThemesPage() {
       {/* User Topics section */}
       {userTopics.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
             Your Topics
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -210,13 +210,13 @@ export default function ThemesPage() {
           ))}
         </div>
       ) : !themes || themes.length === 0 ? (
-        <div className="rounded-lg bg-white border border-gray-200 p-8 text-center mb-6">
+        <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-8 text-center mb-6">
           <div className="max-w-md mx-auto">
             <div className="text-3xl mb-3">🔬</div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
               Your patent intelligence starts here
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-[var(--text-muted)] mb-6">
               Choose a starter topic below or create your own. When new patents match
               your topics, they&apos;ll appear here automatically.
             </p>
@@ -224,7 +224,7 @@ export default function ThemesPage() {
               showHeading={false}
               onCreated={() => mutate()}
             />
-            <div className="mt-6 pt-6 border-t border-gray-100">
+            <div className="mt-6 pt-6 border-t border-[var(--border-subtle)]">
               <Button
                 onClick={() => setShowCreate(true)}
                 variant="default"
@@ -241,18 +241,18 @@ export default function ThemesPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
                 {selected.name} — Matched Patents
               </h2>
               {patents && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[var(--text-muted)]">
                   {patents.total} {patents.total === 1 ? "patent" : "patents"} matched
                 </p>
               )}
             </div>
             <button
               onClick={() => setSelectedTheme(null)}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             >
               Clear selection
             </button>
@@ -277,17 +277,17 @@ export default function ThemesPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
                   >
                     Previous
                   </button>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-[var(--text-secondary)]">
                     Page {page} of {patents.pages}
                   </span>
                   <button
                     onClick={() => setPage((p) => p + 1)}
                     disabled={page >= patents.pages}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
                   >
                     Next
                   </button>
@@ -295,7 +295,7 @@ export default function ThemesPage() {
               )}
             </>
           ) : (
-            <div className="rounded-lg bg-gray-50 py-8 text-center text-gray-500">
+            <div className="rounded-lg bg-[var(--bg-base)] py-8 text-center text-[var(--text-muted)]">
               No patents matched this topic yet. Run theme matching via Admin.
             </div>
           )}
@@ -321,30 +321,30 @@ function ThemeCard({
   onClick: () => void;
 }) {
   const tagColor = theme.opportunity_tags?.length
-    ? "bg-green-100 text-green-800"
-    : "bg-blue-100 text-blue-800";
+    ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
+    : "bg-[var(--accent-muted)] text-[var(--accent)]";
 
   return (
     <div
       className={`rounded-lg border p-4 transition-all ${
         isSelected
-          ? "border-primary-400 bg-primary-50 shadow-sm"
+          ? "border-bg-[var(--accent)]/70 bg-[var(--bg-elevated)] shadow-sm"
           : isSystem
-          ? "border-gray-200 bg-gray-50"
-          : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+          ? "border-[var(--border-subtle)] bg-[var(--bg-base)]"
+          : "border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--border-default)] hover:shadow-sm"
       }`}
     >
       <button onClick={onClick} className="w-full text-left">
         <div className="flex items-start justify-between">
-          <h3 className="font-semibold text-gray-900 text-sm">{theme.name}</h3>
+          <h3 className="font-semibold text-[var(--text-primary)] text-sm">{theme.name}</h3>
           <div className="flex items-center gap-1">
             {!theme.is_active && (
-              <Badge variant="default" size="sm" className="text-gray-400">
+              <Badge variant="default" size="sm" className="text-[var(--text-muted)]">
                 inactive
               </Badge>
             )}
             {isSystem ? (
-              <Badge variant="default" size="sm" className="bg-blue-100 text-blue-800">
+              <Badge variant="default" size="sm" className="bg-[var(--accent-muted)] text-[var(--accent)]">
                 system
               </Badge>
             ) : (
@@ -355,7 +355,7 @@ function ThemeCard({
           </div>
         </div>
         {theme.description && (
-          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{theme.description}</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{theme.description}</p>
         )}
       </button>
 
@@ -366,25 +366,25 @@ function ThemeCard({
           </Badge>
         ))}
         {theme.cpc_prefixes.length > 4 && (
-          <span className="text-xs text-gray-400">+{theme.cpc_prefixes.length - 4}</span>
+          <span className="text-xs text-[var(--text-muted)]">+{theme.cpc_prefixes.length - 4}</span>
         )}
       </div>
 
       {theme.keywords && theme.keywords.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">
           {theme.keywords.slice(0, 3).map((kw) => (
-            <span key={kw} className="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">
+            <span key={kw} className="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] rounded px-1.5 py-0.5">
               {kw}
             </span>
           ))}
           {theme.keywords.length > 3 && (
-            <span className="text-xs text-gray-400">+{theme.keywords.length - 3}</span>
+            <span className="text-xs text-[var(--text-muted)]">+{theme.keywords.length - 3}</span>
           )}
         </div>
       )}
 
       <div className="flex items-center justify-between mt-3">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[var(--text-muted)]">
           {theme.patent_count} {theme.patent_count === 1 ? "patent" : "patents"}
         </span>
         {!isSystem && onDelete && (

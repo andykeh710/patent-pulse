@@ -111,17 +111,17 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
   const displayClaims = showAll ? claims : independentClaims;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-900">Claims</h2>
+        <h2 className="font-semibold text-[var(--text-primary)]">Claims</h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-[var(--text-muted)]">
             {claims.length} total · {independentClaims.length} independent
           </span>
           {dependentClaims.length > 0 && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+              className="text-xs text-[var(--accent)] hover:text-text-[var(--accent-hover)] font-medium"
             >
               {showAll
                 ? "Show independent only"
@@ -142,8 +142,8 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
                 <span
                   className={`flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                     claim.isIndependent
-                      ? "bg-primary-100 text-primary-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-bg-[var(--accent-muted)] text-[var(--accent)]"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                   }`}
                 >
                   {claim.number}
@@ -151,7 +151,7 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {claim.isIndependent && (
-                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-primary-600">
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-[var(--accent)]">
                         Independent
                       </span>
                     )}
@@ -160,10 +160,10 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                           broadness === "Broad"
-                            ? "bg-amber-100 text-amber-700"
+                            ? "bg-[var(--score-medium-bg)] text-[var(--score-medium)]"
                             : broadness === "Narrow"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-purple-100 text-purple-700"
+                            ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
+                            : "bg-[var(--accent-muted)] text-[var(--type-foryou)]"
                         }`}
                         title={
                           broadness === "Broad"
@@ -177,7 +177,7 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
                     {claim.text}
                   </p>
 
@@ -199,18 +199,18 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
       </div>
 
       {!showAll && dependentClaims.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-gray-100">
+        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
           <button
             onClick={() => setShowAll(true)}
-            className="text-sm text-primary-600 hover:text-primary-800 font-medium"
+            className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)] font-medium"
           >
             Show {dependentClaims.length} dependent claims
           </button>
         </div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-gray-100">
-        <p className="text-xs text-gray-400">
+      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
+        <p className="text-xs text-[var(--text-muted)]">
           Claims are extracted from patent filings and may be incomplete.
           Key mechanisms and broadness indicators are identified heuristically —
           not a legal determination of claim scope.

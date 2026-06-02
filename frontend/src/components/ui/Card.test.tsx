@@ -7,14 +7,14 @@ describe("Card", () => {
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
-  it("applies glass variant by default", () => {
+  it("applies default variant with surface background", () => {
     const { container } = render(<Card>x</Card>);
-    expect(container.firstChild).toHaveClass("backdrop-blur-md");
+    expect(container.firstChild).toHaveClass("bg-[var(--bg-surface)]");
   });
 
-  it("adds scan-hover class when interactive", () => {
+  it("adds surface-interactive class when interactive", () => {
     const { container } = render(<Card interactive>x</Card>);
-    expect(container.firstChild).toHaveClass("scan-hover");
+    expect(container.firstChild).toHaveClass("surface-interactive");
   });
 
   it("applies elevated variant when passed", () => {

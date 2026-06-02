@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/Badge";
 
 interface StarterTopicsProps {
   onCreated?: (name: string) => void;
-  /** If true, show a heading. Default true. */
   showHeading?: boolean;
 }
 
@@ -39,13 +38,13 @@ export function StarterTopics({ onCreated, showHeading = true }: StarterTopicsPr
   return (
     <div>
       {showHeading && (
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
           Starter topics — one click to get started
         </h3>
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 text-red-400 text-sm border border-red-400/20">
           {error}
         </div>
       )}
@@ -62,27 +61,27 @@ export function StarterTopics({ onCreated, showHeading = true }: StarterTopicsPr
               disabled={isCreated || isLoading}
               className={`text-left rounded-lg border p-4 transition-all ${
                 isCreated
-                  ? "border-green-300 bg-green-50 cursor-default"
-                  : "border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm cursor-pointer"
+                  ? "border-[var(--score-high)]/30 bg-[var(--score-high)]/8 cursor-default"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-glass)] hover:border-[var(--accent)]/40 hover:shadow-[var(--shadow-sm)] cursor-pointer"
               }`}
             >
               <div className="flex items-start gap-3">
                 <span className="text-2xl">{topic.icon}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-sm text-gray-900">{topic.name}</h4>
+                    <h4 className="font-medium text-sm text-[var(--text-primary)]">{topic.name}</h4>
                     {isCreated && (
-                      <Badge variant="default" size="sm" className="bg-green-100 text-green-700">
+                      <Badge variant="success" size="sm">
                         created
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.description}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{topic.description}</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {topic.cpc_prefixes.map((cpc) => (
                       <span
                         key={cpc}
-                        className="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5"
+                        className="text-xs text-[var(--text-muted)] bg-[var(--bg-glass)] rounded px-1.5 py-0.5"
                       >
                         {cpc}
                       </span>

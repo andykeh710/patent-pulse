@@ -15,7 +15,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--signal-glow)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center rounded-[var(--radius-md)] text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:opacity-50 disabled:cursor-not-allowed";
 
   const sizes = {
     sm: "px-3 py-1.5 text-xs",
@@ -24,13 +24,13 @@ export function Button({
 
   const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
     primary:
-      "bg-gradient-to-r from-[var(--signal-blue)] to-[var(--signal-violet)] text-white hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0",
+      "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] active:scale-[0.98]",
     secondary:
-      "border border-[var(--border-strong)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--signal-blue)]/40",
+      "border border-[var(--border-default)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--accent)]/40",
     ghost:
       "text-[var(--text-muted)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)]",
     outline:
-      "border border-[var(--border-strong)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--signal-blue)]/40",
+      "border border-[var(--border-default)] text-[var(--text-secondary)] bg-transparent hover:bg-[var(--bg-glass)] hover:border-[var(--accent)]/40",
     default:
       "bg-[var(--bg-glass)] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-glass-strong)]",
     danger:
