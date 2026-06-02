@@ -17,6 +17,7 @@ from sqlalchemy import desc, func, select, text
 from app.api.deps import DbSession
 from app.core.ai_models import TrendSnapshot
 from app.core.models import PatentPublication
+from app.services.briefing import assemble_briefing
 
 router = APIRouter()
 
@@ -328,3 +329,16 @@ async def get_highlights(db: DbSession) -> TodayHighlightsResponse:
         notable_patent=notable,
         company_move=company,
     )
+
+
+# ── Briefing feed ──────────────────────────────────────────
+
+
+@router.get("/briefing")
+async def get_briefing(db: DbSession) -> list[dict]:
+    """Return a weighted briefing feed for the Today page.
+
+    Each item includes required fields: type, label, title, reason,
+    source, freshness, confidence, href.
+    """
+    return await assemble_briefing(db)

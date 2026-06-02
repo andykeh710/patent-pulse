@@ -32,7 +32,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.models import Base
 
@@ -42,10 +42,7 @@ from app.core.models import Base
 
 
 class User(Base):
-    """
-    Single-user scaffold. Phase 0 seeds exactly one row matching
-    ``settings.default_user_id``. V1.1 auth makes this multi-user.
-    """
+    """User authentication and preferences."""
 
     __tablename__ = "users"
 
@@ -55,10 +52,24 @@ class User(Base):
     tier: Mapped[str] = mapped_column(String(16), default="free", index=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     preferences: Mapped[dict | None] = mapped_column(JSONB)
+    persona: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    company_follows = relationship("UserCompanyFollow", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover - repr only
         return f"<User {self.id}>"
+
+
+class UserCompanyFollow(Base):
+    __tablename__ = "user_company_follows"
+
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    company_normalized_name: Mapped[str] = mapped_column(Text, primary_key=True)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", back_populates="company_follows")
 
 
 # ---------------------------------------------------------------------------

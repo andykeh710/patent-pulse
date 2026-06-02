@@ -18,11 +18,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_user, get_db, SESSION_COOKIE_NAME
-from app.core.ai_models import AIRun, User
+from app.core.ai_models import AIRun, User, UserCompanyFollow
 from app.core.billing_models import BillingSubscription
 from app.core.subscription_models import EmailDelivery
+from app.services.follow_company import add_follow, list_follows, remove_follow
+from app.services.company_suggestions import get_suggested_companies
 
 logger = structlog.get_logger(__name__)
 
@@ -100,3 +103,92 @@ async def delete_account(
     response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     return response
+
+
+# ── Persona ──────────────────────────────────────────────────
+
+
+class PersonaSetRequest(BaseModel):
+    persona: str  # "operator" | "investor" | "curious"
+
+
+class PersonaResponse(BaseModel):
+    persona: str | None
+
+
+@router.put("/persona", response_model=PersonaResponse)
+async def set_persona(
+    request: PersonaSetRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if request.persona not in ("operator", "investor", "curious"):
+        raise HTTPException(422, "persona must be operator, investor, or curious")
+    user.persona = request.persona
+    await db.commit()
+    return PersonaResponse(persona=user.persona)
+
+
+# ── Company follows ─────────────────────────────────────────
+
+
+class CompanyFollowRequest(BaseModel):
+    company_name: str
+
+
+class CompanyFollowResponse(BaseModel):
+    company_normalized_name: str
+    display_name: str
+
+
+@router.post("/companies", status_code=201, response_model=CompanyFollowResponse)
+async def follow_company(
+    request: CompanyFollowRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    follow = await add_follow(db, user.id, request.company_name)
+    return CompanyFollowResponse(
+        company_normalized_name=follow.company_normalized_name,
+        display_name=follow.display_name,
+    )
+
+
+@router.delete("/companies/{normalized_name}", status_code=204)
+async def unfollow_company(
+    normalized_name: str,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    deleted = await remove_follow(db, user.id, normalized_name)
+    if not deleted:
+        raise HTTPException(404, "Company not found in your follows")
+
+
+@router.get("/companies", response_model=list[CompanyFollowResponse])
+async def get_company_follows(
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    follows = await list_follows(db, user.id)
+    return [
+        CompanyFollowResponse(
+            company_normalized_name=f.company_normalized_name,
+            display_name=f.display_name,
+        )
+        for f in follows
+    ]
+
+
+# ── Company suggestions ────────────────────────────────────
+
+
+@router.get("/companies/suggested")
+async def get_suggested_companies_endpoint(
+    persona: str = "curious",
+    db: AsyncSession = Depends(get_db),
+):
+    """Return persona-biased company suggestions with patent counts."""
+    if persona not in ("operator", "investor", "curious"):
+        persona = "curious"
+    return await get_suggested_companies(db, persona=persona)
