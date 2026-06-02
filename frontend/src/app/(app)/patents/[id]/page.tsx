@@ -20,6 +20,7 @@ import { TrendSnapshotPanel } from "@/components/patents/TrendSnapshotPanel";
 import { AssigneeIntelligencePanel } from "@/components/patents/AssigneeIntelligencePanel";
 import { ClaimsPanel } from "@/components/patents/ClaimsPanel";
 import { ExternalPatentLinks } from "@/components/patents/ExternalPatentLinks";
+import { PatentFiguresPanel } from "@/components/patents/PatentFiguresPanel";
 import { PatentDetailTabs } from "@/components/patents/PatentDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
@@ -329,41 +330,15 @@ export default function PatentDetailPage({
           <ExternalPatentLinks publicationNumber={patent.publication_number} office={patent.office} docId={patent.doc_id} />
           <SourceAttribution office={patent.office} />
 
-          {/* Figures — link-only per AGENTS.md. Google Patents blocks iframe embedding
-              via X-Frame-Options: sameorigin, and we never host or re-serve patent images. */}
+          {/* Figures — thumbnail via Google Patents og:image (backend-resolved + Redis-cached).
+              Brand rule "link-only, never host or re-serve" explicitly overridden 2026-06-02 per Andy.
+              We extract Google's CDN URL and embed <img> directly; bytes are NOT proxied through us.
+              Falls back to link-card if the scrape fails or the patent has no og:image. */}
           {patent.figure_page_url && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2 flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Patent Figures
-              </h3>
-              <a
-                href={patent.figure_page_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block rounded-lg bg-[var(--bg-glass)] backdrop-blur-md border border-[var(--border-subtle)] hover:border-[var(--accent)]/40 hover:bg-[var(--bg-glass-strong)] p-5 transition-all duration-200"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-[var(--text-primary)]">
-                      View official figures
-                    </div>
-                    <div className="text-xs text-[var(--text-muted)] mt-0.5">
-                      Opens at the source in a new tab
-                    </div>
-                  </div>
-                  <span className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors text-lg">
-                    ↗
-                  </span>
-                </div>
-              </a>
-              <p className="text-xs text-[var(--text-muted)] mt-2">
-                Figures &copy; patent office. We link to the official source; we never host or re-serve patent images.
-              </p>
-            </div>
+            <PatentFiguresPanel
+              publicationNumber={patent.publication_number}
+              figurePageUrl={patent.figure_page_url}
+            />
           )}
         </div>
       </div>

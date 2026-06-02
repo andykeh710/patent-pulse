@@ -572,3 +572,108 @@ async def generate_assignee_intelligence(
         "assignee_intelligence_score": data.get("assignee_intelligence_score", 0.0),
         "components": data.get("components", {}),
     }
+
+
+# ─── Patent thumbnail proxy (Google Patents scrape, cached in Redis) ────────
+# Brand rule "link-only, never host or re-serve" explicitly overridden 2026-06-02
+# per Andy. We extract the og:image URL from patents.google.com and return
+# Google's CDN URL (patentimages.storage.googleapis.com) so the frontend can
+# render <img> directly. We don't proxy the image bytes — we just resolve the URL.
+
+import re
+import httpx
+import redis as redis_lib
+import logging
+
+from app.config import settings
+
+_thumbnail_logger = logging.getLogger("patent.thumbnail")
+
+_OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
+_PUBLICATION_NUMBER_NORMALIZE_RE = re.compile(r"[^A-Z0-9]")
+
+_THUMBNAIL_TTL_OK = 7 * 24 * 3600        # 7 days for successful resolves
+_THUMBNAIL_TTL_MISS = 24 * 3600          # 1 day for "no image" — avoid hammering
+_THUMBNAIL_TTL_TRANSIENT = 60 * 30       # 30 min for network errors — retry sooner
+
+_thumbnail_redis_client: redis_lib.Redis | None = None
+
+
+def _thumbnail_redis() -> redis_lib.Redis:
+    global _thumbnail_redis_client
+    if _thumbnail_redis_client is None:
+        _thumbnail_redis_client = redis_lib.Redis.from_url(
+            settings.redis_url, decode_responses=True
+        )
+    return _thumbnail_redis_client
+
+
+@router.get("/{publication_number}/thumbnail-url")
+async def get_patent_thumbnail_url(publication_number: str) -> dict:
+    """Resolve a Google Patents thumbnail URL for a publication number.
+
+    Scrapes the og:image meta tag from patents.google.com. Result cached in
+    Redis (7d on success, 1d on miss, 30min on transient error). Returns
+    Google's CDN URL so the frontend can embed it via <img> directly without
+    proxying image bytes.
+
+    Returns:
+        {"url": str | None, "cached": bool, "error": str | None}
+    """
+    clean_pub = _PUBLICATION_NUMBER_NORMALIZE_RE.sub("", publication_number.upper())
+    if not clean_pub:
+        raise HTTPException(400, "Invalid publication number")
+
+    cache_key = f"patent_thumbnail:{clean_pub}"
+    r = _thumbnail_redis()
+    try:
+        cached = r.get(cache_key)
+    except Exception:
+        cached = None
+
+    if cached is not None:
+        return {"url": cached or None, "cached": True, "error": None}
+
+    url = f"https://patents.google.com/patent/{clean_pub}"
+    headers = {
+        "User-Agent": "InventionIndex8/1.0 (+https://inventionindex8.com)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.RequestError as exc:
+        _thumbnail_logger.warning("thumbnail fetch failed for %s: %s", clean_pub, exc)
+        # cache transient errors briefly so retries don't pile up
+        try:
+            r.setex(cache_key, _THUMBNAIL_TTL_TRANSIENT, "")
+        except Exception:
+            pass
+        return {"url": None, "cached": False, "error": "fetch_failed"}
+
+    if resp.status_code != 200:
+        try:
+            r.setex(cache_key, _THUMBNAIL_TTL_MISS, "")
+        except Exception:
+            pass
+        return {"url": None, "cached": False, "error": f"http_{resp.status_code}"}
+
+    match = _OG_IMAGE_RE.search(resp.text)
+    if not match:
+        try:
+            r.setex(cache_key, _THUMBNAIL_TTL_MISS, "")
+        except Exception:
+            pass
+        return {"url": None, "cached": False, "error": "no_thumbnail"}
+
+    img_url = match.group(1)
+    try:
+        r.setex(cache_key, _THUMBNAIL_TTL_OK, img_url)
+    except Exception:
+        pass
+    return {"url": img_url, "cached": False, "error": None}
