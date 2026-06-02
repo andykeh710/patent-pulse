@@ -283,7 +283,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-green-600" : item.supplier_score >= 35 ? "text-yellow-600" : "text-[var(--text-muted)]"}`}>
+                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-[var(--score-high)]" : item.supplier_score >= 35 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
                     {item.supplier_score}
                   </span>
                 </td>

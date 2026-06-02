@@ -115,7 +115,7 @@ function NotablePatentHighlight({ data }: { data: NotablePatentCard | null }) {
       )}
       <div className="flex items-center gap-2 mt-2">
         {data.limited_source && (
-          <span className="text-xs text-amber-600 bg-[var(--score-medium-bg)] px-1.5 py-0.5 rounded">
+          <span className="text-xs text-[var(--score-medium)] bg-[var(--score-medium-bg)] px-1.5 py-0.5 rounded">
             Limited source text available
           </span>
         )}
@@ -290,7 +290,7 @@ export default function TodayPage() {
 
       {/* Data freshness note */}
       <div className="mb-6 text-xs text-[var(--text-muted)] flex items-center gap-2">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400"></span>
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--score-high)]"></span>
         Patent intelligence updates continuously as enrichment, scoring, and
         summarization jobs complete. Forward citation coverage is affected by
         USPTO availability.{" "}
@@ -472,10 +472,10 @@ export default function TodayPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {hotTrends.items.slice(0, 5).map((item) => (
+              {hotTrends.items.slice(0, 5).map((item, i) => (
                 <div
-                  key={`${item.surface}-${item.key}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
+                  key={`${item.surface}-${item.key}-${i}`}
+                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -486,7 +486,7 @@ export default function TodayPage() {
                       {item.count_4w} patents (4wk) · z-score {item.z_score.toFixed(1)}
                     </p>
                   </div>
-                  <div className={`text-sm font-semibold ${item.growth_pct > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  <div className={`text-sm font-semibold ${item.growth_pct > 0 ? "text-[var(--score-high)]" : "text-[var(--expiry-lapsed-confirmed)]"}`}>
                     {item.growth_pct > 0 ? "+" : ""}{item.growth_pct.toFixed(1)}%
                   </div>
                 </div>
@@ -576,7 +576,7 @@ export default function TodayPage() {
                       {item.country ? ` · ${item.country}` : ""}
                     </p>
                   </div>
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-green-600" : item.supplier_score >= 35 ? "text-yellow-600" : "text-[var(--text-muted)]"}`}>
+                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-[var(--score-high)]" : item.supplier_score >= 35 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
                     {item.supplier_score}
                   </span>
                 </Link>

@@ -24,9 +24,9 @@ function severity(flag: string): "high" | "med" | "low" {
 }
 
 function severityClass(s: "high" | "med" | "low"): string {
-  if (s === "high") return "bg-red-100 text-red-700 border border-red-300";
+  if (s === "high") return "bg-[var(--expiry-lapsed-confirmed)]/12 text-[var(--expiry-lapsed-confirmed)] border border-[var(--expiry-lapsed-confirmed)]/30";
   if (s === "med") return "bg-[var(--score-medium-bg)] text-[var(--score-medium)]";
-  return "bg-gray-100 text-gray-700";
+  return "bg-[var(--bg-glass-strong)] text-[var(--text-secondary)]";
 }
 
 export function RiskFlagsBadge({ flags, collapse = false }: RiskFlagsBadgeProps) {
@@ -54,7 +54,7 @@ export function RiskFlagsBadge({ flags, collapse = false }: RiskFlagsBadgeProps)
         );
       })}
       {remainder > 0 && (
-        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+        <span className="inline-flex items-center rounded-md bg-[var(--bg-glass-strong)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
           +{remainder} more
         </span>
       )}

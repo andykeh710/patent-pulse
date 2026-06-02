@@ -34,7 +34,7 @@ export function Button({
     default:
       "bg-[var(--bg-glass)] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-glass-strong)]",
     danger:
-      "bg-red-500/10 border border-red-400/30 text-red-400 hover:bg-red-500/20",
+      "bg-[var(--expiry-lapsed-confirmed)]/10 border border-[var(--expiry-lapsed-confirmed)]/30 text-[var(--expiry-lapsed-confirmed)] hover:bg-[var(--expiry-lapsed-confirmed)]/20",
   };
 
   return (

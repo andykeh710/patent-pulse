@@ -308,13 +308,13 @@ function TrendList({
           <div className="flex items-center gap-3 text-right">
             <div>
               <div className="text-xs text-[var(--text-muted)]">z-score</div>
-              <div className={`text-lg font-bold ${item.z_score >= 5 ? "text-[var(--accent)]" : item.z_score >= 2 ? "text-amber-600" : "text-[var(--text-secondary)]"}`}>
+              <div className={`text-lg font-bold ${item.z_score >= 5 ? "text-[var(--accent)]" : item.z_score >= 2 ? "text-[var(--score-medium)]" : "text-[var(--text-secondary)]"}`}>
                 {item.z_score.toFixed(1)}
               </div>
             </div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">growth</div>
-              <div className={`text-sm font-semibold ${item.growth_pct > 0 ? "text-emerald-600" : item.growth_pct < 0 ? "text-red-600" : "text-[var(--text-muted)]"}`}>
+              <div className={`text-sm font-semibold ${item.growth_pct > 0 ? "text-[var(--score-high)]" : item.growth_pct < 0 ? "text-[var(--expiry-lapsed-confirmed)]" : "text-[var(--text-muted)]"}`}>
                 {item.growth_pct > 0 ? "+" : ""}{item.growth_pct.toFixed(1)}%
               </div>
             </div>

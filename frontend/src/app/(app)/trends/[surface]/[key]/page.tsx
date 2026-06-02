@@ -176,7 +176,7 @@ function TrendDrilldownContent() {
                 trend.z_score >= 5
                   ? "text-[var(--accent)]"
                   : trend.z_score >= 2
-                  ? "text-amber-600"
+                  ? "text-[var(--score-medium)]"
                   : "text-[var(--text-secondary)]"
               }`}
             >
@@ -187,7 +187,7 @@ function TrendDrilldownContent() {
             <span className="text-xs text-[var(--text-muted)]">growth</span>
             <div
               className={`text-lg font-bold ${
-                trend.growth_pct > 0 ? "text-emerald-600" : "text-red-600"
+                trend.growth_pct > 0 ? "text-[var(--score-high)]" : "text-[var(--expiry-lapsed-confirmed)]"
               }`}
             >
               {trend.growth_pct > 0 ? "+" : ""}

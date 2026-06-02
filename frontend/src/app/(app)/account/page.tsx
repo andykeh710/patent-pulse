@@ -79,16 +79,16 @@ function DangerZone() {
 
   return (
     <>
-      <hr className="my-8 border-red-200" />
+      <hr className="my-8 border-[var(--expiry-lapsed-confirmed)]/20" />
       <div>
-        <h2 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h2>
+        <h2 className="text-lg font-semibold text-[var(--expiry-lapsed-confirmed)] mb-2">Danger Zone</h2>
         <p className="text-sm text-[var(--text-secondary)] mb-3">
           Permanently delete your account and all associated data. This
           action cannot be undone.
         </p>
         <button
           onClick={() => setOpen(true)}
-          className="text-sm px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          className="text-sm px-4 py-2 bg-[var(--expiry-lapsed-confirmed)] text-white rounded-lg hover:opacity-90 transition-opacity"
         >
           Delete my account
         </button>
@@ -113,7 +113,7 @@ function DangerZone() {
               className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             />
             {error && (
-              <p className="text-xs text-red-600">{error}</p>
+              <p className="text-xs text-[var(--expiry-lapsed-confirmed)]">{error}</p>
             )}
             <div className="flex justify-end gap-2">
               <button
@@ -129,7 +129,7 @@ function DangerZone() {
               <button
                 onClick={handleDelete}
                 disabled={deleting || !confirmEmail}
-                className="text-sm px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="text-sm px-4 py-2 bg-[var(--expiry-lapsed-confirmed)] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>
@@ -209,7 +209,7 @@ function SubscriptionsSection() {
                     <span>· min score: {sub.min_score}</span>
                   )}
                   {sub.paused && (
-                    <span className="text-amber-600">· Paused</span>
+                    <span className="text-[var(--score-medium)]">· Paused</span>
                   )}
                   {sub.last_delivered_at && (
                     <span>
@@ -245,7 +245,7 @@ function SubscriptionsSection() {
                     await subscriptionsApi.delete(sub.id);
                     mutate();
                   }}
-                  className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50"
+                  className="text-xs px-2 py-1 border border-[var(--expiry-lapsed-confirmed)]/30 text-[var(--expiry-lapsed-confirmed)] rounded hover:bg-[var(--expiry-lapsed-confirmed)]/10 transition-colors"
                 >
                   Delete
                 </button>

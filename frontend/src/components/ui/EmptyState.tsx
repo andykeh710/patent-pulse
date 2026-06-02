@@ -72,9 +72,9 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 bg-red-500/5 rounded-lg border border-red-500/20">
+    <div className="flex flex-col items-center justify-center py-12 px-6 bg-[var(--expiry-lapsed-confirmed)]/5 rounded-lg border border-[var(--expiry-lapsed-confirmed)]/20">
       <svg
-        className="w-10 h-10 text-red-400/60 mb-3"
+        className="w-10 h-10 text-[var(--expiry-lapsed-confirmed)]/60 mb-3"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -86,12 +86,12 @@ export function ErrorState({
           d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
         />
       </svg>
-      <h3 className="text-sm font-medium text-red-400 mb-1">Error</h3>
-      <p className="text-xs text-red-400/60 text-center max-w-sm">{message}</p>
+      <h3 className="text-sm font-medium text-[var(--expiry-lapsed-confirmed)] mb-1">Error</h3>
+      <p className="text-xs text-[var(--expiry-lapsed-confirmed)]/60 text-center max-w-sm">{message}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-4 text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
+          className="mt-4 text-sm text-[var(--expiry-lapsed-confirmed)] hover:opacity-80 font-medium transition-opacity"
         >
           Retry
         </button>

@@ -15,9 +15,9 @@ export function ErrorDisplay({
 }: ErrorDisplayProps) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center min-h-[200px]">
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 max-w-md w-full">
-        <h2 className="text-lg font-semibold text-red-800 mb-2">{title}</h2>
-        <p className="text-sm text-red-600 mb-4">
+      <div className="rounded-lg border border-[var(--expiry-lapsed-confirmed)]/30 bg-[var(--expiry-lapsed-confirmed)]/10 p-6 max-w-md w-full">
+        <h2 className="text-lg font-semibold text-[var(--expiry-lapsed-confirmed)] mb-2">{title}</h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-4">
           {error?.message || "An unexpected error occurred. Please try again."}
         </p>
         {onRetry && (

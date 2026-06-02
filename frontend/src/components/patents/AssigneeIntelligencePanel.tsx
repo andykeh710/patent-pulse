@@ -60,7 +60,7 @@ export function AssigneeIntelligencePanel({ patent, artifact, isLoading, onGener
     <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-[var(--text-primary)]">Assignee Intelligence</h2>
-        <span className={`text-sm font-semibold ${score >= 60 ? "text-green-600" : score >= 40 ? "text-yellow-600" : "text-[var(--text-muted)]"}`}>
+        <span className={`text-sm font-semibold ${score >= 60 ? "text-[var(--score-high)]" : score >= 40 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
           {score}/100
         </span>
       </div>
@@ -75,7 +75,7 @@ export function AssigneeIntelligencePanel({ patent, artifact, isLoading, onGener
               </div>
               <div className="w-full bg-[var(--bg-elevated)] rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full ${comp.sub_score >= 0.6 ? "bg-[var(--score-high-bg)]0" : comp.sub_score >= 0.4 ? "bg-yellow-500" : "bg-gray-400"}`}
+                  className={`h-2 rounded-full ${comp.sub_score >= 0.6 ? "bg-[var(--score-high)]" : comp.sub_score >= 0.4 ? "bg-[var(--score-medium)]" : "bg-[var(--text-muted)]"}`}
                   style={{ width: `${Math.round(comp.sub_score * 100)}%` }}
                 />
               </div>

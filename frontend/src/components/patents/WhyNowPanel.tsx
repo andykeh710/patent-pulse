@@ -66,7 +66,7 @@ export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowP
               artifact.confidence === "high"
                 ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
                 : artifact.confidence === "medium"
-                ? "bg-yellow-100 text-yellow-700"
+                ? "bg-[var(--score-medium-bg)] text-[var(--score-medium)]"
                 : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
             }`}
           >

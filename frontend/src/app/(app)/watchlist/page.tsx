@@ -128,7 +128,7 @@ export default function WatchlistPage() {
                 <button
                   onClick={() => handleRemove(item)}
                   disabled={removing === item.id}
-                  className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-red-500 transition-colors disabled:opacity-50"
+                  className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--expiry-lapsed-confirmed)] transition-colors disabled:opacity-50"
                   title="Remove from watchlist"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

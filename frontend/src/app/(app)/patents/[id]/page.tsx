@@ -87,8 +87,8 @@ function DataCompletenessPanel({ patent }: { patent: PatentDetail }) {
                     allAvailable
                       ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
                       : noneAvailable
-                      ? "bg-red-50 text-red-600"
-                      : "bg-yellow-50 text-yellow-700"
+                      ? "bg-[var(--score-medium-bg)] text-[var(--expiry-lapsed-confirmed)]"
+                      : "bg-[var(--score-medium-bg)] text-[var(--score-medium)]"
                   }`}
                 >
                   {cat} {catAvailable}/{catFields.length}
@@ -120,7 +120,7 @@ function DataCompletenessPanel({ patent }: { patent: PatentDetail }) {
                     .filter((f) => f.category === cat)
                     .map((f) => (
                       <div key={f.label} className="flex items-center gap-2 text-xs">
-                        <span className={f.status === "available" ? "text-green-500" : "text-[var(--text-muted)]"}>
+                        <span className={f.status === "available" ? "text-[var(--score-high)]" : "text-[var(--text-muted)]"}>
                           {f.status === "available" ? "●" : "○"}
                         </span>
                         <span className={f.status === "available" ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]"}>
@@ -344,7 +344,7 @@ export default function PatentDetailPage({
                 href={patent.figure_page_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block rounded-lg bg-[var(--bg-glass)] backdrop-blur-md border border-[var(--border-subtle)] hover:border-[var(--signal-blue)]/40 hover:bg-[var(--bg-glass-strong)] p-5 transition-all duration-200"
+                className="group block rounded-lg bg-[var(--bg-glass)] backdrop-blur-md border border-[var(--border-subtle)] hover:border-[var(--accent)]/40 hover:bg-[var(--bg-glass-strong)] p-5 transition-all duration-200"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -355,7 +355,7 @@ export default function PatentDetailPage({
                       Opens at the source in a new tab
                     </div>
                   </div>
-                  <span className="text-[var(--text-muted)] group-hover:text-[var(--signal-blue)] transition-colors text-lg">
+                  <span className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors text-lg">
                     ↗
                   </span>
                 </div>
@@ -646,18 +646,18 @@ function FamilyTab({ patent }: { patent: PatentDetail }) {
 // ── Jurisdiction parser ──────────────────────────────────────────────
 
 const JURISDICTION_MAP: Record<string, { code: string; label: string; color: string }> = {
-  US: { code: "US", label: "United States", color: "bg-[var(--accent-muted)] text-[var(--accent)]" },
+  US: { code: "US", label: "United States",          color: "bg-[var(--accent-muted)] text-[var(--accent)]" },
   EP: { code: "EP", label: "European Patent Office", color: "bg-[var(--accent-muted)] text-[var(--accent)]" },
-  WO: { code: "WO", label: "WIPO / PCT", color: "bg-teal-100 text-teal-700" },
-  JP: { code: "JP", label: "Japan", color: "bg-red-100 text-red-700" },
-  CN: { code: "CN", label: "China", color: "bg-orange-100 text-orange-700" },
-  KR: { code: "KR", label: "South Korea", color: "bg-pink-100 text-pink-700" },
-  GB: { code: "GB", label: "United Kingdom", color: "bg-[var(--accent-muted)] text-[var(--accent)]" },
-  DE: { code: "DE", label: "Germany", color: "bg-yellow-100 text-yellow-700" },
-  FR: { code: "FR", label: "France", color: "bg-[var(--accent-muted)] text-[var(--type-foryou)]" },
-  CA: { code: "CA", label: "Canada", color: "bg-red-100 text-red-700" },
-  AU: { code: "AU", label: "Australia", color: "bg-[var(--score-high-bg)] text-[var(--score-high)]" },
-  IN: { code: "IN", label: "India", color: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]" },
+  WO: { code: "WO", label: "WIPO / PCT",             color: "bg-[var(--score-high-bg)] text-[var(--score-high)]" },
+  JP: { code: "JP", label: "Japan",                  color: "bg-[var(--bg-glass-strong)] text-[var(--expiry-lapsed-confirmed)]" },
+  CN: { code: "CN", label: "China",                  color: "bg-[var(--bg-glass-strong)] text-[var(--expiry-lapsed-possible)]" },
+  KR: { code: "KR", label: "South Korea",            color: "bg-[var(--bg-glass-strong)] text-[var(--type-foryou)]" },
+  GB: { code: "GB", label: "United Kingdom",         color: "bg-[var(--accent-muted)] text-[var(--accent)]" },
+  DE: { code: "DE", label: "Germany",                color: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]" },
+  FR: { code: "FR", label: "France",                 color: "bg-[var(--accent-muted)] text-[var(--type-foryou)]" },
+  CA: { code: "CA", label: "Canada",                 color: "bg-[var(--bg-glass-strong)] text-[var(--expiry-lapsed-confirmed)]" },
+  AU: { code: "AU", label: "Australia",              color: "bg-[var(--score-high-bg)] text-[var(--score-high)]" },
+  IN: { code: "IN", label: "India",                  color: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]" },
 };
 
 function parseJurisdiction(pubNumber: string): {

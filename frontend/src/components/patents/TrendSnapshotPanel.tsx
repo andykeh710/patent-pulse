@@ -75,7 +75,7 @@ export function TrendSnapshotPanel({ patent, artifact, isLoading, onGenerate }: 
               </div>
               <div className="w-full bg-[var(--bg-elevated)] rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full ${comp.sub_score >= 0.6 ? "bg-[var(--score-high-bg)]0" : comp.sub_score >= 0.4 ? "bg-yellow-500" : "bg-gray-400"}`}
+                  className={`h-2 rounded-full ${comp.sub_score >= 0.6 ? "bg-[var(--score-high)]" : comp.sub_score >= 0.4 ? "bg-[var(--score-medium)]" : "bg-[var(--text-muted)]"}`}
                   style={{ width: `${Math.round(comp.sub_score * 100)}%` }}
                 />
               </div>

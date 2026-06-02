@@ -17,7 +17,7 @@ const toneMap: Record<PillTone, { bg: string; text: string; border: string }> = 
   cyan:   { bg: "bg-[var(--type-company)]/12",  text: "text-[var(--type-company)]",  border: "border-[var(--type-company)]/30" },
   green:  { bg: "bg-[var(--score-high)]/12",   text: "text-[var(--score-high)]",   border: "border-[var(--score-high)]/30" },
   amber:  { bg: "bg-[var(--warning)]/12",       text: "text-[var(--warning)]",       border: "border-[var(--warning)]/30" },
-  red:    { bg: "bg-red-500/12",                text: "text-red-400",                border: "border-red-400/30" },
+  red:    { bg: "bg-[var(--expiry-lapsed-confirmed)]/12", text: "text-[var(--expiry-lapsed-confirmed)]", border: "border-[var(--expiry-lapsed-confirmed)]/30" },
   gray:   { bg: "bg-[var(--text-muted)]/12",    text: "text-[var(--text-muted)]",    border: "border-[var(--text-muted)]/30" },
 };
 

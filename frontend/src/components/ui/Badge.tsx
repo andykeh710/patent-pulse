@@ -19,7 +19,7 @@ export function Badge({
     default: "bg-[var(--text-muted)]/12 text-[var(--text-muted)]",
     success: "bg-[var(--score-high)]/12 text-[var(--score-high)]",
     warning: "bg-[var(--warning)]/12 text-[var(--warning)]",
-    danger: "bg-red-400/12 text-red-400",
+    danger: "bg-[var(--expiry-lapsed-confirmed)]/12 text-[var(--expiry-lapsed-confirmed)]",
     speculative: "bg-[var(--warning)]/12 text-[var(--warning)] border border-[var(--warning)]/30",
   };
 

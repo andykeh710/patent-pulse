@@ -394,7 +394,7 @@ function ThemeCard({
               onDelete();
             }}
             disabled={isDeleting}
-            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+            className="text-xs text-[var(--expiry-lapsed-confirmed)] hover:opacity-80 disabled:opacity-50 transition-opacity"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </button>

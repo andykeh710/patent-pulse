@@ -58,45 +58,73 @@ These resolve route-level naming, surface conflicts, and language posture that t
 
 ### 3.1 Color tokens
 
-Create `frontend/src/styles/tokens.css` with the canonical palette, then import it once in the root layout. Tailwind config keeps the same names so utility classes stay consistent. CSS variables are required for `<svg>`, `<canvas>`, and CSS module contexts that can't access Tailwind.
+**Updated 2026-06-02 — v2 Palantir-inspired palette.** Andy directed a shift from the original indigo/violet "signal" palette to a more restrained, data-forward Palantir-style aesthetic. Steel-blue accent, near-black surfaces, no glow orbs, no scan/shimmer effects. The token names changed (`--signal-blue` → `--accent`); the new authoritative palette is in `frontend/src/styles/tokens.css`:
 
 ```css
 :root {
-  /* Base surfaces */
-  --bg-base: #0A0E27;        /* deep navy with blue undertone */
-  --bg-elevated: #11162A;    /* one level up — panels, modals */
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --bg-glass-strong: rgba(255, 255, 255, 0.06);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* ── Base surfaces ── */
+  --bg-base: #08090D;          /* near-black */
+  --bg-elevated: #101318;
+  --bg-surface: #151920;
+  --bg-overlay: rgba(0, 0, 0, 0.60);
 
-  /* Text */
-  --text-primary: #E8ECF7;
-  --text-secondary: #C7D2FE;
-  --text-muted: #94A3B8;
-  --text-disabled: #64748B;
+  /* ── Glass / translucent ── */
+  --bg-glass: rgba(255, 255, 255, 0.025);
+  --bg-glass-strong: rgba(255, 255, 255, 0.045);
 
-  /* Signal — for icons, accents, indicators */
-  --signal-blue: #6366F1;       /* primary */
-  --signal-violet: #8B5CF6;     /* secondary, AI affordances */
-  --signal-cyan: #06B6D4;       /* technical / live */
-  --signal-glow: #818CF8;       /* hover, focus rings */
+  /* ── Borders (elevation-aware) ── */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  /* Semantic */
-  --score-high: #34D399;        /* positive opportunity */
-  --score-medium: #F59E0B;      /* caution / warning */
-  --score-low: #94A3B8;         /* neutral / muted */
-  --warning: #F59E0B;           /* expiring, caveats */
+  /* ── Text ── */
+  --text-primary: #E4E6EC;
+  --text-secondary: #9BA1B0;
+  --text-muted: #636A7A;
+  --text-disabled: #464C59;
 
-  /* Briefing item-type accents (left-border colors) */
-  --type-trend: var(--signal-blue);
+  /* ── Brand accent (cool steel-blue — analytical, not decorative) ── */
+  --accent: #6B8CFF;
+  --accent-hover: #8BA4FF;
+  --accent-muted: rgba(107, 140, 255, 0.12);
+  --accent-glow: rgba(107, 140, 255, 0.18);
+
+  /* ── Semantic: confidence tiers + warning ── */
+  --score-high: #34D399;        --score-high-bg: rgba(52, 211, 153, 0.10);
+  --score-medium: #F59E0B;      --score-medium-bg: rgba(245, 158, 11, 0.10);
+  --score-low: #9BA1B0;         --score-low-bg: rgba(155, 161, 176, 0.08);
+  --warning: #F59E0B;
+
+  /* ── Semantic: expiry status (6 explicit states) ── */
+  --expiry-active-estimated: #34D399;
+  --expiry-expiring-soon: #F59E0B;
+  --expiry-lapsed-possible: #F97316;
+  --expiry-lapsed-confirmed: #EF4444;
+  --expiry-expired-estimated: #9BA1B0;
+  --expiry-unknown: #636A7A;
+
+  /* ── Briefing item-type accents (preserved across rename for components) ── */
+  --type-trend: var(--accent);
   --type-notable: var(--score-high);
-  --type-company: #7DD3FC;      /* sky blue */
+  --type-company: #61AEEE;
   --type-expiring: var(--warning);
-  --type-foryou: var(--signal-violet);
-  --type-news: var(--signal-violet);  /* V1.1 slot */
+  --type-foryou: #A78BFA;
+  --type-news: #A78BFA;
+
+  /* ── Radii + shadows + z-index — see tokens.css for full set ── */
 }
 ```
+
+**What changed from v1:**
+- Background near-black (`#08090D`) instead of deep navy (`#0A0E27`) — less colored undertone
+- Accent renamed `--signal-blue` → `--accent`, value shifted from indigo `#6366F1` to steel-blue `#6B8CFF`
+- Removed signal-orb hero background, scan-sweep card hover, drift animations
+- Removed gradient on the "8" pill in brand mark (solid accent only)
+- Removed `--signal-violet`, `--signal-cyan`, `--signal-glow` — accent variants replace them
+- Added 6 explicit expiry-status colors
+- Added radii / shadows / z-index scales
+
+The "8 = 8 invention signals" thematic identity per [[brand-invention-index-8]] memory is preserved (the badge still surfaces this) — only the visual treatment shifted.
 
 ### 3.2 Typography
 
@@ -792,7 +820,7 @@ Reserved for overflow, regressions, copy revisions, design tweaks Andy requests 
   - No simulated subscription state, fake invoices, or staged tier upgrades on the billing page
   - No "AI-recommended" labeling on the V1 rule-based "For you" card (§7.3)
   - Honest empty / sparse / blocked states are always better than fabricated content. If a surface has nothing real to show, say so plainly.
-- **No new heavy dependencies**. Allowed: `next/font/google` (Geist). Disallowed: framer-motion (use CSS), D3, Three.js, canvas/WebGL, any new charting library.
+- **Dependency policy** (updated 2026-06-02). Allowed: `next/font/google` (Geist) and `motion` (the rebranded framer-motion package; ~30KB gzipped, JS-first scroll/transition primitives used by the `Reveal` component). Disallowed: D3, Three.js, canvas/WebGL, any new charting library. `motion` use should be focused — Reveal for scroll-triggered fade-ups and small page-transition primitives. Prefer CSS for hover states, prefer the existing `Counter` (IntersectionObserver + CSS) pattern for animated numerics.
 
 ---
 

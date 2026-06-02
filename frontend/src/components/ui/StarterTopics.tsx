@@ -44,7 +44,7 @@ export function StarterTopics({ onCreated, showHeading = true }: StarterTopicsPr
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-500/10 text-red-400 text-sm border border-red-400/20">
+        <div className="mb-4 p-3 rounded-lg bg-[var(--expiry-lapsed-confirmed)]/10 text-[var(--expiry-lapsed-confirmed)] text-sm border border-[var(--expiry-lapsed-confirmed)]/20">
           {error}
         </div>
       )}

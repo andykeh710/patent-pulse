@@ -67,10 +67,10 @@ export function OpportunityBreakdown({
                   className={
                     "h-full rounded " +
                     (c.sub_score >= 0.7
-                      ? "bg-emerald-500"
+                      ? "bg-[var(--score-high)]"
                       : c.sub_score >= 0.4
-                        ? "bg-yellow-500"
-                        : "bg-gray-400")
+                        ? "bg-[var(--score-medium)]"
+                        : "bg-[var(--text-muted)]")
                   }
                   style={{ width: `${subPct}%` }}
                 />
