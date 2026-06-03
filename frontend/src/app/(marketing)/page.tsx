@@ -124,8 +124,8 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════
           3. VALUE PROPS — 4 premium cards, 2×2 grid
           ═══════════════════════════════════════════ */}
-      <Section className="py-20">
-        <div className="text-center mb-12">
+      <section className="bg-[var(--bg-elevated)] py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-4">
             An intelligence layer for patents, ideas, and emerging opportunities.
           </h2>
@@ -248,7 +248,7 @@ export default function LandingPage() {
           </p>
         </div>
         </Reveal>
-      </Section>
+      </section>
 
       {/* ═══════════════════════════════════════════
           4. USE CASES — 3 personas

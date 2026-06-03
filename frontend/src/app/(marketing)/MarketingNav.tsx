@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BRAND } from "@/lib/brand";
+import { ThemeToggle } from "@/lib/ThemeProvider";
 
 export function MarketingNav() {
   const [open, setOpen] = useState(false);
@@ -39,6 +39,7 @@ export function MarketingNav() {
             >
               Sign in
             </Link>
+            <ThemeToggle />
           </div>
 
           {/* Mobile hamburger */}
@@ -77,14 +78,14 @@ export function MarketingNav() {
           <div className="md:hidden pb-4 border-t border-[var(--border-subtle)]">
             <Link
               href="/pricing"
-              className="block py-2 text-sm text-[var(--text-secondary)] hover:text-gray-900"
+              className="block py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               onClick={() => setOpen(false)}
             >
               Pricing
             </Link>
             <Link
               href="/about"
-              className="block py-2 text-sm text-[var(--text-secondary)] hover:text-gray-900"
+              className="block py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               onClick={() => setOpen(false)}
             >
               About

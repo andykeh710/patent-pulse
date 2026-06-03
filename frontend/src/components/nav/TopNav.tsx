@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "./BrandMark";
 import { AccountDropdown } from "./AccountDropdown";
+import { ThemeToggle } from "@/lib/ThemeProvider";
 
 const NAV_ITEMS = [
   { href: "/today", label: "Today" },
@@ -60,6 +61,7 @@ export function TopNav() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </Link>
+          <ThemeToggle />
           <AccountDropdown />
         </div>
       </div>
