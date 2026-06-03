@@ -577,13 +577,15 @@ async def generate_assignee_intelligence(
 # ─── Patent thumbnail proxy (Google Patents scrape, cached in Redis) ────────
 # Brand rule "link-only, never host or re-serve" explicitly overridden 2026-06-02
 # per Andy. We extract the og:image URL from patents.google.com and return
-# Google's CDN URL (patentimages.storage.googleapis.com) so the frontend can
-# render <img> directly. We don't proxy the image bytes — we just resolve the URL.
+# Google's CDN URL so the frontend can render <img> directly.
+#
+# All non-stdlib imports are deferred to first call so this module loads
+# cleanly even if `redis` or `httpx` aren't installed at module-load time.
+# An ImportError at endpoint runtime returns a null URL — it does NOT crash
+# the patents router or take down the entire backend.
 
-import re
-import httpx
-import redis as redis_lib
 import logging
+import re
 
 from app.config import settings
 
@@ -599,15 +601,26 @@ _THUMBNAIL_TTL_OK = 7 * 24 * 3600        # 7 days for successful resolves
 _THUMBNAIL_TTL_MISS = 24 * 3600          # 1 day for "no image" — avoid hammering
 _THUMBNAIL_TTL_TRANSIENT = 60 * 30       # 30 min for network errors — retry sooner
 
-_thumbnail_redis_client: redis_lib.Redis | None = None
+_thumbnail_redis_client = None  # lazy, may stay None if redis package not present
 
 
-def _thumbnail_redis() -> redis_lib.Redis:
+def _thumbnail_redis():
+    """Return a redis client, or None if redis package isn't available."""
     global _thumbnail_redis_client
-    if _thumbnail_redis_client is None:
+    if _thumbnail_redis_client is not None:
+        return _thumbnail_redis_client
+    try:
+        import redis as redis_lib  # noqa: WPS433 — intentional lazy import
+    except ImportError:
+        _thumbnail_logger.warning("redis package not available; thumbnail caching disabled")
+        return None
+    try:
         _thumbnail_redis_client = redis_lib.Redis.from_url(
             settings.redis_url, decode_responses=True
         )
+    except Exception as exc:  # noqa: BLE001
+        _thumbnail_logger.warning("redis client init failed: %s", exc)
+        return None
     return _thumbnail_redis_client
 
 
@@ -615,13 +628,9 @@ def _thumbnail_redis() -> redis_lib.Redis:
 async def get_patent_thumbnail_url(publication_number: str) -> dict:
     """Resolve a Google Patents thumbnail URL for a publication number.
 
-    Scrapes the og:image meta tag from patents.google.com. Result cached in
-    Redis (7d on success, 1d on miss, 30min on transient error). Returns
-    Google's CDN URL so the frontend can embed it via <img> directly without
-    proxying image bytes.
-
-    Returns:
-        {"url": str | None, "cached": bool, "error": str | None}
+    Returns {"url": str | None, "cached": bool, "error": str | None}.
+    Never raises beyond 400 for invalid input — backend-level failures degrade
+    to a null URL so the frontend falls back to the link-card.
     """
     clean_pub = _PUBLICATION_NUMBER_NORMALIZE_RE.sub("", publication_number.upper())
     if not clean_pub:
@@ -629,13 +638,27 @@ async def get_patent_thumbnail_url(publication_number: str) -> dict:
 
     cache_key = f"patent_thumbnail:{clean_pub}"
     r = _thumbnail_redis()
-    try:
-        cached = r.get(cache_key)
-    except Exception:
-        cached = None
 
-    if cached is not None:
-        return {"url": cached or None, "cached": True, "error": None}
+    if r is not None:
+        try:
+            cached = r.get(cache_key)
+        except Exception:
+            cached = None
+        if cached is not None:
+            return {"url": cached or None, "cached": True, "error": None}
+
+    try:
+        import httpx  # noqa: WPS433 — lazy
+    except ImportError:
+        return {"url": None, "cached": False, "error": "httpx_unavailable"}
+
+    def _cache(value: str, ttl: int) -> None:
+        if r is None:
+            return
+        try:
+            r.setex(cache_key, ttl, value)
+        except Exception:
+            pass
 
     url = f"https://patents.google.com/patent/{clean_pub}"
     headers = {
@@ -649,31 +672,18 @@ async def get_patent_thumbnail_url(publication_number: str) -> dict:
             resp = await client.get(url, headers=headers)
     except httpx.RequestError as exc:
         _thumbnail_logger.warning("thumbnail fetch failed for %s: %s", clean_pub, exc)
-        # cache transient errors briefly so retries don't pile up
-        try:
-            r.setex(cache_key, _THUMBNAIL_TTL_TRANSIENT, "")
-        except Exception:
-            pass
+        _cache("", _THUMBNAIL_TTL_TRANSIENT)
         return {"url": None, "cached": False, "error": "fetch_failed"}
 
     if resp.status_code != 200:
-        try:
-            r.setex(cache_key, _THUMBNAIL_TTL_MISS, "")
-        except Exception:
-            pass
+        _cache("", _THUMBNAIL_TTL_MISS)
         return {"url": None, "cached": False, "error": f"http_{resp.status_code}"}
 
     match = _OG_IMAGE_RE.search(resp.text)
     if not match:
-        try:
-            r.setex(cache_key, _THUMBNAIL_TTL_MISS, "")
-        except Exception:
-            pass
+        _cache("", _THUMBNAIL_TTL_MISS)
         return {"url": None, "cached": False, "error": "no_thumbnail"}
 
     img_url = match.group(1)
-    try:
-        r.setex(cache_key, _THUMBNAIL_TTL_OK, img_url)
-    except Exception:
-        pass
+    _cache(img_url, _THUMBNAIL_TTL_OK)
     return {"url": img_url, "cached": False, "error": None}
