@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { api } from "@/lib/api";
+import { patentsApi } from "@/lib/api";
 
 interface PatentFiguresPanelProps {
   publicationNumber: string;
   figurePageUrl: string;
-}
-
-interface ThumbnailResponse {
-  url: string | null;
-  cached: boolean;
-  error: string | null;
 }
 
 const FiguresHeading = () => (
@@ -57,11 +51,9 @@ const SkeletonThumbnail = () => (
 export function PatentFiguresPanel({ publicationNumber, figurePageUrl }: PatentFiguresPanelProps) {
   const [imgError, setImgError] = useState(false);
 
-  const { data, isLoading, error } = useSWR<ThumbnailResponse>(
-    publicationNumber
-      ? `/api/v1/patents/${encodeURIComponent(publicationNumber)}/thumbnail-url`
-      : null,
-    api.get,
+  const { data, isLoading, error } = useSWR(
+    publicationNumber ? ["patent-thumbnail", publicationNumber] : null,
+    () => patentsApi.getThumbnailUrl(publicationNumber),
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 

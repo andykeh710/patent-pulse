@@ -107,6 +107,11 @@ export const patentsApi = {
 
   getFreshness: () => apiFetch<Freshness>(`/api/v1/patents/freshness`),
 
+  getThumbnailUrl: (publicationNumber: string) =>
+    apiFetch<{ url: string | null; cached: boolean; error: string | null }>(
+      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/thumbnail-url`
+    ),
+
   getExpirySummary: () => apiFetch<ExpirySummary>(`/api/v1/patents/expiry-summary`),
 
   getTrend: () => apiFetch<TrendResponse>(`/api/v1/patents/trend`),

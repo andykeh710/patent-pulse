@@ -18,6 +18,7 @@ const mockPatent: PatentListItem = {
   tags: null,
   summary_what_it_is: "A test invention for testing purposes",
   estimated_expiry_date: "2044-01-15",
+  figure_page_url: null,
 };
 
 describe("PatentCard", () => {
