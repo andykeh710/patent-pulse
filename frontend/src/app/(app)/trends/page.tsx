@@ -259,7 +259,7 @@ function TrendList({
       <p className="text-sm text-[var(--text-muted)] mb-3">{total.toLocaleString()} trends tracked</p>
       {items.map((item, idx) => (
         <Link
-          key={`${item.surface}-${item.key}`}
+          key={`${item.surface}-${item.key}-${idx}`}
           href={`/trends/${item.surface}/${item.key}`}
           className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 transition-colors cursor-pointer block"
         >
@@ -358,7 +358,7 @@ function ConvergenceList({
       <div className="space-y-2">
         {items.map((item, idx) => (
           <div
-            key={`${item.cpc_a}-${item.cpc_b}`}
+            key={`${item.cpc_a}-${item.cpc_b}-${idx}`}
             className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4"
           >
             <div className="text-lg font-bold text-[var(--text-muted)] w-8 text-right">{idx + 1}</div>

@@ -61,8 +61,8 @@ export default function CompaniesPage() {
             <div className="mt-5">
               <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Entity Mix</h3>
               <div className="flex flex-wrap gap-2">
-                {summary?.entity_types.map((item) => (
-                  <Badge key={item.entity_type} variant="default" size="sm">
+                {summary?.entity_types.map((item, i) => (
+                  <Badge key={`entity-${item.entity_type}-${i}`} variant="default" size="sm">
                     {humanizeTag(item.entity_type)} · {item.count}
                   </Badge>
                 ))}
@@ -87,8 +87,8 @@ export default function CompaniesPage() {
               className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
               <option value="">All Countries</option>
-              {summary?.countries.map((item) => (
-                <option key={item.country} value={item.country}>{item.country}</option>
+              {summary?.countries.map((item, i) => (
+                <option key={`country-${item.country}-${i}`} value={item.country}>{item.country}</option>
               ))}
             </select>
             <select
@@ -182,7 +182,7 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
               const size = 36 + Math.round((item.patent_count / max) * 54);
               return (
                 <div
-                  key={item.country}
+                  key={`country-bubble-${item.country}-${idx}`}
                   className="absolute rounded-full bg-[var(--bg-elevated)]0/80 text-white flex items-center justify-center text-xs font-semibold shadow-sm"
                   style={{
                     width: size,
@@ -198,8 +198,8 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
             })}
           </div>
           <div className="space-y-3">
-            {items.slice(0, 6).map((item) => (
-              <div key={item.country}>
+            {items.slice(0, 6).map((item, i) => (
+              <div key={`country-bar-${item.country}-${i}`}>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium text-[var(--text-secondary)]">{item.country}</span>
                   <span className="text-[var(--text-muted)]">{formatNumber(item.patent_count)} patents</span>

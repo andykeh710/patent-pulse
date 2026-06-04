@@ -38,4 +38,9 @@ services:
 
   frontend:
     restart: unless-stopped
-    command: npm run start
+    command: npx next start -p 3000
+    volumes: []  # Remove dev volume mount — uses built .next/
+    build:
+      args:
+        - NEXT_PUBLIC_API_URL=http://backend:8000
+        - NEXT_PUBLIC_ENVIRONMENT=production

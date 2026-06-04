@@ -16,7 +16,7 @@ Design decisions (from the V1 plan):
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     Boolean,

@@ -13,14 +13,9 @@ concurrency:
 jobs:
 
   # ── Backend lint (ruff) ────────────────────────────────────────────
-  # NOTE: continue-on-error temporarily allowed (2026-06-04) due to ~50 lint
-  # errors in pre-existing test files (inline imports, F401 unused). Tracked
-  # as lint debt — clean up in a focused PR. CI deploy is not gated on lint
-  # passing while this debt exists.
 
   backend-lint:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

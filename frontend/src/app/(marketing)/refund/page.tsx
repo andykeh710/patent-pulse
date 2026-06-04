@@ -23,7 +23,7 @@ export default function RefundPage() {
 
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">3. Enterprise ($1,000/year)</h2>
-          <p>Enterprise subscriptions include a 30-day money-back guarantee. If you're not satisfied within the first 30 days, contact us for a full refund. After 30 days, you may cancel at any time with access continuing until the end of the billing period. No prorated refunds.</p>
+          <p>Enterprise subscriptions include a 30-day money-back guarantee. If you&rsquo;re not satisfied within the first 30 days, contact us for a full refund. After 30 days, you may cancel at any time with access continuing until the end of the billing period. No prorated refunds.</p>
         </div>
 
         <div>
@@ -33,7 +33,7 @@ export default function RefundPage() {
 
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">5. Chargebacks</h2>
-          <p>If you initiate a chargeback through your bank or card issuer instead of contacting us for a refund, your account will be immediately suspended pending resolution. Please contact us first — we'll make it right.</p>
+          <p>If you initiate a chargeback through your bank or card issuer instead of contacting us for a refund, your account will be immediately suspended pending resolution. Please contact us first — we&rsquo;ll make it right.</p>
         </div>
       </section>
     </div>

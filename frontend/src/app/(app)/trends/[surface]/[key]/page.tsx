@@ -417,9 +417,9 @@ function TrendDrilldownContent() {
               </p>
             ) : (
               <div className="space-y-2">
-                {assignees.items.map((a: TrendAssigneeItem) => (
+                {assignees.items.map((a: TrendAssigneeItem, i: number) => (
                   <div
-                    key={a.assignee}
+                    key={`${a.assignee}-${i}`}
                     className="flex items-center justify-between text-sm"
                   >
                     <Link
