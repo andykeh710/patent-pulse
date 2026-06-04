@@ -23,6 +23,7 @@ from app.api.v1 import (
     trends,
     usage_signals,
     watchlist,
+    webhooks,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -49,3 +50,4 @@ v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])
 v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])
 v1_router.include_router(api_keys.router, prefix="/account", tags=["api-keys"])
 v1_router.include_router(account.router, prefix="/account", tags=["account"])
+v1_router.include_router(webhooks.webhook_router, tags=["webhooks"])

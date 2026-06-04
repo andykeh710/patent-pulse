@@ -1,171 +1,51 @@
 import type { Metadata } from "next";
-import { BRAND, EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: `Terms of Service`,
-  description: `Terms of Service for ${BRAND.name}.`,
+  title: "Terms of Service — Invention Index 8",
 };
 
 export default function TermsPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <p className="text-sm text-amber-600 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg p-4 mb-8">
-        This is placeholder content — counsel review pending before public
-        launch.
-      </p>
+    <div className="max-w-2xl mx-auto px-4 py-12 text-[var(--text-primary)]">
+      <h1 className="text-2xl font-bold mb-6">Terms of Service</h1>
+      <p className="text-sm text-[var(--text-muted)] mb-8">Last updated: June 2026</p>
 
-      <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">
-        Terms of Service
-      </h1>
-
-      <div className="prose prose-gray max-w-none space-y-8">
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            1. Acceptance of Terms
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            By accessing or using {BRAND.name} (&ldquo;the Service&rdquo;), you
-            agree to be bound by these Terms of Service. If you do not agree,
-            do not use the Service.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            2. Description of Service
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            {BRAND.name} is a patent intelligence tool that surfaces patent
-            filing trends, expiry estimates, usage signals, and AI-generated
-            narratives from publicly available patent office data. It is not
-            legal advice.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            3. User Accounts
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed mb-2">
-            Accounts are created via magic-link authentication. You are
-            responsible for maintaining the security of the email account used
-            for sign-in.
-          </p>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            You may delete your account at any time from the account page.
-            Deletion cascades to your subscriptions and anonymizes associated
-            data.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            4. Paid Subscriptions
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed mb-2">
-            Paid subscriptions are billed through Stripe. By subscribing, you
-            authorize Stripe to charge your payment method according to the
-            pricing displayed at checkout.
-          </p>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            Refunds are handled on a case-by-case basis. Contact support for
-            refund requests.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            5. Acceptable Use
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            You agree not to: (a) use the Service for automated scraping or bulk
-            data resale; (b) attempt to circumvent tier-based quotas or rate
-            limits; (c) use the Service in violation of applicable laws.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            6. Intellectual Property
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed mb-2">
-            Your account data (topic subscriptions, alert preferences, exports)
-            is yours. Aggregated patent data surfaced by the Service originates
-            from public patent office feeds and is not claimed as proprietary.
-          </p>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            The Service&rsquo;s software, branding, and AI-generated content
-            structure are proprietary.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            7. Disclaimer of Warranty
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            THE SERVICE IS PROVIDED &ldquo;AS IS&rdquo; WITHOUT WARRANTY OF ANY
-            KIND. {BRAND.name.toUpperCase()} IS NOT LEGAL ADVICE. EXPIRY
-            ESTIMATES ARE ESTIMATES — NOT GUARANTEES. VERIFY ALL INFORMATION
-            WITH OFFICIAL PATENT REGISTERS BEFORE MAKING DECISIONS.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            8. Limitation of Liability
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            To the fullest extent permitted by law, {BRAND.name} shall not be
-            liable for any indirect, incidental, special, or consequential
-            damages arising from your use of the Service.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            9. Governing Law
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            [Jurisdiction TBD — counsel review required.] These Terms shall be
-            governed by the laws of the jurisdiction in which the operating
-            entity is registered.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            10. Changes to Terms
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            We may update these Terms from time to time. Material changes will
-            be communicated via email. Continued use after changes constitutes
-            acceptance.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">
-            11. Contact
-          </h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            Questions about these Terms? Email{" "}
-            <a
-              href={`mailto:${EMAIL.support}`}
-              className="text-[var(--accent)] hover:text-[var(--accent)] underline"
-            >
-              {EMAIL.support}
-            </a>
-          </p>
-        </section>
-
-        <div className="border-t border-[var(--border-subtle)] pt-8 mt-8">
-          <p className="text-xs text-[var(--text-muted)]">
-            Last updated: May 2026. This is placeholder content pending counsel
-            review.
-          </p>
+      <section className="space-y-6 text-[var(--text-secondary)] leading-relaxed">
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">1. Service description</h2>
+          <p>Invention Index 8 is a patent intelligence platform. We aggregate and analyze publicly available patent data from USPTO, EPO, WIPO, and other patent offices. We provide AI-powered summaries, trend analysis, and opportunity identification.</p>
         </div>
-      </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">2. Not legal or financial advice</h2>
+          <p>Invention Index 8 provides research intelligence only. Nothing on this platform constitutes legal advice, financial advice, or investment advice. Patent expiry status is estimated unless confirmed. Always verify with official patent office registers before relying on any expiry or legal status information.</p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">3. AI-generated content</h2>
+          <p>Patent summaries, opportunity narratives, trend analyses, and other content labeled as "AI-generated" are produced by large language models. They may contain errors, omissions, or inaccuracies. Confidence levels are displayed where applicable. Do not rely on AI-generated content for critical decisions without independent verification.</p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">4. Subscription and billing</h2>
+          <p>Paid subscriptions (Basic, Lifetime, Enterprise) are processed through Stripe. By subscribing, you agree to Stripe's terms of service. Subscription fees are non-refundable except as stated in our <a href="/refund" className="text-[var(--accent)] underline">Refund Policy</a>.</p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">5. Cancellation</h2>
+          <p>You may cancel your subscription at any time via the Stripe Customer Portal (accessible from /account/billing). Cancellation takes effect at the end of your current billing period. You retain access until then. No prorated refunds for partial periods.</p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">6. Limitation of liability</h2>
+          <p>Invention Index 8 is provided "as is" without warranty of any kind. We are not liable for any damages arising from use of the platform, including but not limited to decisions made based on patent data, AI analysis, or expiry estimates.</p>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">7. Changes</h2>
+          <p>We may update these terms from time to time. Material changes will be communicated via email to active subscribers.</p>
+        </div>
+      </section>
     </div>
   );
 }

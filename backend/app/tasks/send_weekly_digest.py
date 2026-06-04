@@ -133,40 +133,93 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             if not has_any:
                 continue
 
-            from app.ai.weekly_digest import generate_weekly_digest
+            # Use the new briefing pipeline (Round 7): assemble Today's
+            # briefing items for this user and render with weekly_briefing.html.
+            # The legacy AI-narrative path (generate_weekly_digest +
+            # weekly_digest.html) is no longer used; render_weekly_briefing's
+            # kwargs are inlined here so send_email handles template rendering.
+            from app.services.briefing import assemble_briefing
+
+            # Collect followed companies (normalized names) for briefing weighting
+            from app.core.ai_models import UserCompanyFollow
+            follows_result = await session.execute(
+                select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id)
+            )
+            followed_companies = [
+                f.company_normalized_name for f in follows_result.scalars().all()
+            ]
+            company_count = len(followed_companies)
+            topic_count = len(sub_list)
+
             try:
-                narrative, artifact_id = await generate_weekly_digest(
-                    session, user_id, week_start, week_end, topics_data, matches_data,
+                items = await assemble_briefing(
+                    session,
+                    user_id=user_id,
+                    followed_companies=followed_companies,
+                    limit=12,
                 )
             except Exception as e:
-                logger.error("Digest generation failed for user %s: %s", user_id, e)
+                logger.error("Briefing assembly failed for user %s: %s", user_id, e)
                 stats["errors"] += 1
                 continue
 
             stats["digests_generated"] += 1
 
-            sections = []
-            for h in narrative.get("highlights", [])[:5]:
-                sections.append({"title": h.get("title", "")[:80], "body": h.get("why_it_matters", "")})
+            # Build hero stat
+            parts = []
+            if topic_count:
+                parts.append(f"{topic_count} topic{'s' if topic_count > 1 else ''}")
+            if company_count:
+                parts.append(f"{company_count} compan{'ies' if company_count > 1 else 'y'}")
+            coverage = " and ".join(parts) if parts else "your interests"
+            hero_stat = f"What's new this week in {coverage}"
+
+            # Build email items from briefing items
+            type_labels = {
+                "trend": "Filing trend",
+                "notable": "Notable patent",
+                "company": "Company move",
+                "expiring": "Expiring opportunity",
+                "foryou": "For you",
+            }
+            email_items = []
+            for item in items[:8]:
+                confidence = item.get("confidence") or {}
+                freshness = item.get("freshness", {})
+                email_items.append({
+                    "type_label": type_labels.get(item.get("type", ""), item.get("label", "Update")),
+                    "title": (item.get("title") or "")[:120],
+                    "reason": (item.get("reason") or "")[:200],
+                    "source": item.get("source") or "",
+                    "freshness": freshness.get("relative") or "",
+                    "confidence_caveat": confidence.get("caveat") or "",
+                })
+            if not email_items:
+                email_items.append({
+                    "type_label": "Update",
+                    "title": "No new patent activity in your topics this week",
+                    "reason": "We'll let you know when new patents match your interests.",
+                    "source": "Invention Index 8",
+                    "freshness": "just now",
+                    "confidence_caveat": "",
+                })
 
             unsubscribe_token = _sign_user_id(user_id)
             from app.email.sender import send_email
             result = await send_email(
                 db_session=session,
                 to=user.email,
-                subject="Your Invention Index 8 Weekly Digest",
-                template_name="weekly_digest.html",
+                subject=f"Invention Index 8 Weekly — {hero_stat}",
+                template_name="weekly_briefing.html",
                 template_kwargs={
-                    "greeting": f"Weekly Digest — {week_start} to {week_end}",
-                    "intro_blurb": narrative.get("headline", "Here are your weekly patent matches."),
-                    "sections": sections,
-                    "call_to_action": "View your topics and manage subscriptions",
-                    "cta_url": f"{settings.magic_link_base_url}/account",
-                    "cta_text": "View Account",
-                    "unsubscribe_url": f"{settings.magic_link_base_url}/api/v1/subscriptions/unsubscribe?subscription=USER&token={unsubscribe_token}",
-                    "magic_link_base_url": settings.magic_link_base_url,
+                    "hero_stat": hero_stat,
+                    "items": email_items,
+                    "unsubscribe_url": f"{settings.magic_link_base_url}/unsubscribe/{unsubscribe_token}",
+                    "base_url": settings.magic_link_base_url,
                 },
-                user_id=user_id, email_type="weekly_digest", artifact_id=artifact_id,
+                user_id=user_id,
+                email_type="weekly_briefing",
+                artifact_id=None,
             )
 
             if result.get("status") in ("sent", "dev", "dry_run"):
@@ -187,10 +240,12 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
 
 
 def _sign_user_id(user_id: str) -> str:
-    import hashlib
-    import hmac
-    return hmac.new(
-        settings.auth_secret_key.encode(),
-        user_id.encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    """Create a JWT token for unsubscribe links. Valid for 1 year."""
+    import jwt
+    return jwt.encode(
+        {"user_id": user_id, "purpose": "unsubscribe", "exp": int(
+            (datetime.now(timezone.utc).timestamp()) + 31536000
+        )},
+        settings.auth_secret_key or "dev-secret-change-me",
+        algorithm="HS256",
+    )

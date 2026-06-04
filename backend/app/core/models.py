@@ -180,3 +180,54 @@ class SourceFetch(Base):
 
     def __repr__(self) -> str:
         return f"<SourceFetch {self.provider}/{self.target_type} {self.status}>"
+
+
+# ── Round 9: User behavior + recommendations ─────────────────────
+
+class UserViewEvent(Base):
+    __tablename__ = "user_view_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    patent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patent_publications.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(32))  # view, save, follow_assignee
+    weight: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (Index("ix_user_view_events_user", "user_id", "created_at"),)
+
+
+class UserEmbedding(Base):
+    __tablename__ = "user_embeddings"
+
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1536))
+    event_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class NewsItem(Base):
+    __tablename__ = "news_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    headline: Mapped[str] = mapped_column(String(512))
+    source: Mapped[str] = mapped_column(String(128))
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    snippet: Mapped[str | None] = mapped_column(Text)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (Index("ix_news_items_published", "published_at"),)
+
+
+class NewsPatentLink(Base):
+    __tablename__ = "news_patent_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    news_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("news_items.id", ondelete="CASCADE"))
+    patent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patent_publications.id", ondelete="CASCADE"))
+    similarity: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (Index("ix_news_patent_links_news", "news_id"),)

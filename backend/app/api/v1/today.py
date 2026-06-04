@@ -10,16 +10,56 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, text
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, current_user, get_db
 from app.core.ai_models import TrendSnapshot
 from app.core.models import PatentPublication
 from app.services.briefing import assemble_briefing
 
 router = APIRouter()
+
+# ── For You (personalized recommendations) ──────────────
+
+
+@router.get("/for-you")
+async def get_for_you(
+    db=Depends(get_db),
+    user_id: str = Depends(current_user),
+) -> list[dict]:
+    """Personalized patent recommendations based on viewing history."""
+    from app.services.recommendations import recommend_for_user
+
+    recs = await recommend_for_user(user_id, limit=5, session=db)
+    items: list[dict] = []
+    now = datetime.now(timezone.utc)
+
+    for r in recs:
+        items.append(dict(
+            type="foryou", label="For You",
+            title=r["title"],
+            subtext=f"{r['assignee']} · {r['patent_id'][:8]}",
+            reason="Recommended based on your patent viewing patterns",
+            source="Invention Index 8",
+            freshness={"updated_at": now.isoformat(), "relative": "just now"},
+            confidence={"level": "medium", "caveat": "AI recommendation"},
+            href=f"/patents/{r['patent_id']}",
+        ))
+
+    if not items:
+        items.append(dict(
+            type="foryou", label="For You · early personalization",
+            title="Recommendations appear as you explore patents and follow topics",
+            reason="Based on your activity and follows",
+            source="Invention Index 8",
+            freshness={"updated_at": now.isoformat(), "relative": "just now"},
+            href="/themes",
+        ))
+
+    return items
+
 
 # ---------------------------------------------------------------------------
 # Response schemas

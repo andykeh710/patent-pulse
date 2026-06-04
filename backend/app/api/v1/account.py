@@ -129,6 +129,46 @@ async def set_persona(
     return PersonaResponse(persona=user.persona)
 
 
+class EmailPreferencesResponse(BaseModel):
+    weekly_briefing_enabled: bool = True
+    instant_alerts_enabled: bool = False
+
+
+class EmailPreferencesUpdate(BaseModel):
+    weekly_briefing_enabled: bool | None = None
+    instant_alerts_enabled: bool | None = None
+
+
+@router.get("/email-preferences", response_model=EmailPreferencesResponse)
+async def get_email_preferences(
+    user: User = Depends(current_user),
+) -> EmailPreferencesResponse:
+    prefs = user.preferences or {}
+    return EmailPreferencesResponse(
+        weekly_briefing_enabled=prefs.get("weekly_briefing_enabled", True),
+        instant_alerts_enabled=prefs.get("instant_alerts_enabled", False),
+    )
+
+
+@router.put("/email-preferences", response_model=EmailPreferencesResponse)
+async def update_email_preferences(
+    body: EmailPreferencesUpdate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> EmailPreferencesResponse:
+    prefs = dict(user.preferences or {})
+    if body.weekly_briefing_enabled is not None:
+        prefs["weekly_briefing_enabled"] = body.weekly_briefing_enabled
+    if body.instant_alerts_enabled is not None:
+        prefs["instant_alerts_enabled"] = body.instant_alerts_enabled
+    user.preferences = prefs
+    await db.commit()
+    return EmailPreferencesResponse(
+        weekly_briefing_enabled=prefs.get("weekly_briefing_enabled", True),
+        instant_alerts_enabled=prefs.get("instant_alerts_enabled", False),
+    )
+
+
 # ── Company follows ─────────────────────────────────────────
 
 

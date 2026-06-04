@@ -35,6 +35,10 @@ celery_app = Celery(
         "app.tasks.backfill_citations",
         "app.tasks.compute_convergence",
         "app.tasks.backfill_usage_signals",
+        "app.tasks.backup",
+        "app.tasks.patentsview_backfill",
+        "app.tasks.bigquery_backfill",
+        "app.tasks.news_ingestion",
     ],
 )
 
@@ -68,6 +72,10 @@ celery_app.conf.update(
         "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
         "app.tasks.compute_convergence.*": {"queue": "maintenance"},
         "app.tasks.backfill_usage_signals.*": {"queue": "maintenance"},
+        "app.tasks.backup.*": {"queue": "maintenance"},
+        "app.tasks.patentsview_backfill.*": {"queue": "maintenance"},
+        "app.tasks.bigquery_backfill.*": {"queue": "maintenance"},
+        "app.tasks.news_ingestion.*": {"queue": "maintenance"},
     },
     task_default_retry_delay=60,
     task_max_retries=3,
@@ -253,11 +261,61 @@ celery_app.conf.beat_schedule = {
         "kwargs": {"limit": 50},
         "options": {"queue": "maintenance"},
     },
-    # Sprint D2 — WIPO BigQuery ingestion (daily 03:15 UTC).
+    # WIPO BigQuery — daily 03:15 UTC
     "wipo-bigquery-daily": {
         "task": "app.tasks.ingest_wipo_bigquery.ingest_wipo_bigquery_recent",
         "schedule": crontab(hour=3, minute=15),
         "kwargs": {"days_back": 1, "max_results": 500},
         "options": {"queue": "ingestion"},
+    },
+    # PatentsView abstract/claims backfill — 4x/day
+    "patentsview-backfill-midnight": {
+        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "schedule": crontab(hour=0, minute=0),
+        "kwargs": {"batch_size": 200},
+        "options": {"queue": "maintenance"},
+    },
+    "patentsview-backfill-morning": {
+        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "schedule": crontab(hour=6, minute=0),
+        "kwargs": {"batch_size": 200},
+        "options": {"queue": "maintenance"},
+    },
+    "patentsview-backfill-noon": {
+        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "schedule": crontab(hour=12, minute=0),
+        "kwargs": {"batch_size": 200},
+        "options": {"queue": "maintenance"},
+    },
+    "patentsview-backfill-evening": {
+        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "schedule": crontab(hour=18, minute=0),
+        "kwargs": {"batch_size": 200},
+        "options": {"queue": "maintenance"},
+    },
+    # BigQuery high-priority abstract backfill — daily 04:30 UTC
+    "bigquery-high-priority-backfill": {
+        "task": "app.tasks.bigquery_backfill.backfill_high_priority_bigquery",
+        "schedule": crontab(hour=4, minute=30),
+        "kwargs": {"limit": 500},
+        "options": {"queue": "maintenance"},
+    },
+    # News ingestion — every 15 minutes
+    "ingest-news": {
+        "task": "app.tasks.news.ingest_news",
+        "schedule": crontab(minute="*/15"),
+        "options": {"queue": "maintenance"},
+    },
+    # User embedding recompute — daily at 05:00 UTC
+    "recompute-user-embeddings": {
+        "task": "app.tasks.recommendations.recompute_user_embeddings",
+        "schedule": crontab(hour=5, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Database backup — daily at 03:00 UTC
+    "backup-database-daily": {
+        "task": "backup_database_daily",
+        "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "maintenance"},
     },
 }

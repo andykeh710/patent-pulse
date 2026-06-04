@@ -1,153 +1,169 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/lib/AuthContext";
-import { billingApi } from "@/lib/api";
+import { useState } from "react";
 import useSWR from "swr";
-import type { BillingSubscription, Tier } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
-const TIER_COLORS: Record<Tier, string> = {
-  free: "bg-[var(--bg-elevated)] text-[var(--text-secondary)]",
-  basic: "bg-[var(--accent-muted)] text-[var(--accent)]",
-  lifetime: "bg-[var(--accent-muted)] text-[var(--type-foryou)]",
-  enterprise: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
+interface SubscriptionData {
+  tier: string;
+  status: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  created_at: string | null;
+}
+
+const fetcher = (url: string, options?: RequestInit) =>
+  fetch(url, options).then((r) => {
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  });
+
+const TIER_LABELS: Record<string, string> = {
+  free: "Free",
+  basic: "Basic",
+  lifetime: "Lifetime",
+  enterprise: "Enterprise",
 };
 
-const PLANS = [
-  {
-    tier: "basic" as Tier,
-    name: "Basic",
-    price: "$8 / year",
-    features: ["Unlimited topics", "Unlimited alerts", "CSV exports", "Email support"],
-  },
-  {
-    tier: "lifetime" as Tier,
-    name: "Lifetime",
-    price: "$108 once",
-    features: ["Everything in Basic", "PDF patent reports", "Lifetime access", "No recurring payments"],
-  },
-  {
-    tier: "enterprise" as Tier,
-    name: "Enterprise",
-    price: "$1,000 / year",
-    features: ["Everything in Lifetime", "API access", "Programmatic patent data", "Priority support"],
-  },
-];
-
 export default function BillingPage() {
-  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { data, error } = useSWR<SubscriptionData>("/api/v1/billing/subscription", fetcher);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const { data: sub, mutate } = useSWR<BillingSubscription>(
-    isAuthenticated ? "billing-sub" : null,
-    () => billingApi.getSubscription()
-  );
+  const handleCheckout = async (tier: string) => {
+    setLoading(true);
+    setMessage("");
+    try {
+      const r = await fetcher("/api/v1/billing/checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier }),
+      });
+      window.location.href = r.checkout_url;
+    } catch {
+      setMessage("Failed to start checkout. Try again.");
+      setLoading(false);
+    }
+  };
 
-  if (isLoading) return <div className="p-8 text-[var(--text-muted)]">Loading...</div>;
-  if (!isAuthenticated) {
-    router.push("/login");
-    return null;
+  const handlePortal = async () => {
+    setLoading(true);
+    try {
+      const r = await fetcher("/api/v1/billing/portal-session", {
+        method: "POST",
+      });
+      window.location.href = r.portal_url;
+    } catch {
+      setMessage("Failed to open billing portal.");
+      setLoading(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12">
+        <p className="text-[var(--text-muted)]">Failed to load billing info.</p>
+      </div>
+    );
   }
 
-  const currentTier: Tier = sub?.tier ?? "free";
-  const success = searchParams.get("success");
-  const canceled = searchParams.get("canceled");
+  if (!data) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12">
+        <p className="text-[var(--text-muted)]">Loading...</p>
+      </div>
+    );
+  }
 
-  const handleUpgrade = async (tier: string) => {
-    const resp = await billingApi.createCheckoutSession(tier);
-    if (resp.checkout_url) {
-      window.location.href = resp.checkout_url;
-    }
-  };
-
-  const handleManage = async () => {
-    const resp = await billingApi.createPortalSession();
-    if (resp.portal_url) {
-      window.location.href = resp.portal_url;
-    }
-  };
+  const isFree = data.tier === "free";
+  const periodEnd = data.current_period_end
+    ? new Date(data.current_period_end).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <h1 className="text-xl font-bold">Billing</h1>
+    <div className="max-w-lg mx-auto px-4 py-12">
+      <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Billing</h1>
+      <p className="text-[var(--text-secondary)] mb-8">
+        Manage your subscription and payment method.
+      </p>
 
-      {success === "true" && (
-        <div className="bg-[var(--score-high-bg)] border border-[var(--score-high)]/30 text-[var(--score-high)] px-4 py-3 rounded">
-          Payment received. Your account will update shortly.
-        </div>
-      )}
-      {canceled === "true" && (
-        <div className="bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-secondary)] px-4 py-3 rounded">
-          Checkout canceled. No charges made.
+      {message && (
+        <div className="mb-6 p-3 rounded bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm text-[var(--text-secondary)]">
+          {message}
         </div>
       )}
 
-      {/* Current tier */}
-      <div className="border rounded p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)]">Current plan:</span>
-          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${TIER_COLORS[currentTier]}`}>
-            {currentTier.toUpperCase()}
-          </span>
-        </div>
-        {sub && sub.status && (
-          <p className="text-sm text-[var(--text-secondary)]">Status: {sub.status}</p>
+      {/* Current plan */}
+      <div className="p-6 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] mb-6">
+        <p className="text-sm text-[var(--text-muted)] uppercase tracking-wide mb-1">Current Plan</p>
+        <p className="text-xl font-bold text-[var(--text-primary)]">{TIER_LABELS[data.tier] || data.tier}</p>
+
+        {data.status !== "active" && data.status !== "trialing" && (
+          <p className="text-sm text-[var(--warning)] mt-1">Status: {data.status}</p>
         )}
-        {currentTier === "lifetime" && (
-          <p className="text-sm text-[var(--text-secondary)]">Lifetime access — no renewal needed.</p>
-        )}
-        {sub?.current_period_end && currentTier !== "lifetime" && currentTier !== "free" && (
-          <p className="text-sm text-[var(--text-secondary)]">
-            {sub.cancel_at_period_end ? "Cancels on " : "Renews on "}
-            {new Date(sub.current_period_end).toLocaleDateString()}
+
+        {periodEnd && (
+          <p className="text-sm text-[var(--text-secondary)] mt-2">
+            {data.cancel_at_period_end ? "Access until" : "Next billing date"}: {periodEnd}
           </p>
         )}
-        {sub?.cancel_at_period_end && (
-          <div className="bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 text-[var(--score-medium)] px-3 py-2 rounded text-sm">
-            Your subscription is set to cancel at the end of the current period.
-          </div>
-        )}
-        {currentTier === "free" && (
-          <p className="text-sm text-[var(--text-muted)]">Upgrade to unlock more features.</p>
-        )}
 
-        {(currentTier === "basic" || currentTier === "enterprise") && sub?.stripe_customer_id && (
+        {data.cancel_at_period_end && (
+          <p className="text-sm text-[var(--warning)] mt-1">
+            Your subscription will end on {periodEnd}. Reactivate via the billing portal.
+          </p>
+        )}
+      </div>
+
+      {/* Actions */}
+      {isFree ? (
+        <div className="space-y-3">
+          <p className="text-sm text-[var(--text-secondary)] mb-3">Upgrade your plan:</p>
           <button
-            onClick={handleManage}
-            className="mt-2 px-4 py-2 bg-gray-700 text-white rounded text-sm hover:bg-[var(--bg-elevated)]"
+            onClick={() => handleCheckout("basic")}
+            disabled={loading}
+            className="w-full py-3 px-4 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
           >
-            Manage Subscription (Stripe Portal)
+            Upgrade to Basic — $8/year
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => handleCheckout("lifetime")}
+            disabled={loading}
+            className="w-full py-3 px-4 rounded-lg border border-[var(--accent)] text-[var(--accent)] font-medium hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-50"
+          >
+            Buy Lifetime — $108 once
+          </button>
+          <button
+            onClick={() => handleCheckout("enterprise")}
+            disabled={loading}
+            className="w-full py-3 px-4 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] font-medium hover:border-[var(--accent)] transition-colors disabled:opacity-50"
+          >
+            Enterprise — $1,000/year
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={handlePortal}
+          disabled={loading}
+          className="w-full py-3 px-4 rounded-lg border border-[var(--border-default)] text-[var(--text-primary)] font-medium hover:bg-[var(--bg-glass)] transition-colors disabled:opacity-50"
+        >
+          Manage Subscription in Stripe Portal
+        </button>
+      )}
 
-      {/* Upgrade cards */}
-      <h2 className="text-lg font-semibold">Upgrade</h2>
-      <div className="grid gap-4">
-        {PLANS.filter((p) => {
-          const order = ["free", "basic", "lifetime", "enterprise"];
-          return order.indexOf(p.tier) > order.indexOf(currentTier);
-        }).map((plan) => (
-          <div key={plan.tier} className="border rounded p-4 flex justify-between items-start">
-            <div>
-              <h3 className="font-semibold">{plan.name}</h3>
-              <p className="text-lg font-bold">{plan.price}</p>
-              <ul className="text-sm text-[var(--text-secondary)] mt-1 space-y-0.5">
-                {plan.features.map((f) => (
-                  <li key={f}>• {f}</li>
-                ))}
-              </ul>
-            </div>
-            <button
-              onClick={() => handleUpgrade(plan.tier)}
-              className="px-4 py-2 bg-[var(--accent)] text-white rounded text-sm hover:bg-blue-700"
-            >
-              Upgrade
-            </button>
-          </div>
-        ))}
-      </div>
+      <button
+        onClick={() => router.back()}
+        className="mt-8 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+      >
+        ← Back
+      </button>
     </div>
   );
 }

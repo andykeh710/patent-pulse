@@ -1,0 +1,24 @@
+Invention Index 8 — Weekly Briefing
+
+{{ hero_stat }}
+
+{% for item in items %}
+────────────────────────────────────────
+{{ item.type_label | upper }}: {{ item.title }}
+
+{{ item.reason }}
+
+{{ item.source }} · {{ item.freshness }}
+{% if item.confidence_caveat %}
+{{ item.confidence_caveat }}
+{% endif %}
+{% endfor %}
+
+────────────────────────────────────────
+
+You received this weekly briefing because you have topics configured on Invention Index 8.
+
+Unsubscribe: {{ unsubscribe_url }}
+Manage preferences: {{ base_url }}/account/email-preferences
+
+Invention Index 8 · Research intelligence only. Not legal, financial, or investment advice. Verify with official patent office registers before relying on any expiry or status information.
