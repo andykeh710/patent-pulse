@@ -65,21 +65,9 @@ jobs:
           --health-retries 5
 
     env:
-      # TEST_* vars are read by tests/conftest.py to avoid colliding with
-      # any production DATABASE_URL set in the dev environment.
       TEST_DATABASE_URL: postgresql+asyncpg://patent:secret@localhost:5432/patent_pulse_test
       TEST_DATABASE_URL_SYNC: postgresql+psycopg2://patent:secret@localhost:5432/patent_pulse_test
-      TEST_REDIS_URL: redis://localhost:6379/1
-      # DATABASE_URL is still set so alembic upgrade head can run before tests.
-      DATABASE_URL: postgresql+asyncpg://patent:secret@localhost:5432/patent_pulse_test
-      DATABASE_URL_SYNC: postgresql+psycopg2://patent:secret@localhost:5432/patent_pulse_test
-      REDIS_URL: redis://localhost:6379/1
-      ANTHROPIC_API_KEY: test-key
-      OPENAI_API_KEY: test-key
-      USPTO_API_KEY: test-key
-      AUTH_SECRET_KEY: ci-test-secret-32-bytes-minimum-len
-      RESEND_API_KEY: re_test
-      EMAIL_FROM_ADDRESS: test@example.com
+      TEST_REDIS_URL: redis://localhost:***@example.com
       EMAIL_DEV_RECIPIENT: dev@example.com
       EMAIL_SEND_MODE: dev
       ENVIRONMENT: test
@@ -141,3 +129,87 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  # ── Deploy to Hetzner (only on push to main, after all checks pass) ─
+
+  deploy:
+    needs: [backend-lint, backend-test, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Hetzner
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd /opt/invention-index-8
+
+            # Record current commit for rollback
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV_COMMIT"
+
+            # Pull latest
+            git pull origin main
+
+            # Run migrations
+            docker compose exec -T backend alembic upgrade head
+
+            # Rebuild and restart
+            docker compose up -d --build --force-recreate backend worker beat frontend
+
+            # Health check — poll for up to 90 seconds
+            for i in $(seq 1 30); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+              if [ "$STATUS" = "200" ]; then
+                echo "Health check passed after $((i * 3))s"
+                exit 0
+              fi
+              echo "Health check attempt $i/30: got $STATUS, waiting..."
+              sleep 3
+            done
+
+            # Rollback on failure
+            echo "Health check failed after 90s — rolling back to $PREV_COMMIT"
+            git checkout "$PREV_COMMIT"
+            docker compose up -d --build --force-recreate backend worker beat frontend
+            exit 1
+
+      - name: Notify success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.resend.com
+          server_port: 465
+          username: resend
+          password: ${{ secrets.RESEND_API_KEY }}
+          from: deploy@inventionindex8.com
+          to: andy@web3r.tech
+          subject: "✅ Deploy succeeded — Invention Index 8"
+          body: |
+            Deploy of ${{ github.sha }} to inventionindex8.com succeeded.
+            Commit: ${{ github.event.head_commit.message }}
+            ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+      - name: Notify failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.resend.com
+          server_port: 465
+          username: resend
+          password: ${{ secrets.RESEND_API_KEY }}
+          from: deploy@inventionindex8.com
+          to: andy@web3r.tech
+          subject: "❌ Deploy FAILED — Invention Index 8"
+          body: |
+            Deploy of ${{ github.sha }} FAILED and was rolled back.
+            Commit: ${{ github.event.head_commit.message }}
+            Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

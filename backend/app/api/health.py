@@ -24,10 +24,33 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
     resend_status = await _check_resend()
 
     probes = {"db": db_status, "redis": redis_status, "resend": resend_status}
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        cfg = Config("alembic.ini")
+        script = ScriptDirectory.from_config(cfg)
+        probes["alembic_head"] = script.get_current_head()
+    except Exception:
+        probes["alembic_head"] = "unknown"
     all_ok = all(v in ("ok", "skipped") for v in probes.values())
     probes["overall"] = "ok" if all_ok else "degraded"
 
     return probes
+
+
+@router.get("/_sentry-test")
+@limiter.exempt
+async def sentry_smoke_test() -> dict:
+    """Deliberately raise an error to verify Sentry is receiving events.
+
+    Only enabled in non-production environments. Returns 404 in production
+    so the endpoint can't be abused.
+    """
+    if settings.environment == "production":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+    1 / 0  # deliberate ZeroDivisionError for Sentry smoke test
 
 
 async def _check_db(db: AsyncSession) -> str:
