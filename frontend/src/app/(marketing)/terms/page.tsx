@@ -23,12 +23,12 @@ export default function TermsPage() {
 
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">3. AI-generated content</h2>
-          <p>Patent summaries, opportunity narratives, trend analyses, and other content labeled as "AI-generated" are produced by large language models. They may contain errors, omissions, or inaccuracies. Confidence levels are displayed where applicable. Do not rely on AI-generated content for critical decisions without independent verification.</p>
+          <p>Patent summaries, opportunity narratives, trend analyses, and other content labeled as &ldquo;AI-generated&rdquo; are produced by large language models. They may contain errors, omissions, or inaccuracies. Confidence levels are displayed where applicable. Do not rely on AI-generated content for critical decisions without independent verification.</p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">4. Subscription and billing</h2>
-          <p>Paid subscriptions (Basic, Lifetime, Enterprise) are processed through Stripe. By subscribing, you agree to Stripe's terms of service. Subscription fees are non-refundable except as stated in our <a href="/refund" className="text-[var(--accent)] underline">Refund Policy</a>.</p>
+          <p>Paid subscriptions (Basic, Lifetime, Enterprise) are processed through Stripe. By subscribing, you agree to Stripe&rsquo;s terms of service. Subscription fees are non-refundable except as stated in our <a href="/refund" className="text-[var(--accent)] underline">Refund Policy</a>.</p>
         </div>
 
         <div>
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">6. Limitation of liability</h2>
-          <p>Invention Index 8 is provided "as is" without warranty of any kind. We are not liable for any damages arising from use of the platform, including but not limited to decisions made based on patent data, AI analysis, or expiry estimates.</p>
+          <p>Invention Index 8 is provided &ldquo;as is&rdquo; without warranty of any kind. We are not liable for any damages arising from use of the platform, including but not limited to decisions made based on patent data, AI analysis, or expiry estimates.</p>
         </div>
 
         <div>
