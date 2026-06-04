@@ -18,7 +18,7 @@ from sqlalchemy import func, or_, select, update
 
 from app.core.models import PatentPublication
 from app.database import async_session_maker
-from app.ingestion.patentsview_client import PatentData, PatentsViewClient
+from app.ingestion.patentsview_client import PatentsViewClient
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

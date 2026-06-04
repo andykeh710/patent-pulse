@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from xml.etree import ElementTree
 
 import httpx
 
-from app.core.models import NewsItem, NewsPatentLink, PatentPublication
+from app.core.models import NewsItem, NewsPatentLink
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 
@@ -184,9 +184,10 @@ def recompute_user_embeddings(self) -> dict:
 
 
 async def _recompute_async() -> dict:
-    from app.services.recommendations import compute_user_embedding
+    from sqlalchemy import func, select
+
     from app.core.models import UserViewEvent
-    from sqlalchemy import select, func
+    from app.services.recommendations import compute_user_embedding
 
     stats = {"users_checked": 0, "users_updated": 0, "users_skipped": 0}
 

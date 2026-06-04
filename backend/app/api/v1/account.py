@@ -11,8 +11,6 @@ deleted, preserving the audit trail.
 
 from __future__ import annotations
 
-import logging
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -20,12 +18,12 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import current_user, get_db, SESSION_COOKIE_NAME
-from app.core.ai_models import AIRun, User, UserCompanyFollow
+from app.api.deps import SESSION_COOKIE_NAME, current_user, get_db
+from app.core.ai_models import AIRun, User
 from app.core.billing_models import BillingSubscription
 from app.core.subscription_models import EmailDelivery
-from app.services.follow_company import add_follow, list_follows, remove_follow
 from app.services.company_suggestions import get_suggested_companies
+from app.services.follow_company import add_follow, list_follows, remove_follow
 
 logger = structlog.get_logger(__name__)
 

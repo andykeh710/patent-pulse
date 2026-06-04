@@ -10,15 +10,14 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import sys
 from datetime import date, timedelta
 
-from app.patent_sources.wipo_bigquery_provider import BigQueryWIPOProvider
-from app.ingestion.epo_normalizer import WIPONormalizer
 from app.ai.scorer import PatentScorer
 from app.database import async_session_maker
 from app.ingestion.dedup import upsert_patent
+from app.ingestion.epo_normalizer import WIPONormalizer
 from app.ingestion.source_fetch import record_source_fetch_async
+from app.patent_sources.wipo_bigquery_provider import BigQueryWIPOProvider
 
 
 async def process_day(

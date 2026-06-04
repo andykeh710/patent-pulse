@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     deepseek_input_usd_per_mtok: float = 0.27            # $0.27/M input
     deepseek_output_usd_per_mtok: float = 1.10           # $1.10/M output
 
-    # LLM provider: "anthropic" | "deepseek"  
+    # LLM provider: "anthropic" | "deepseek"
     llm_provider: str = "deepseek"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

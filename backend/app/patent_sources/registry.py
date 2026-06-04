@@ -45,7 +45,7 @@ def import_providers() -> None:
     from app.patent_sources import (  # noqa: F401
         epo_ops_provider,
         google_patents_provider,
-        wipo_provider,
         wipo_bigquery_provider,
         # scrapegraph_provider,  # V1.1: Enterprise-tier-gated
+        wipo_provider,
     )

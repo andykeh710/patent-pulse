@@ -6,12 +6,11 @@ GET  /unsubscribe/{token} — one-click unsubscribe, no auth
 """
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select, update
 
 from app.config import settings

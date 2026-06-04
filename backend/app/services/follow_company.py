@@ -1,6 +1,8 @@
 import re
+
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+
 from app.core.ai_models import UserCompanyFollow
 
 _SUFFIX_RE = re.compile(

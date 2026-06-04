@@ -20,7 +20,6 @@ import subprocess
 import tempfile
 from datetime import datetime, timedelta
 
-from app.config import settings
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

@@ -1,9 +1,9 @@
 """Company suggestion logic — persona-biased company recommendations."""
 
 from typing import Any
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 _PERSONA_COMPANIES = {
     "operator": [

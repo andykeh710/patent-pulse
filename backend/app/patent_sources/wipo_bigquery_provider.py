@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from app.config import settings
@@ -161,9 +161,10 @@ class BigQueryWIPOProvider(BasePatentProvider):
         if not self._ensure_client():
             return
 
-        from google.cloud import bigquery
-        import time as _time
         import asyncio
+        import time as _time
+
+        from google.cloud import bigquery
 
         current = start_date
         total_yielded = 0

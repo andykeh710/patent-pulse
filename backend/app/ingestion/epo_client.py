@@ -331,7 +331,8 @@ class EPOClient:
             }
 
             try:
-                import asyncio, time as _time
+                import asyncio
+                import time as _time
                 _start = _time.monotonic()
                 response = self._request("GET", path, params=params)
                 _duration = int((_time.monotonic() - _start) * 1000)

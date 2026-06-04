@@ -15,10 +15,8 @@ import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timezone
 
 from app.config import settings
-from app.database import async_session_maker
 from app.ingestion.source_fetch import record_source_fetch_async
 
 logger = logging.getLogger(__name__)

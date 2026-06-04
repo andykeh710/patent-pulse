@@ -444,7 +444,11 @@ async def admin_system_health(
     admin: _UserModel = Depends(require_admin),
 ):
     """Returns Anthropic API health status for monitoring."""
-    from app.tasks.tag import _anthropic_error_count, _LAST_ANTHROPIC_ERROR_AT, ANTHROPIC_ERROR_MAX_CONSECUTIVE
+    from app.tasks.tag import (
+        _LAST_ANTHROPIC_ERROR_AT,
+        ANTHROPIC_ERROR_MAX_CONSECUTIVE,
+        _anthropic_error_count,
+    )
 
     status = "ok"
     if _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE:

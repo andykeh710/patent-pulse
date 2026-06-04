@@ -1,3 +1,5 @@
+import logging
+import re
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -13,6 +15,7 @@ from app.ai.opportunity_narrative import (
 from app.ai.trend_snapshot import generate_trend_snapshot as generate_trend_snapshot_cached
 from app.ai.why_now import generate_why_now as generate_why_now_cached
 from app.api.deps import DbSession
+from app.config import settings
 from app.core.ai_models import AIRun, TrendSnapshot
 from app.core.enums import LegalStatus
 from app.core.models import PatentPublication
@@ -583,11 +586,6 @@ async def generate_assignee_intelligence(
 # cleanly even if `redis` or `httpx` aren't installed at module-load time.
 # An ImportError at endpoint runtime returns a null URL — it does NOT crash
 # the patents router or take down the entire backend.
-
-import logging
-import re
-
-from app.config import settings
 
 _thumbnail_logger = logging.getLogger("patent.thumbnail")
 

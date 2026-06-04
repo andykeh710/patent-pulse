@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from datetime import date
 from typing import Any
 
-from app.ingestion.wipo_client import WIPOClient, get_last_thursday
+from app.ingestion.wipo_client import WIPOClient
 from app.patent_sources.base import BasePatentProvider
 from app.patent_sources.registry import register
 

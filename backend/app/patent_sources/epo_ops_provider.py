@@ -11,7 +11,7 @@ from collections.abc import Iterator
 from datetime import date
 from typing import Any
 
-from app.ingestion.epo_client import EPOClient, get_last_wednesday
+from app.ingestion.epo_client import EPOClient
 from app.patent_sources.base import BasePatentProvider
 from app.patent_sources.registry import register
 

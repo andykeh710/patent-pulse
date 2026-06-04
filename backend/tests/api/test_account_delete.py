@@ -12,8 +12,10 @@ from sqlalchemy import select
 
 
 def _cookie(user_id="local-user"):
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import jwt
+
     from app.config import settings
     return {"auth_session": jwt.encode(
         {"sub": user_id, "iat": datetime.now(timezone.utc),
@@ -86,9 +88,10 @@ async def test_user_row_gone_after_delete(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_email_deliveries_anonymized_not_deleted(client: AsyncClient, db_session):
+    from uuid import uuid4
+
     from app.core.ai_models import User
     from app.core.subscription_models import EmailDelivery
-    from uuid import uuid4
 
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "ed@example.com"
@@ -115,8 +118,9 @@ async def test_email_deliveries_anonymized_not_deleted(client: AsyncClient, db_s
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_ai_runs_anonymized_not_deleted(client: AsyncClient, db_session):
-    from app.core.ai_models import AIRun, User
     from uuid import uuid4
+
+    from app.core.ai_models import AIRun, User
 
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "air@example.com"
@@ -144,10 +148,10 @@ async def test_ai_runs_anonymized_not_deleted(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_subscriptions_cascaded_after_delete(client: AsyncClient, db_session):
+
     from app.core.ai_models import User
-    from app.core.theme_models import Theme
     from app.core.subscription_models import TopicSubscription
-    from datetime import datetime, timezone
+    from app.core.theme_models import Theme
 
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "subs@example.com"

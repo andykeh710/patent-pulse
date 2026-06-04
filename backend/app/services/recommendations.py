@@ -66,7 +66,7 @@ async def _recommend(session: AsyncSession, user_id: str, limit: int) -> list[di
     emb_str = f"[{','.join(str(x) for x in emb_list)}]"
 
     rows = await session.execute(
-        text(f"""
+        text("""
             SELECT p.id, p.title, p.doc_id, p.assignees, p.publication_number,
                    1 - (p.embedding <=> :emb::vector) as similarity
             FROM patent_publications p

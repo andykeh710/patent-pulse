@@ -5,14 +5,13 @@ Usage: docker compose exec backend python scripts/test_epo_known_record.py
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 
 from app.ingestion.epo_client import EPOClient
-from app.ingestion.source_fetch import record_source_fetch_async
 from app.ingestion.epo_normalizer import EPONormalizer
-import asyncio
-
+from app.ingestion.source_fetch import record_source_fetch_async
 
 KNOWN_EP = "EP4000000A1"  # A real, recent EP publication
 

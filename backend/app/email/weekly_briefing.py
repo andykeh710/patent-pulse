@@ -7,7 +7,6 @@ same items as /api/v1/today/briefing. HTML + text fallback.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 from app.config import settings
 from app.email.sender import _render

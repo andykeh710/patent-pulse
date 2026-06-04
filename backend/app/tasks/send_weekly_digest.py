@@ -138,10 +138,9 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             # The legacy AI-narrative path (generate_weekly_digest +
             # weekly_digest.html) is no longer used; render_weekly_briefing's
             # kwargs are inlined here so send_email handles template rendering.
-            from app.services.briefing import assemble_briefing
-
             # Collect followed companies (normalized names) for briefing weighting
             from app.core.ai_models import UserCompanyFollow
+            from app.services.briefing import assemble_briefing
             follows_result = await session.execute(
                 select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id)
             )
