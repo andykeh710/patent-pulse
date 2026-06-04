@@ -76,9 +76,12 @@ jobs:
       EMAIL_DEV_RECIPIENT: dev@example.com
       EMAIL_SEND_MODE: dev
       ENVIRONMENT: test
-      # App imports may require these to be set even if empty
-      ANTHROPIC_API_KEY: ""
+      # App imports may require these to be set even if empty.
+      # LLM tests mock anthropic; force LLM_PROVIDER=anthropic so the default
+      # deepseek path (which would 500 on missing key) isn't taken in tests.
+      ANTHROPIC_API_KEY: "test-key-not-real"
       OPENAI_API_KEY: ""
+      LLM_PROVIDER: "anthropic"
       AUTH_SECRET_KEY: "test-secret-key-not-real"
 
     steps:

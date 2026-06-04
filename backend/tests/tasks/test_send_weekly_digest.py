@@ -93,7 +93,7 @@ async def test_fan_out_generates_digest(db_session):
         select(EmailDelivery).where(EmailDelivery.user_id == user.id)
     )).scalars().all()
     assert len(deliveries) >= 1
-    assert deliveries[0].email_type == "weekly_digest"
+    assert deliveries[0].email_type == "weekly_briefing"
 
 
 @pytest.mark.asyncio(loop_scope="function")
