@@ -53,10 +53,17 @@ def _issue_session_jwt(user_id: str) -> str:
     )
 
 
-def _set_session_cookie(response: JSONResponse | RedirectResponse, user_id: str) -> None:
-    """Attach a 30-day HttpOnly session cookie."""
+def _set_session_cookie(
+    response: JSONResponse | RedirectResponse,
+    request: Request,
+    user_id: str,
+) -> None:
+    """Attach a 30-day HttpOnly session cookie. Detects HTTPS from x-forwarded-proto
+    (Caddy passes this) so Secure flag tracks the actual request protocol, not an
+    environment-variable string that can drift between dev/staging/prod."""
     token = _issue_session_jwt(user_id)
-    secure = settings.environment == "production"
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    secure = proto == "https"
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
@@ -132,10 +139,14 @@ async def request_link(
 @router.get("/verify")
 @limiter.exempt
 async def verify(
+    request: Request,
     token: str,
     session=Depends(get_db),
 ):
-    """Verify a magic-link token and return a session token."""
+    """Verify a magic-link token and set the session cookie via Set-Cookie.
+
+    The cookie is HttpOnly (JS cannot read it; mitigates XSS) and Secure on
+    HTTPS. Frontend should NOT attempt document.cookie writes."""
     if not token:
         raise HTTPException(status_code=400, detail="Missing token")
 
@@ -143,8 +154,9 @@ async def verify(
     if not token_row:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    session_jwt = _issue_session_jwt(token_row.user_id)
-    return JSONResponse(content={"ok": True, "session_token": session_jwt})
+    response = JSONResponse(content={"ok": True})
+    _set_session_cookie(response, request, token_row.user_id)
+    return response
 
 
 @router.get("/me", response_model=UserResponse)

@@ -23,8 +23,8 @@ function VerifyContent() {
       try {
         const res = await authApi.verify(token);
         const data = await res.json();
-        if (data.session_token) {
-          document.cookie = `auth_session=${data.session_token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+        if (!data.ok) {
+          throw new Error("Verify did not return ok");
         }
         if (!cancelled) router.push("/today");
       } catch {

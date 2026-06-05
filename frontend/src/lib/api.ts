@@ -67,6 +67,7 @@ export class ApiError extends Error {
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "same-origin",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -425,7 +426,9 @@ export const authApi = {
     }),
 
   verify: (token: string) =>
-    fetch(`/api/v1/auth/verify?token=${encodeURIComponent(token)}`).then((r) => {
+    fetch(`/api/v1/auth/verify?token=${encodeURIComponent(token)}`, {
+      credentials: "same-origin",
+    }).then((r) => {
       if (!r.ok) throw new Error("Invalid token");
       return r;
     }),
