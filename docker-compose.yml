@@ -53,6 +53,7 @@ services:
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
       EMAIL_DEV_RECIPIENT: ${EMAIL_DEV_RECIPIENT}
       EMAIL_SEND_MODE: ${EMAIL_SEND_MODE:-dev}
+      MAGIC_LINK_BASE_URL: ${MAGIC_LINK_BASE_URL:-http://localhost:3000}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
@@ -63,7 +64,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
-      ENVIRONMENT: development
+      ENVIRONMENT: ${ENVIRONMENT:-development}
     depends_on:
       db:
         condition: service_healthy
@@ -92,6 +93,7 @@ services:
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
       EMAIL_DEV_RECIPIENT: ${EMAIL_DEV_RECIPIENT}
       EMAIL_SEND_MODE: ${EMAIL_SEND_MODE:-dev}
+      MAGIC_LINK_BASE_URL: ${MAGIC_LINK_BASE_URL:-http://localhost:3000}
       USPTO_API_KEY: ${USPTO_API_KEY}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
@@ -102,7 +104,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
-      ENVIRONMENT: development
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
     depends_on:
       db:
@@ -121,7 +123,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: development
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
     depends_on:
       db:
