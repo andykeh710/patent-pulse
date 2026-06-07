@@ -94,3 +94,9 @@ patent-pulse-portable/
 
 # Brainstorming visual companion mockups (local only)
 .superpowers/
+
+# Server-side artifacts (never commit)
+Caddyfile
+app.env
+fresh_patent_pulse.dump
+*.dump
