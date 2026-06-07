@@ -85,8 +85,16 @@ async def _check_resend() -> str:
             "https://api.resend.com/domains",
             headers={"Authorization": f"Bearer {settings.resend_api_key}"},
         )
-        await asyncio.wait_for(asyncio.to_thread(urllib.request.urlopen, req, timeout=2), timeout=3)
+        # 5s urlopen + 8s asyncio cap: TLS handshake from a container needs headroom.
+        await asyncio.wait_for(
+            asyncio.to_thread(urllib.request.urlopen, req, timeout=5),
+            timeout=8,
+        )
         return "ok"
-    except Exception:
-        logger.info("Health: Resend check skipped (API not configured or unreachable)")
+    except Exception as e:
+        logger.warning(
+            "Health: Resend probe failed: %s: %s",
+            type(e).__name__,
+            e,
+        )
         return "unreachable"
