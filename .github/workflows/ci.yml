@@ -182,7 +182,18 @@ jobs:
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
               if [ "$STATUS" = "200" ]; then
                 echo "Health check passed after $((i * 3))s"
-                exit 0
+                # Post-deploy smoke test — let containers warm up
+                sleep 15
+                cd /opt/invention-index-8
+                if ./scripts/smoke-test.sh; then
+                  echo "Smoke test passed"
+                  exit 0
+                else
+                  echo "Smoke test FAILED — rolling back to $PREV_COMMIT"
+                  git checkout "$PREV_COMMIT"
+                  docker compose up -d --build --force-recreate backend worker beat frontend
+                  exit 1
+                fi
               fi
               echo "Health check attempt $i/30: got $STATUS, waiting..."
               sleep 3
