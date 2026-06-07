@@ -13,5 +13,15 @@ export async function register() {
         tracesSampleRate: 0.1,
       });
     }
+  } else if (process.env.NEXT_RUNTIME === "edge") {
+    const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+    if (dsn) {
+      const Sentry = await import("@sentry/nextjs");
+      Sentry.init({
+        dsn,
+        environment: process.env.NEXT_PUBLIC_ENVIRONMENT || "development",
+        tracesSampleRate: 0.1,
+      });
+    }
   }
 }
