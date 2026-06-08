@@ -188,11 +188,13 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=8, minute=0, day_of_week=0),
         "options": {"queue": "maintenance"},
     },
-    # Sprint 5 — embedding backfill (every 15 min, 200/batch).
+    # Sprint 5 — embedding backfill (every 2 min, 200/batch).
+    # Using batch API (20 texts per call) keeps each chunk's transaction
+    # under 5 seconds — well within the 60s idle_in_transaction_session_timeout.
     "embeddings-backfill": {
         "task": "app.tasks.embeddings.batch_generate_embeddings",
         "schedule": crontab(minute="*/2"),
-        "args": (1000,),
+        "kwargs": {"limit": 200},
         "options": {"queue": "maintenance"},
     },
     # Sprint 5 follow-up (O2) — embed the expiring-patent cohort so usage
