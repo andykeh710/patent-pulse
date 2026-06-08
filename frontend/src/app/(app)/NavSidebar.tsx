@@ -12,6 +12,11 @@ const NAV_ITEMS = [
     icon: "M13 10V3L4 14h7v7l9-11h-7z",
   },
   {
+    href: "/chat",
+    label: "Chat",
+    icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z",
+  },
+  {
     href: "/opportunity",
     label: "Opportunities",
     icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
