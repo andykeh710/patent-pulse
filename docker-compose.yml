@@ -118,9 +118,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app beat --loglevel=info
+    command: celery -A app.tasks.celery_app beat --loglevel=info --schedule=/var/celery/beat-schedule
     volumes:
       - ./backend:/app
+      - celerybeat:/var/celery
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
@@ -150,3 +151,4 @@ services:
 
 volumes:
   pgdata:
+  celerybeat:

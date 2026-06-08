@@ -95,7 +95,14 @@ patent-pulse-portable/
 # Brainstorming visual companion mockups (local only)
 .superpowers/
 
-# ── Server-side artifacts (never commit) ──────────────────────
+# Server-side artifacts (never commit)
 Caddyfile
 app.env
+fresh_patent_pulse.dump
 *.dump
+
+# Stray paste-into-shell artifacts
+@tailwind
+@*
+*.sql
+celerybeat-schedule*
