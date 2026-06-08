@@ -4,6 +4,7 @@ Phase 3 — Chat API (SSE streaming).
 PR 1: SSE scaffold with mock LLM.
 PR 2: Real Anthropic streaming + patent retrieval layer.
 PR 3: Anthropic tool calls (search_patents, open_patent, compare_companies).
+PR 4: Citation extraction + soft warning.
 
 Endpoint:
   POST /api/v1/chat/stream
@@ -23,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.anthropic_client import get_chat_client
 from app.api.deps import current_user, get_db
+from app.services.chat_citations import extract_citations, verify_citations
 from app.services.chat_retrieval import build_system_prompt, retrieve_patents
 from app.services.chat_tools import TOOLS, execute_tool
 
@@ -89,6 +91,33 @@ def _sanitize_tool_result(result: dict) -> dict:
     return sanitized
 
 
+# ── Citation helpers ──────────────────────────────────────────────────
+
+
+def _collect_tool_doc_ids(name: str, result: dict) -> set[str]:
+    """Extract patent doc_ids from a tool-call result."""
+    ids: set[str] = set()
+
+    if name == "open_patent":
+        doc_id = result.get("doc_id")
+        if isinstance(doc_id, str) and doc_id:
+            ids.add(doc_id)
+
+    elif name == "search_patents":
+        for r in result.get("results") or []:
+            doc_id = r.get("doc_id") if isinstance(r, dict) else None
+            if isinstance(doc_id, str) and doc_id:
+                ids.add(doc_id)
+
+    elif name == "compare_companies":
+        for c in result.get("companies") or []:
+            doc_id = c.get("top_patent_id") if isinstance(c, dict) else None
+            if isinstance(doc_id, str) and doc_id:
+                ids.add(doc_id)
+
+    return ids
+
+
 # ── Anthropic stream adapter ──────────────────────────────────────────
 
 
@@ -96,14 +125,16 @@ async def _stream_anthropic_response(
     message: str,
     db: AsyncSession,
 ):
-    """Retrieve patents + stream Anthropic response with tool calls.
+    """Retrieve patents + stream Anthropic response with tool calls
+    and citation verification.
 
     Pipeline:
       1. Embed query → retrieve top-K patents via pgvector
       2. Build system prompt with patent context
       3. Stream Anthropic token-by-token, handling tool-use events
       4. On tool_use: execute tool, emit SSE events, resume stream
-      5. Emit sources + done events
+      5. Extract citations, verify against known doc_ids, emit events
+      6. Emit sources + done events
 
     Yields:
         SSE-formatted strings.
@@ -120,6 +151,10 @@ async def _stream_anthropic_response(
     # ── Step 2: System prompt ─────────────────────────────────────
     system_prompt = build_system_prompt(patents)
 
+    # ── Citation-tracking state ───────────────────────────────────
+    full_text_parts: list[str] = []
+    known_doc_ids: set[str] = {p["doc_id"] for p in patents}
+
     # ── Step 3: Anthropic streaming with tool loop ────────────────
     client = get_chat_client()
     messages: list[dict] = [{"role": "user", "content": message}]
@@ -133,6 +168,7 @@ async def _stream_anthropic_response(
                 tools=TOOLS,
             ):
                 if event["type"] == "text":
+                    full_text_parts.append(event["content"])
                     yield _sse_event("token", content=event["content"])
 
                 elif event["type"] == "tool_use":
@@ -166,6 +202,9 @@ async def _stream_anthropic_response(
                         result = {
                             "error": f"Tool '{tool_name}' encountered an internal error."
                         }
+
+                    # Track doc_ids from tool results before sanitizing
+                    known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
 
                     sanitized = _sanitize_tool_result(result)
 
@@ -216,7 +255,28 @@ async def _stream_anthropic_response(
             yield _sse_event("done")
             return
 
-    # ── Step 4: Sources + done ────────────────────────────────────
+    # ── Step 4: Citation verification ─────────────────────────────
+    full_text = "".join(full_text_parts)
+    cited = extract_citations(full_text)
+    verification = verify_citations(cited, known_doc_ids)
+
+    yield _sse_event(
+        "citations",
+        verified=verification["verified"],
+        unverified=verification["unverified"],
+    )
+
+    if verification["unverified"]:
+        yield _sse_event(
+            "warning",
+            code="uncited_or_invalid_doc_ids",
+            message=(
+                "Some patent references could not be verified "
+                "against retrieved sources."
+            ),
+        )
+
+    # ── Step 5: Sources + done ────────────────────────────────────
     yield _sse_event("sources", patents=patents)
     yield _sse_event("done")
 
@@ -234,8 +294,8 @@ async def chat_stream(
     """Stream an LLM response as Server-Sent Events.
 
     Auth required (session cookie). Retrieves top-K relevant patents
-    and streams an Anthropic response with inline citations and
-    optional tool calls.
+    and streams an Anthropic response with inline citations, optional
+    tool calls, and citation verification.
     """
     logger.info(
         "chat_stream: user=%s message_len=%d conversation_id=%s",
