@@ -143,70 +143,150 @@ def _generate_share_png(*, headline: str, subtext: str) -> bytes:
     return buf.getvalue()
 
 
-# ── Sitemap ─────────────────────────────────────────────────────────
+# ── Sitemap (index + sub-sitemaps) ─────────────────────────────────
 
 
-@router.get("/sitemap.xml")
-async def sitemap() -> Response:
-    """Dynamic sitemap: companies + themes + static pages."""
+MAX_SITEMAP_ENTRIES = 50_000
+BASE_URL = settings.magic_link_base_url.rstrip("/")
+
+
+async def _company_slugs(limit: int = MAX_SITEMAP_ENTRIES) -> list[str]:
     async with async_session_maker() as session:
-        # Companies (top 500 distinct assignees)
-        company_rows = (await session.execute(
+        rows = (await session.execute(
             text("""
-                SELECT DISTINCT lower(regexp_replace(assignee_val, '[^a-zA-Z0-9]', '-', 'g')) AS slug,
-                       assignee_val AS display_name
+                SELECT DISTINCT lower(regexp_replace(assignee_val, '[^a-zA-Z0-9]', '-', 'g')) AS slug
                 FROM patent_publications p
                 JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
                 WHERE assignee_val IS NOT NULL AND assignee_val != ''
                 GROUP BY assignee_val
                 ORDER BY COUNT(*) DESC
-                LIMIT 500
-            """)
+                LIMIT :limit
+            """),
+            {"limit": limit},
         )).mappings().all()
+    return [r["slug"] for r in rows if r["slug"]]
 
-        # Themes (active themes)
-        theme_rows = (await session.execute(
+
+async def _theme_slugs() -> list[str]:
+    async with async_session_maker() as session:
+        rows = (await session.execute(
             text("""
                 SELECT regexp_replace(lower(name), '[^a-zA-Z0-9]+', '-', 'g') AS slug
                 FROM themes
                 WHERE is_active = true
                 ORDER BY name
-                LIMIT 500
             """)
         )).mappings().all()
+    return [r["slug"] for r in rows if r["slug"]]
 
+
+async def _top_patent_ids(limit: int = 5000) -> list[dict]:
+    async with async_session_maker() as session:
+        rows = (await session.execute(
+            text("""
+                SELECT id, doc_id
+                FROM patent_publications
+                WHERE opportunity_score IS NOT NULL
+                ORDER BY opportunity_score DESC
+                LIMIT :limit
+            """),
+            {"limit": limit},
+        )).mappings().all()
+    return [{"id": str(r["id"]), "doc_id": r["doc_id"]} for r in rows]
+
+
+def _urlset_element(urls: list[dict]) -> Element:
+    """Build a <urlset> with entries."""
     ns = "http://www.sitemaps.org/schemas/sitemap/0.9"
     urlset = Element("urlset", xmlns=ns)
-
-    base = settings.magic_link_base_url.rstrip("/")
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Static pages
-    for path in ["/", "/pricing", "/about"]:
+    for u in urls:
         url_el = SubElement(urlset, "url")
-        SubElement(url_el, "loc").text = f"{base}{path}"
-        SubElement(url_el, "lastmod").text = today
-        SubElement(url_el, "changefreq").text = "weekly"
-        SubElement(url_el, "priority").text = "0.8" if path == "/" else "0.5"
+        SubElement(url_el, "loc").text = u["loc"]
+        SubElement(url_el, "lastmod").text = u.get("lastmod", today)
+        chf = u.get("changefreq", "weekly")
+        if chf:
+            SubElement(url_el, "changefreq").text = chf
+        pri = u.get("priority", "0.5")
+        if pri:
+            SubElement(url_el, "priority").text = pri
 
-    # Company pages
-    for row in company_rows:
-        slug = row["slug"] or "unknown"
-        url_el = SubElement(urlset, "url")
-        SubElement(url_el, "loc").text = f"{base}/c/{slug}"
-        SubElement(url_el, "lastmod").text = today
-        SubElement(url_el, "changefreq").text = "weekly"
-        SubElement(url_el, "priority").text = "0.6"
+    return urlset
 
-    # Theme pages
-    for row in theme_rows:
-        slug = row["slug"]
-        url_el = SubElement(urlset, "url")
-        SubElement(url_el, "loc").text = f"{base}/t/{slug}"
-        SubElement(url_el, "lastmod").text = today
-        SubElement(url_el, "changefreq").text = "weekly"
-        SubElement(url_el, "priority").text = "0.5"
 
-    xml_bytes = b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(urlset, encoding="unicode").encode("utf-8")
-    return Response(content=xml_bytes, media_type="application/xml",
+def _sitemap_response(urlset: Element) -> Response:
+    xml = b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(urlset, encoding="unicode").encode("utf-8")
+    return Response(content=xml, media_type="application/xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/sitemap.xml")
+async def sitemap_index() -> Response:
+    """Sitemap index pointing to sub-sitemaps."""
+    ns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+    idx = Element("sitemapindex", xmlns=ns)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    for name in ["companies", "themes", "patents", "pages"]:
+        sm = SubElement(idx, "sitemap")
+        SubElement(sm, "loc").text = f"{BASE_URL}/sitemap-{name}.xml"
+        SubElement(sm, "lastmod").text = today
+
+    return _sitemap_response(idx)
+
+
+@router.get("/sitemap-companies.xml")
+async def sitemap_companies() -> Response:
+    slugs = await _company_slugs()
+    urls = [{"loc": f"{BASE_URL}/c/{s}", "priority": "0.6"} for s in slugs]
+    return _sitemap_response(_urlset_element(urls[:MAX_SITEMAP_ENTRIES]))
+
+
+@router.get("/sitemap-themes.xml")
+async def sitemap_themes() -> Response:
+    slugs = await _theme_slugs()
+    urls = [{"loc": f"{BASE_URL}/t/{s}", "priority": "0.5"} for s in slugs]
+    return _sitemap_response(_urlset_element(urls[:MAX_SITEMAP_ENTRIES]))
+
+
+@router.get("/sitemap-patents.xml")
+async def sitemap_patents() -> Response:
+    patents = await _top_patent_ids()
+    urls = [{"loc": f"{BASE_URL}/patents/{p['id']}", "priority": "0.4"} for p in patents]
+    return _sitemap_response(_urlset_element(urls[:MAX_SITEMAP_ENTRIES]))
+
+
+@router.get("/sitemap-pages.xml")
+async def sitemap_pages() -> Response:
+    urls = [
+        {"loc": f"{BASE_URL}/", "priority": "0.8", "changefreq": "daily"},
+        {"loc": f"{BASE_URL}/pricing", "priority": "0.5"},
+        {"loc": f"{BASE_URL}/about", "priority": "0.5"},
+        {"loc": f"{BASE_URL}/terms", "priority": "0.3"},
+        {"loc": f"{BASE_URL}/privacy", "priority": "0.3"},
+        {"loc": f"{BASE_URL}/contact", "priority": "0.3"},
+        {"loc": f"{BASE_URL}/refund", "priority": "0.3"},
+    ]
+    return _sitemap_response(_urlset_element(urls))
+
+
+# ── robots.txt ─────────────────────────────────────────────────────
+
+
+@router.get("/robots.txt", include_in_schema=False)
+async def robots_txt() -> Response:
+    txt = f"""User-agent: *
+Allow: /
+Allow: /c/
+Allow: /t/
+Allow: /patents/
+Allow: /trends/
+Disallow: /admin/
+Disallow: /account/
+Disallow: /api/
+Disallow: /login
+Sitemap: {BASE_URL}/sitemap.xml
+"""
+    return Response(content=txt, media_type="text/plain",
                     headers={"Cache-Control": "public, max-age=86400"})

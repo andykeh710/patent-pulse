@@ -12,7 +12,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.health import router as health_router
 from app.api.v1.router import v1_router
-from app.api.v1.share import sitemap as _sitemap_endpoint
+from app.api.v1.share import (
+    robots_txt as _robots_endpoint,
+    sitemap_companies as _sitemap_companies,
+    sitemap_index as _sitemap_endpoint,
+    sitemap_pages as _sitemap_pages,
+    sitemap_patents as _sitemap_patents,
+    sitemap_themes as _sitemap_themes,
+)
 from app.api.v1.webhooks import public_router
 from app.config import settings
 from app.database import engine
@@ -86,8 +93,13 @@ app.include_router(health_router)
 app.include_router(v1_router)
 app.include_router(public_router)
 
-# Public sitemap (not under /api/v1)
+# Public routes (not under /api/v1)
 app.get("/sitemap.xml")(_sitemap_endpoint)
+app.get("/sitemap-companies.xml")(_sitemap_companies)
+app.get("/sitemap-themes.xml")(_sitemap_themes)
+app.get("/sitemap-patents.xml")(_sitemap_patents)
+app.get("/sitemap-pages.xml")(_sitemap_pages)
+app.get("/robots.txt")(_robots_endpoint)
 
 
 @app.exception_handler(SQLAlchemyError)

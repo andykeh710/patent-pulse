@@ -48,25 +48,26 @@ export async function generateMetadata({
     };
   }
 
-  return {
-    title: `${displayName} — patent activity, filing trends, key inventions | Invention Index 8`,
-    description: `${displayName} has ${profile.patent_count} patents with ${profile.active_patent_count} active. Explore filing trends, top CPC areas, and key inventions on Invention Index 8.`,
-    openGraph: {
-      title: `${displayName} — ${profile.patent_count} patents`,
-      description: `Explore ${displayName}'s patent portfolio — top CPC areas, filing trends, and key inventions.`,
-      images: [`/api/v1/share/company/${name}.png`],
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${displayName} — ${profile.patent_count} patents`,
-      description: `Explore ${displayName}'s patent portfolio on Invention Index 8.`,
-      images: [`/api/v1/share/company/${name}.png`],
-    },
-    alternates: {
-      canonical: `/c/${name}`,
-    },
-  };
+    return {
+      title: `${displayName} — patent activity, filing trends, key inventions | Invention Index 8`,
+      description: `${displayName} has ${profile.patent_count} patents with ${profile.active_patent_count} active. Explore filing trends, top CPC areas, and key inventions on Invention Index 8.`,
+      openGraph: {
+        title: `${displayName} — ${profile.patent_count} patents`,
+        description: `Explore ${displayName}'s patent portfolio — top CPC areas, filing trends, and key inventions.`,
+        images: [`/api/v1/share/company/${name}.png`],
+        url: `https://inventionindex8.com/c/${name}`,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${displayName} — ${profile.patent_count} patents`,
+        description: `Explore ${displayName}'s patent portfolio on Invention Index 8.`,
+        images: [`/api/v1/share/company/${name}.png`],
+      },
+      alternates: {
+        canonical: `/c/${name}`,
+      },
+    };
 }
 
 // ── page ─────────────────────────────────────────────────────────────
@@ -101,7 +102,9 @@ export default async function PublicCompanyPage({
     "@type": "Organization",
     name: displayName,
     url: `https://inventionindex8.com/c/${name}`,
-    description: `${displayName} patent portfolio — ${profile.patent_count} patents on Invention Index 8.`,
+    description: `${displayName} patent portfolio — ${profile.patent_count} patents on Invention Index 8. Explore top CPC areas, filing trends, and key inventions.`,
+    identifier: name,
+    sameAs: [],
   };
 
   return (
