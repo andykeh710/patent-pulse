@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, text
 
-from app.api.deps import DbSession, current_user, get_db
+from app.api.deps import DbSession, current_user, current_user_optional, get_db
 from app.core.ai_models import TrendSnapshot
 from app.core.models import PatentPublication
 from app.services.briefing import assemble_briefing
@@ -375,10 +375,27 @@ async def get_highlights(db: DbSession) -> TodayHighlightsResponse:
 
 
 @router.get("/briefing")
-async def get_briefing(db: DbSession) -> list[dict]:
+async def get_briefing(
+    db: DbSession,
+    user_id: str = Depends(current_user_optional),
+) -> list[dict]:
     """Return a weighted briefing feed for the Today page.
 
     Each item includes required fields: type, label, title, reason,
     source, freshness, confidence, href.
+
+    Automatically applies persona-aware ranking when the user has
+    completed onboarding (persona set in their profile).
     """
-    return await assemble_briefing(db)
+    from sqlalchemy import select
+
+    from app.core.ai_models import User
+
+    persona = None
+    if user_id:
+        result = await db.execute(select(User.persona).where(User.id == user_id))
+        row = result.one_or_none()
+        if row:
+            persona = row[0]
+
+    return await assemble_briefing(db, user_id=user_id, persona=persona)
