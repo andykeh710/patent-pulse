@@ -49,6 +49,7 @@ async def semantic_search(
     Converts the query to an embedding and finds similar patents using
     cosine similarity in pgvector.
     """
+    await db.execute(text("SET LOCAL hnsw.ef_search = 100"))
     with PatentEmbedder() as embedder:
         query_embedding = embedder.generate_embedding(query)
 
@@ -108,6 +109,7 @@ async def find_similar_patents(
 
     Uses the patent's embedding to find other patents with similar content.
     """
+    await db.execute(text("SET LOCAL hnsw.ef_search = 100"))
     source_result = await db.execute(
         select(PatentPublication.embedding, PatentPublication.doc_id).where(
             PatentPublication.id == patent_id
@@ -185,6 +187,7 @@ async def compute_novelty_score(
     Novelty is measured as average distance from the most similar existing patents.
     Higher distance = more novel.
     """
+    await db.execute(text("SET LOCAL hnsw.ef_search = 100"))
     source_result = await db.execute(
         select(
             PatentPublication.embedding,
