@@ -1,4 +1,4 @@
-"""Tests for Phase 3 PR 2–3 — Anthropic streaming + patent retrieval + tool calls."""
+"""Tests for Phase 3 PR 2–4 — Anthropic streaming + patent retrieval + tool calls + citations."""
 
 import json
 
@@ -107,6 +107,28 @@ MOCK_TOOL_RESULT = {
     "count": 1,
 }
 
+# ── Citation mock data ────────────────────────────────────────────────
+
+# Tokens citing patents that ARE in MOCK_PATENTS, using proper
+# USPTO:/EPO: prefixes (the model follows the system prompt rule).
+# verify_citations is prefix-agnostic — USPTO:US20240123456A1 matches
+# the known doc_id US20240123456A1.
+MOCK_VERIFIED_CITATION_TOKENS = [
+    {"type": "text", "content": "See "},
+    {"type": "text", "content": "[USPTO:US20240123456A1]"},
+    {"type": "text", "content": " for Toyota's thermal management system. "},
+    {"type": "text", "content": "Also "},
+    {"type": "text", "content": "[EPO:EP4567890B1]"},
+    {"type": "text", "content": " covers electrolytes."},
+]
+
+# Tokens with a citation NOT in any known source — should trigger warning.
+MOCK_UNCITED_TOKENS = [
+    {"type": "text", "content": "See "},
+    {"type": "text", "content": "[USPTO:US99999999]"},
+    {"type": "text", "content": " for a completely fabricated patent."},
+]
+
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -129,6 +151,12 @@ async def _fake_token_stream(self, **kw):
     """Simulate an Anthropic streaming response — just text tokens."""
     for token in MOCK_TOKENS:
         yield token
+
+
+async def _yield_mock(events: list[dict]):
+    """Yield a static list of events as an async stream."""
+    for event in events:
+        yield event
 
 
 # ── Auth tests (unchanged from PR 1) ──────────────────────────────────
@@ -609,6 +637,142 @@ async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypat
 
     # No sources event — the cap path returns early before sources
     assert "sources" not in event_types
+
+
+# ── Citation tests ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_emits_citations_event(client: AsyncClient, monkeypatch):
+    """citations event appears after tokens, before sources, before done."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock(MOCK_VERIFIED_CITATION_TOKENS),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "batteries"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    event_types = [e["type"] for e in events]
+
+    assert "citations" in event_types
+
+    cit_idx = event_types.index("citations")
+    sources_idx = event_types.index("sources")
+    done_idx = event_types.index("done")
+    assert cit_idx < sources_idx < done_idx, (
+        "citations must appear before sources before done"
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_citations_all_verified(
+    client: AsyncClient, monkeypatch,
+):
+    """When all citations match known doc_ids, verified list is populated."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock(MOCK_VERIFIED_CITATION_TOKENS),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "batteries"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    cit = next(e for e in events if e["type"] == "citations")
+
+    # Both MOCK_PATENTS doc_ids are in the known set (prefix-agnostic):
+    # USPTO:US20240123456A1 → matches US20240123456A1
+    # EPO:EP4567890B1       → matches EP4567890B1
+    assert len(cit["verified"]) == 2
+    assert "USPTO:US20240123456A1" in cit["verified"]
+    assert "EPO:EP4567890B1" in cit["verified"]
+    assert cit["unverified"] == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_citations_warning_on_unverified(
+    client: AsyncClient, monkeypatch,
+):
+    """When unverified citations exist, warning event fires with code."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock(MOCK_UNCITED_TOKENS),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "test"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+
+    cit = next(e for e in events if e["type"] == "citations")
+    assert len(cit["unverified"]) >= 1
+    assert "USPTO:US99999999" in cit["unverified"]
+
+    warnings = [e for e in events if e["type"] == "warning"]
+    cite_warnings = [
+        w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"
+    ]
+    assert len(cite_warnings) == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_no_citation_warning_when_all_verified(
+    client: AsyncClient, monkeypatch,
+):
+    """When all citations are verified, no citation warning fires."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock(MOCK_VERIFIED_CITATION_TOKENS),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "test"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+
+    cit = next(e for e in events if e["type"] == "citations")
+    assert cit["unverified"] == []
+
+    # No citation-related warning
+    cite_warnings = [
+        w for w in events
+        if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
+    ]
+    assert cite_warnings == []
 
 
 # ── Edge case tests ──────────────────────────────────────────────────

@@ -160,6 +160,15 @@ Use them proactively when the user asks about:
   - Topics not in the retrieved patents above (use search_patents)
   - Multiple companies or competitive analysis (use compare_companies)
 
+CITATION RULES:
+- Cite EVERY claim about a specific patent using [doc_id] format.
+  Example: '[USPTO:US12345678] discusses solid-state battery electrolytes.'
+- Only cite doc_ids that are in the retrieved patents above OR that you
+  obtained via the open_patent / search_patents / compare_companies tools.
+- DO NOT invent doc_ids. If you don't have a source, qualify with
+  'reportedly', 'in general', or similar — but do not fabricate.
+- Use only USPTO:, EPO:, or WIPO: prefixes.
+
 If the retrieved patents don't answer the question, say so honestly.
 Never fabricate patent data, dates, or assignee names."""
 
