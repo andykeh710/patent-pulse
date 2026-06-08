@@ -60,6 +60,14 @@ if settings.stripe_api_key and settings.stripe_api_key.startswith("sk_live_"):
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
+    # Phase 6: seed blog posts from content/blog/*.md
+    try:
+        from app.api.v1.blog import seed_blog_posts
+        count = await seed_blog_posts()
+        if count:
+            logger.info("Seeded %d blog posts from content/blog/", count)
+    except Exception:
+        logger.warning("Blog seed failed (non-fatal)")
     yield
     await engine.dispose()
 
