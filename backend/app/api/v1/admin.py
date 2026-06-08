@@ -754,3 +754,85 @@ async def admin_embedding_stats(
         "missing": total - embedded,
         "coverage_pct": coverage_pct,
     }
+
+
+# ── Phase 5 PR 1: Email analytics ─────────────────────────────
+
+
+@router.get("/email/analytics")
+async def admin_email_analytics(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Admin-only email analytics — open/click rates + A/B variant breakdown.
+
+    Returns aggregate stats for last 7 days and per-subject-variant.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.subscription_models import EmailDelivery
+
+    since = datetime.now(timezone.utc) - timedelta(days=7)
+
+    # ── Global stats ──────────────────────────────────────────────
+    sent = (await db.execute(
+        select(func.count(EmailDelivery.id)).where(
+            EmailDelivery.email_type == "weekly_briefing",
+            EmailDelivery.sent_at >= since,
+        )
+    )).scalar() or 0
+
+    opens = (await db.execute(
+        select(func.count(EmailDelivery.id)).where(
+            EmailDelivery.email_type == "weekly_briefing",
+            EmailDelivery.sent_at >= since,
+            EmailDelivery.email_opened_at.isnot(None),
+        )
+    )).scalar() or 0
+
+    clicks = (await db.execute(
+        select(func.count(EmailDelivery.id)).where(
+            EmailDelivery.email_type == "weekly_briefing",
+            EmailDelivery.sent_at >= since,
+            EmailDelivery.email_clicked_at.isnot(None),
+        )
+    )).scalar() or 0
+
+    open_rate = round(opens / sent, 3) if sent > 0 else 0.0
+    click_rate = round(clicks / sent, 3) if sent > 0 else 0.0
+
+    # ── Per-variant breakdown ─────────────────────────────────────
+    variant_rows = (await db.execute(
+        select(
+            EmailDelivery.subject_variant,
+            func.count(EmailDelivery.id).label("total"),
+            func.count(EmailDelivery.id).filter(
+                EmailDelivery.email_opened_at.isnot(None)
+            ).label("opens"),
+        ).where(
+            EmailDelivery.email_type == "weekly_briefing",
+            EmailDelivery.sent_at >= since,
+            EmailDelivery.subject_variant.isnot(None),
+        ).group_by(EmailDelivery.subject_variant)
+    )).all()
+
+    by_variant = {}
+    for row in variant_rows:
+        v_sent = row.total or 0
+        v_opens = row.opens or 0
+        by_variant[str(row.subject_variant)] = {
+            "sent": v_sent,
+            "opens": v_opens,
+            "open_rate": round(v_opens / v_sent, 3) if v_sent > 0 else 0.0,
+        }
+
+    return {
+        "last_7_days": {
+            "sent": sent,
+            "opens": opens,
+            "open_rate": open_rate,
+            "clicks": clicks,
+            "click_rate": click_rate,
+        },
+        "by_variant": by_variant,
+    }

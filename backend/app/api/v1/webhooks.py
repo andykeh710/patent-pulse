@@ -56,6 +56,16 @@ async def resend_webhook(request: Request) -> dict:
         if delivery:
             delivery.webhook_event = event_type
             delivery.webhook_received_at = datetime.now(timezone.utc)
+
+            # Phase 5: record opens
+            if event_type == "email.opened" and delivery.email_opened_at is None:
+                delivery.email_opened_at = datetime.now(timezone.utc)
+            # Phase 5: record clicks
+            elif event_type == "email.clicked" and delivery.email_clicked_at is None:
+                delivery.email_clicked_at = datetime.now(timezone.utc)
+                delivery.click_url = data.get("click", {}).get("link") or data.get("url") or data.get("link", "")
+                delivery.click_url = (delivery.click_url or "")[:512]
+
             await session.commit()
 
     # Handle unsubscribe requests from Resend

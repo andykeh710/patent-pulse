@@ -43,6 +43,7 @@ async def send_email(
     email_type: str,
     subscription_id: UUID | None = None,
     artifact_id: UUID | None = None,
+    subject_variant: str | None = None,
 ) -> dict[str, str]:
     """Send an email via Resend with mode-guard. Writes EmailDelivery row.
 
@@ -64,6 +65,7 @@ async def send_email(
             await _write_delivery(
                 db_session, user_id, email_type, subscription_id, artifact_id,
                 status="refused", detail="Production not acknowledged",
+                subject_variant=subject_variant,
             )
             return {"status": "refused", "detail": "Production not acknowledged"}
 
@@ -75,6 +77,7 @@ async def send_email(
         await _write_delivery(
             db_session, user_id, email_type, subscription_id, artifact_id,
             status="failed", detail=str(e),
+            subject_variant=subject_variant,
         )
         return {"status": "failed", "detail": str(e)}
 
@@ -102,6 +105,7 @@ async def send_email(
         await _write_delivery(
             db_session, user_id, email_type, subscription_id, artifact_id,
             status="dev", detail="Redirected to dev recipient", resend_id=resend_id,
+            subject_variant=subject_variant,
         )
         return {"status": "dev", "detail": resend_id or "Logged"}
 
@@ -111,6 +115,7 @@ async def send_email(
         await _write_delivery(
             db_session, user_id, email_type, subscription_id, artifact_id,
             status="dry_run", detail="Template rendered",
+            subject_variant=subject_variant,
         )
         return {"status": "dry_run", "detail": "Template rendered"}
 
@@ -131,12 +136,14 @@ async def send_email(
             await _write_delivery(
                 db_session, user_id, email_type, subscription_id, artifact_id,
                 status="failed", detail=str(e),
+                subject_variant=subject_variant,
             )
             return {"status": "failed", "detail": str(e)}
 
         await _write_delivery(
             db_session, user_id, email_type, subscription_id, artifact_id,
             status="sent", detail="", resend_id=resend_id,
+            subject_variant=subject_variant,
         )
         return {"status": "sent", "detail": resend_id}
 
@@ -144,6 +151,7 @@ async def send_email(
     await _write_delivery(
         db_session, user_id, email_type, subscription_id, artifact_id,
         status="failed", detail="No API key or unknown mode",
+        subject_variant=subject_variant,
     )
     return {"status": "failed", "detail": "No API key or unknown mode"}
 
@@ -158,6 +166,7 @@ async def _write_delivery(
     status: str,
     detail: str,
     resend_id: str | None = None,
+    subject_variant: str | None = None,
 ) -> None:
     """Write an email_deliveries row (audit trail)."""
     try:
@@ -168,6 +177,7 @@ async def _write_delivery(
             resend_message_id=resend_id,
             status=status,
             artifact_id=artifact_id,
+            subject_variant=subject_variant,
         )
         db_session.add(row)
         await db_session.commit()

@@ -205,20 +205,37 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
 
             unsubscribe_token = _sign_user_id(user_id)
             from app.email.sender import send_email
+            from app.email.weekly_briefing import build_subject, pick_variant
+
+            # Phase 5: pick A/B subject variant
+            variant = pick_variant(user_id)
+            # Build items dicts for subject template
+            raw_items = []
+            for item in items:
+                raw_items.append({
+                    "title": item.get("title", ""),
+                    "type": item.get("type", ""),
+                    "source": item.get("source", ""),
+                    "topic_name": item.get("topic_name", ""),
+                })
+            subject_line = build_subject(variant, raw_items, topic_count, company_count)
+
             result = await send_email(
                 db_session=session,
                 to=user.email,
-                subject=f"Invention Index 8 Weekly — {hero_stat}",
+                subject=subject_line,
                 template_name="weekly_briefing.html",
                 template_kwargs={
                     "hero_stat": hero_stat,
                     "items": email_items,
                     "unsubscribe_url": f"{settings.magic_link_base_url}/unsubscribe/{unsubscribe_token}",
                     "base_url": settings.magic_link_base_url,
+                    "date_slug": week_end.isoformat(),
                 },
                 user_id=user_id,
                 email_type="weekly_briefing",
                 artifact_id=None,
+                subject_variant=variant,
             )
 
             if result.get("status") in ("sent", "dev", "dry_run"):

@@ -102,8 +102,27 @@ class EmailDelivery(Base):
     artifact_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ai_artifacts.id")
     )
+    # Resend webhook fields
+    webhook_event: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    webhook_received_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Phase 5: A/B subject line variant
+    subject_variant: Mapped[str | None] = mapped_column(String(1), nullable=True)
+
+    # Phase 5: Open + click tracking via Resend webhook
+    email_opened_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    email_clicked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    click_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     __table_args__ = (
         Index("ix_email_deliveries_user_id", "user_id"),
         Index("ix_email_deliveries_subscription_id", "subscription_id"),
+        Index("ix_email_deliveries_subject_variant", "subject_variant"),
+        Index("ix_email_deliveries_webhook_event", "webhook_event"),
     )
