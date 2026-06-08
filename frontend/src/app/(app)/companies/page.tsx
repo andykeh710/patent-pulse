@@ -245,7 +245,31 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
   }
 
   if (items.length === 0) {
-    return <div className="text-center py-12 bg-[var(--bg-base)] rounded-lg text-[var(--text-muted)]">No companies found for the selected filters.</div>;
+    return (
+      <div className="text-center py-12 bg-[var(--bg-base)] rounded-lg">
+        <p className="text-[var(--text-muted)]">
+          Companies are derived from patent assignees — each tracked
+          organisation shows its R&amp;D activity across patent classes.
+        </p>
+        <p className="text-sm text-[var(--text-muted)] mt-2">
+          No companies found for the selected filters.
+        </p>
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <Link
+            href="/patents"
+            className="text-sm text-[var(--accent)] hover:underline font-medium"
+          >
+            Browse all patents →
+          </Link>
+          <Link
+            href="/search"
+            className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          >
+            Search for a company
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
