@@ -13,6 +13,7 @@ Uses ``anthropic.AsyncAnthropic`` for async streaming via
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import AsyncIterator
 from typing import Any
@@ -35,7 +36,8 @@ CHAT_MAX_TOKENS = 2048
 class AnthropicChatClient:
     """Async Anthropic wrapper for chatbot streaming.
 
-    Minimal — no caching, no artifact persistence. Just stream tokens.
+    Minimal — no caching, no artifact persistence. Just stream tokens
+    and tool-use events.
     """
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
@@ -57,33 +59,83 @@ class AnthropicChatClient:
         *,
         system: str,
         messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         max_tokens: int = CHAT_MAX_TOKENS,
-    ) -> AsyncIterator[str]:
-        """Stream text tokens from Anthropic.
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream events from Anthropic.
 
-        Yields one text string per content-block delta (a chunk of the
-        assistant's response). Does not handle tool-use events yet
-        (that lands in PR 3).
+        Each yielded dict has a ``type`` key:
+
+          ``{"type": "text", "content": "Hello"}``
+              A text token delta. Accumulate these to build the
+              assistant's response.
+
+          ``{"type": "tool_use", "id": "toolu_...", "name": "search_patents",
+             "input": {"query": "..."}}``
+              A completed tool-use block. The caller should execute the
+              tool, then resume the conversation with a ``tool_result``
+              message.
 
         Args:
             system: System prompt (retrieved context + instructions).
             messages: Conversation history (latest user message last).
+            tools: Optional Anthropic tool definitions.
             max_tokens: Output token limit.
 
         Yields:
-            Text chunks from the streaming response.
+            Dicts with ``type`` field: ``"text"`` or ``"tool_use"``.
         """
         client = self._get_client()
 
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "max_tokens": max_tokens,
+            "system": system,
+            "messages": messages,
+        }
+        if tools:
+            kwargs["tools"] = tools
+
         try:
-            async with client.messages.stream(
-                model=self._model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=messages,
-            ) as stream:
-                async for text in stream.text_stream:
-                    yield text
+            async with client.messages.stream(**kwargs) as stream:
+                current_tool_id: str | None = None
+                current_tool_name: str | None = None
+                current_tool_input: str = ""
+
+                async for event in stream:
+                    if event.type == "content_block_start":
+                        content_block = event.content_block
+                        if content_block.type == "tool_use":
+                            current_tool_id = content_block.id
+                            current_tool_name = content_block.name
+                            current_tool_input = ""
+
+                    elif event.type == "content_block_delta":
+                        delta = event.delta
+                        if delta.type == "text_delta":
+                            yield {"type": "text", "content": delta.text}
+                        elif delta.type == "input_json_delta":
+                            current_tool_input += delta.partial_json
+
+                    elif event.type == "content_block_stop":
+                        if current_tool_id is not None:
+                            try:
+                                tool_input = json.loads(current_tool_input)
+                            except json.JSONDecodeError:
+                                logger.warning(
+                                    "Failed to parse tool input JSON: %s",
+                                    current_tool_input[:200],
+                                )
+                                tool_input = {}
+                            yield {
+                                "type": "tool_use",
+                                "id": current_tool_id,
+                                "name": current_tool_name,
+                                "input": tool_input,
+                            }
+                            current_tool_id = None
+                            current_tool_name = None
+                            current_tool_input = ""
 
         except anthropic.APIError as e:
             logger.error(
