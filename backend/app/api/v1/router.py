@@ -11,6 +11,7 @@ from app.api.v1 import (
     expiry,
     exports,
     families,
+    onboarding,
     opportunity,
     patents,
     reports,
@@ -50,4 +51,5 @@ v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])
 v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])
 v1_router.include_router(api_keys.router, prefix="/account", tags=["api-keys"])
 v1_router.include_router(account.router, prefix="/account", tags=["account"])
+v1_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
 v1_router.include_router(webhooks.webhook_router, tags=["webhooks"])

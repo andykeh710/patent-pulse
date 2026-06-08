@@ -53,6 +53,9 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     preferences: Mapped[dict | None] = mapped_column(JSONB)
     persona: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    industry_focus: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    interests_freetext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    onboarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     company_follows = relationship("UserCompanyFollow", back_populates="user", cascade="all, delete-orphan")
