@@ -10,11 +10,16 @@ import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { Badge } from "@/components/ui/Badge";
 import type { SearchParams } from "@/lib/types";
-import useSWR from "swr";
-import { semanticApi } from "@/lib/api";
-import type { SemanticSearchResponse } from "@/lib/types";
 
-type SearchMode = "fulltext" | "semantic";
+type SearchMode = "fulltext" | "semantic" | "hybrid";
+
+const NL_PLACEHOLDERS = [
+  "battery thermal management for electric vehicles",
+  "CRISPR delivery vectors for gene therapy",
+  "solid-state electrolyte manufacturing",
+  "autonomous drone navigation in GPS-denied environments",
+  "Explain what you're looking for...",
+];
 
 export default function SearchPage() {
   return (
@@ -32,7 +37,7 @@ function SearchContent() {
   const [query, setQuery] = useState(urlParams.get("q") || "");
   const [submitted, setSubmitted] = useState(urlParams.get("q") || "");
   const [mode, setMode] = useState<SearchMode>(
-    (urlParams.get("mode") as SearchMode) || "fulltext"
+    (urlParams.get("mode") as SearchMode) || "hybrid"
   );
   const [page, setPage] = useState(
     urlParams.get("page") ? Number(urlParams.get("page")) : 1
@@ -48,34 +53,33 @@ function SearchContent() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [submitted, mode, page, pathname, router]);
 
-  const searchParams: SearchParams | null = submitted
-    ? { q: submitted, page, page_size: 20 }
-    : null;
+  const minChars = mode === "fulltext" ? 3 : 1;
+  const canSubmit = query.trim().length >= minChars;
 
-  const { data: fulltextResults, isLoading: ftLoading } = usePatentSearch(
-    mode === "fulltext" ? searchParams : null
-  );
+  const searchParams: SearchParams | null =
+    submitted.length >= minChars
+      ? { q: submitted, mode, page, page_size: 20 }
+      : null;
 
-  const { data: semanticResults, isLoading: semLoading } = useSWR<SemanticSearchResponse>(
-    mode === "semantic" && submitted ? ["semantic", submitted] : null,
-    () => semanticApi.query(submitted, 20)
-  );
+  const { data: results, isLoading } = usePatentSearch(searchParams);
 
   const handleSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      if (query.trim().length >= 3) {
+      if (canSubmit) {
         setSubmitted(query.trim());
         setPage(1);
       }
     },
-    [query]
+    [query, canSubmit]
   );
 
-  const isLoading = mode === "fulltext" ? ftLoading : semLoading;
-  const hasResults = mode === "fulltext"
-    ? fulltextResults && fulltextResults.items.length > 0
-    : semanticResults && semanticResults.results.length > 0;
+  const hasResults = results && results.items.length > 0;
+
+  const placeholder =
+    mode === "fulltext"
+      ? "Search by title, abstract, or keywords..."
+      : NL_PLACEHOLDERS[Math.floor(Math.random() * NL_PLACEHOLDERS.length)];
 
   return (
     <div>
@@ -83,7 +87,7 @@ function SearchContent() {
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Search Patents</h1>
         <FreshnessBanner show={["patents"]} className="mt-2" />
         <p className="text-[var(--text-secondary)] mt-1">
-          Find patents by keyword or describe what you&apos;re looking for
+          Find patents by keyword or describe the technology you&apos;re looking for
         </p>
       </div>
 
@@ -95,17 +99,13 @@ function SearchContent() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={
-                mode === "fulltext"
-                  ? "Search by title, abstract, or keywords..."
-                  : "Describe the technology you're looking for..."
-              }
+              placeholder={placeholder}
               className="w-full rounded-lg border border-[var(--border-default)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
             />
           </div>
           <button
             type="submit"
-            disabled={query.trim().length < 3}
+            disabled={!canSubmit}
             className="px-6 py-3 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Search
@@ -113,33 +113,37 @@ function SearchContent() {
         </div>
 
         {/* Mode toggle */}
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
           <span className="text-xs text-[var(--text-muted)]">Search mode:</span>
-          <button
-            type="button"
-            onClick={() => { setMode("fulltext"); setSubmitted(""); }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              mode === "fulltext"
-                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
-                : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
-            }`}
-          >
-            Keyword Search
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode("semantic"); setSubmitted(""); }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              mode === "semantic"
-                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
-                : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
-            }`}
-          >
-            Semantic Search
-          </button>
+          {(["hybrid", "semantic", "fulltext"] as SearchMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => {
+                setMode(m);
+                setSubmitted("");
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                mode === m
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                  : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
+              }`}
+            >
+              {m === "fulltext"
+                ? "Keyword"
+                : m === "semantic"
+                  ? "Semantic"
+                  : "Hybrid"}
+            </button>
+          ))}
+          {mode === "hybrid" && (
+            <span className="text-xs text-[var(--text-muted)]">
+              Combines meaning, keywords &amp; recency — best for natural language
+            </span>
+          )}
           {mode === "semantic" && (
             <span className="text-xs text-[var(--text-muted)]">
-              Uses AI embeddings to find patents by meaning
+              Finds patents by conceptual similarity
             </span>
           )}
         </div>
@@ -151,8 +155,16 @@ function SearchContent() {
           <svg className="mx-auto h-12 w-12 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <p className="text-[var(--text-muted)] mt-3">Enter a search query to find patents</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Minimum 3 characters</p>
+          <p className="text-[var(--text-muted)] mt-3">
+            {mode === "fulltext"
+              ? "Enter keywords to search patents"
+              : "Describe the technology you&apos;re looking for"}
+          </p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            {mode === "fulltext"
+              ? "Minimum 3 characters"
+              : "Natural language queries work best"}
+          </p>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -165,22 +177,38 @@ function SearchContent() {
           <p className="text-[var(--text-muted)]">No patents found for &ldquo;{submitted}&rdquo;</p>
           <p className="text-sm text-[var(--text-muted)] mt-1">
             {mode === "fulltext"
-              ? "Try different keywords or switch to semantic search"
-              : "Try rephrasing your description or switch to keyword search"}
+              ? "Try different keywords or switch to semantic or hybrid search"
+              : mode === "semantic"
+                ? "Try rephrasing your description or switch to hybrid search"
+                : "Try a different description or switch to keyword search"}
           </p>
         </div>
-      ) : mode === "fulltext" && fulltextResults ? (
+      ) : (
         <>
           <p className="text-sm text-[var(--text-muted)] mb-4">
-            {fulltextResults.total.toLocaleString()} results for &ldquo;{submitted}&rdquo;
-            {fulltextResults.pages > 1 && ` · page ${fulltextResults.page} of ${fulltextResults.pages}`}
+            {results!.total.toLocaleString()} results for &ldquo;{submitted}&rdquo;
+            {mode !== "fulltext" && " · ranked by relevance"}
+            {results!.pages > 1 && ` · page ${results!.page} of ${results!.pages}`}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {fulltextResults.items.map((patent) => (
-              <PatentCard key={patent.id} patent={patent} />
+            {results!.items.map((patent) => (
+              <div key={patent.id} className="relative">
+                <PatentCard patent={patent} />
+                {mode !== "fulltext" && patent.similarity != null && (
+                  <div className="absolute top-2 right-2">
+                    <Badge
+                      variant="default"
+                      size="sm"
+                      className="bg-[var(--accent-muted)] text-[var(--type-foryou)] border-[var(--type-foryou)]/30"
+                    >
+                      {(patent.similarity * 100).toFixed(0)}% match
+                    </Badge>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
-          {fulltextResults.pages > 1 && (
+          {results!.pages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -190,11 +218,11 @@ function SearchContent() {
                 Previous
               </button>
               <span className="text-sm text-[var(--text-secondary)]">
-                Page {page} / {fulltextResults.pages}
+                Page {page} / {results!.pages}
               </span>
               <button
                 onClick={() => setPage((p) => p + 1)}
-                disabled={page >= fulltextResults.pages}
+                disabled={page >= results!.pages}
                 className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
               >
                 Next
@@ -202,29 +230,7 @@ function SearchContent() {
             </div>
           )}
         </>
-      ) : semanticResults ? (
-        <>
-          <p className="text-sm text-[var(--text-muted)] mb-4">
-            Search across {BRAND.name}&apos;s indexed publications using keywords or semantic similarity
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {semanticResults.results.map((result) => (
-              <div key={result.patent.id} className="relative">
-                <PatentCard patent={result.patent} />
-                <div className="absolute top-2 right-2">
-                  <Badge
-                    variant="default"
-                    size="sm"
-                    className="bg-[var(--accent-muted)] text-[var(--type-foryou)] border-[var(--type-foryou)]/30"
-                  >
-                    {(result.similarity * 100).toFixed(0)}% match
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
+      )}
 
       <div className="mt-8">
         <SourceAttribution />
