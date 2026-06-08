@@ -35,6 +35,7 @@ celery_app = Celery(
         "app.tasks.backfill_citations",
         "app.tasks.compute_convergence",
         "app.tasks.backfill_usage_signals",
+        "app.tasks.backfill_assignees",
         "app.tasks.backup",
         "app.tasks.patentsview_backfill",
         "app.tasks.bigquery_backfill",
@@ -72,6 +73,7 @@ celery_app.conf.update(
         "app.tasks.compute_cliffs.*": {"queue": "maintenance"},
         "app.tasks.compute_convergence.*": {"queue": "maintenance"},
         "app.tasks.backfill_usage_signals.*": {"queue": "maintenance"},
+        "app.tasks.backfill_assignees.*": {"queue": "maintenance"},
         "app.tasks.backup.*": {"queue": "maintenance"},
         "app.tasks.patentsview_backfill.*": {"queue": "maintenance"},
         "app.tasks.bigquery_backfill.*": {"queue": "maintenance"},
@@ -316,6 +318,12 @@ celery_app.conf.beat_schedule = {
     "backup-database-daily": {
         "task": "backup_database_daily",
         "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Assignee normalization backfill — daily at 04:00 UTC
+    "backfill-assignees-daily": {
+        "task": "app.tasks.backfill_assignees.backfill_assignees_task",
+        "schedule": crontab(hour=4, minute=0),
         "options": {"queue": "maintenance"},
     },
 }
