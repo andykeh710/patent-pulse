@@ -26,7 +26,12 @@ function VerifyContent() {
         if (!data.ok) {
           throw new Error("Verify did not return ok");
         }
-        if (!cancelled) router.push("/today");
+        if (!cancelled) {
+          // Check onboarding status
+          const statusRes = await fetch("/api/v1/onboarding/status", { credentials: "include" });
+          const statusData = await statusRes.json();
+          router.push(statusData.onboarded ? "/today" : "/onboarding");
+        }
       } catch {
         if (!cancelled) {
           setStatus("error");

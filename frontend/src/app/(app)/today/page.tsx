@@ -17,6 +17,8 @@ import { useThemes } from "@/hooks/useThemes";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { todayApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { Tour } from "@/components/tour/Tour";
+import { useSearchParams } from "next/navigation";
 import type {
   FilingTrendCard,
   ExpiringOpportunityCard,
@@ -222,6 +224,11 @@ function FirstTimeOnboarding() {
 }
 
 export default function TodayPage() {
+  // Tour state
+  const searchParams = useSearchParams();
+  const showTour = searchParams.get("tour") === "1" &&
+    (typeof window !== "undefined" ? localStorage.getItem("tourCompleted") !== "true" : false);
+
   // Data hooks — all existing, all SWR-cached
   const { data: topOpps, isLoading: topOppsLoading } = useOpportunityList({
     tab: "top",
@@ -266,6 +273,7 @@ export default function TodayPage() {
 
   return (
     <div>
+      {showTour && <Tour onDismiss={() => { if (typeof window !== "undefined") window.location.search = ""; }} />}
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Today</h1>
