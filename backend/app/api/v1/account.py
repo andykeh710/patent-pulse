@@ -361,3 +361,167 @@ async def get_account_usage(
         },
         "renews_at": renews_at,
     }
+
+
+# ── Phase 5 PR 2: Alert webhook config ─────────────────────────────
+
+
+class WebhookConfigBody(BaseModel):
+    webhook_url: str | None = None
+    secret_key: str | None = None
+    enabled: bool = False
+
+
+class WebhookConfigResponse(BaseModel):
+    webhook_url: str | None = None
+    enabled: bool = False
+    last_success_at: str | None = None
+    last_failure_at: str | None = None
+
+
+@router.get("/webhook-config", response_model=WebhookConfigResponse)
+async def get_webhook_config(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the user's webhook config (no secret)."""
+    from app.core.alert_models import UserWebhookConfig
+
+    config = (await db.execute(
+        select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id)
+    )).scalar_one_or_none()
+
+    if not config:
+        return WebhookConfigResponse()
+
+    return WebhookConfigResponse(
+        webhook_url=config.webhook_url,
+        enabled=config.enabled,
+        last_success_at=config.last_success_at.isoformat() if config.last_success_at else None,
+        last_failure_at=config.last_failure_at.isoformat() if config.last_failure_at else None,
+    )
+
+
+@router.post("/webhook-config", response_model=WebhookConfigResponse)
+async def set_webhook_config(
+    body: WebhookConfigBody,
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set webhook URL + secret. Lifetime+ only."""
+    from datetime import datetime, timezone
+
+    from app.core.ai_models import User
+    from app.core.alert_models import UserWebhookConfig
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    tier = user.tier if user else "free"
+    if tier not in ("lifetime", "enterprise"):
+        raise HTTPException(402, "Webhook alerts require Lifetime or Enterprise tier")
+
+    existing = (await db.execute(
+        select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id)
+    )).scalar_one_or_none()
+
+    if existing:
+        existing.webhook_url = body.webhook_url
+        existing.secret_key = body.secret_key
+        existing.enabled = body.enabled
+        existing.updated_at = datetime.now(timezone.utc)
+    else:
+        existing = UserWebhookConfig(
+            user_id=user_id,
+            webhook_url=body.webhook_url,
+            secret_key=body.secret_key,
+            enabled=body.enabled,
+        )
+        db.add(existing)
+    await db.commit()
+
+    return WebhookConfigResponse(
+        webhook_url=existing.webhook_url,
+        enabled=existing.enabled,
+        last_success_at=existing.last_success_at.isoformat() if existing.last_success_at else None,
+        last_failure_at=existing.last_failure_at.isoformat() if existing.last_failure_at else None,
+    )
+
+
+@router.post("/webhook-config/test")
+async def test_webhook_config(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a test webhook event to verify the webhook is configured correctly."""
+    from datetime import datetime, timezone
+
+    from app.core.alert_models import Alert, UserWebhookConfig
+    from app.tasks.alerts import _compute_hmac, _deliver_via_webhook
+
+    config = (await db.execute(
+        select(UserWebhookConfig).where(
+            UserWebhookConfig.user_id == user_id,
+            UserWebhookConfig.enabled == True,  # noqa: E712
+            UserWebhookConfig.webhook_url.isnot(None),
+        )
+    )).scalar_one_or_none()
+
+    if not config:
+        raise HTTPException(400, "No webhook configured. Set webhook URL and enable it first.")
+
+    # Create a temporary alert object for the test
+    from app.core.alert_models import Alert
+
+    test_alert = Alert(
+        user_id=user_id,
+        type="test",
+        payload={
+            "message": "This is a test alert from Invention Index 8. Your webhook is working correctly.",
+        },
+        status="pending",
+    )
+    db.add(test_alert)
+    await db.commit()
+
+    success = await _deliver_via_webhook(test_alert, config)
+    if success:
+        test_alert.status = "sent"
+        test_alert.sent_at = datetime.now(timezone.utc)
+        test_alert.delivery_method = "webhook"
+    else:
+        test_alert.status = "failed"
+    await db.commit()
+
+    return {"success": success, "alert_id": str(test_alert.id)}
+
+
+@router.get("/alerts")
+async def list_alerts(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+):
+    """Return the user's alerts from the last 30 days."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.alert_models import Alert
+
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    rows = (await db.execute(
+        select(Alert).where(
+            Alert.user_id == user_id,
+            Alert.created_at >= since,
+        ).order_by(Alert.created_at.desc()).limit(limit)
+    )).scalars().all()
+
+    return [
+        {
+            "id": str(a.id),
+            "type": a.type,
+            "payload": a.payload,
+            "status": a.status,
+            "delivery_method": a.delivery_method,
+            "created_at": a.created_at.isoformat(),
+            "sent_at": a.sent_at.isoformat() if a.sent_at else None,
+        }
+        for a in rows
+    ]

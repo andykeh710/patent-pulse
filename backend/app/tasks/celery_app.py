@@ -40,6 +40,7 @@ celery_app = Celery(
         "app.tasks.patentsview_backfill",
         "app.tasks.bigquery_backfill",
         "app.tasks.news_ingestion",
+        "app.tasks.alerts",
     ],
 )
 
@@ -326,6 +327,17 @@ celery_app.conf.beat_schedule = {
     "backfill-assignees-daily": {
         "task": "app.tasks.backfill_assignees.backfill_assignees_task",
         "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # Phase 5: Alert detection + delivery (hourly)
+    "scan-for-alerts-hourly": {
+        "task": "app.tasks.alerts.scan_for_alerts",
+        "schedule": crontab(minute=5),  # hourly at :05
+        "options": {"queue": "maintenance"},
+    },
+    "deliver-alerts-hourly": {
+        "task": "app.tasks.alerts.deliver_pending_alerts",
+        "schedule": crontab(minute=10),  # hourly at :10
         "options": {"queue": "maintenance"},
     },
 }
