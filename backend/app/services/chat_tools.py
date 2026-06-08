@@ -369,7 +369,12 @@ async def _compare_companies(
     db: AsyncSession,
     names: list[str],
 ) -> dict[str, Any]:
-    """Compare patent portfolios for a list of company names."""
+    """Compare patent portfolios for a list of company names.
+
+    Matches assignees via ILIKE substring (permissive — 'Toyota' matches
+    'Toyota Motor Corp' but also 'NotAToyotaClone LLC'). Acceptable for
+    a chatbot tool; the model can filter false positives in its response.
+    """
     if not isinstance(names, list) or len(names) < 2:
         return {"error": "Provide at least 2 company names to compare."}
 

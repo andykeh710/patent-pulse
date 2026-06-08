@@ -76,7 +76,12 @@ MOCK_TOKENS = [
     {"type": "text", "content": "."},
 ]
 
-# Tool-call mock: one text token, then a tool_use, then more text
+# Tool-call mock: one text token, then a tool_use.
+# NOTE: In the real Anthropic API, the stream ENDS after a tool_use
+# content_block_stop. The model does not produce text after a tool_use
+# in the same stream pass. After the caller sends the tool_result back,
+# a new stream begins with the continuation. The test helpers below
+# simulate this with a stateful two-pass mock.
 MOCK_TOOL_STREAM = [
     {"type": "text", "content": "Let me search for that."},
     {
@@ -85,7 +90,6 @@ MOCK_TOOL_STREAM = [
         "name": "search_patents",
         "input": {"query": "solid state batteries", "limit": 5},
     },
-    {"type": "text", "content": "I found 3 patents related to solid-state batteries."},
 ]
 
 # Tool result returned by the handler
@@ -125,12 +129,6 @@ async def _fake_token_stream(self, **kw):
     """Simulate an Anthropic streaming response — just text tokens."""
     for token in MOCK_TOKENS:
         yield token
-
-
-async def _fake_tool_stream(self, **kw):
-    """Simulate an Anthropic streaming response with a tool call."""
-    for event in MOCK_TOOL_STREAM:
-        yield event
 
 
 # ── Auth tests (unchanged from PR 1) ──────────────────────────────────
@@ -554,6 +552,63 @@ async def test_chat_stream_sources_after_tool_calls(client: AsyncClient, monkeyp
     event_types = [e["type"] for e in events]
     assert "sources" in event_types
     assert "done" in event_types
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypatch):
+    """After 5 tool calls, a warning event fires and the turn ends."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+
+    # Always emit a tool_use — never plain text — so the loop
+    # keeps re-entering until the cap fires.
+    async def _infinite_tool_stream(self, **kw):
+        yield {
+            "type": "tool_use",
+            "id": "toolu_loop",
+            "name": "search_patents",
+            "input": {"query": "batteries"},
+        }
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _infinite_tool_stream,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "endless tool loop"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+
+    # 5 tool_call_start + 5 tool_call_result events
+    starts = [e for e in events if e["type"] == "tool_call_start"]
+    results = [e for e in events if e["type"] == "tool_call_result"]
+    assert len(starts) == 5, f"expected 5 tool_call_start, got {len(starts)}"
+    assert len(results) == 5, f"expected 5 tool_call_result, got {len(results)}"
+
+    # Warning event after the 5th call
+    warnings = [e for e in events if e["type"] == "warning"]
+    assert len(warnings) == 1
+    assert "limit reached" in warnings[0]["message"].lower()
+
+    # Done must follow warning
+    event_types = [e["type"] for e in events]
+    warn_idx = event_types.index("warning")
+    done_idx = event_types.index("done")
+    assert warn_idx < done_idx, "warning must appear before done"
+
+    # No sources event — the cap path returns early before sources
+    assert "sources" not in event_types
 
 
 # ── Edge case tests ──────────────────────────────────────────────────
