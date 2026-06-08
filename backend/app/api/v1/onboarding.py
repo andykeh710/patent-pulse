@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 
 from app.api.deps import current_user, get_db
 from app.core.ai_models import User, UserCompanyFollow
