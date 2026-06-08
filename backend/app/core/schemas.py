@@ -43,6 +43,7 @@ class PatentListItem(BaseModel):
     summary_what_it_is: str | None = None
     estimated_expiry_date: date | None = None
     days_until_expiry: int | None = None
+    similarity: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
