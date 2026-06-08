@@ -7,6 +7,7 @@ from app.api.v1 import (
     api_keys,
     auth,
     billing,
+    chat,
     content,
     expiry,
     exports,
@@ -52,4 +53,5 @@ v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])
 v1_router.include_router(api_keys.router, prefix="/account", tags=["api-keys"])
 v1_router.include_router(account.router, prefix="/account", tags=["account"])
 v1_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
+v1_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 v1_router.include_router(webhooks.webhook_router, tags=["webhooks"])
