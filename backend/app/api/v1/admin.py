@@ -754,3 +754,80 @@ async def admin_embedding_stats(
         "missing": total - embedded,
         "coverage_pct": coverage_pct,
     }
+
+
+# ── Phase 4 PR 1: Billing health ──────────────────────────────
+
+
+@router.get("/billing/health")
+async def admin_billing_health(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Admin-only billing health endpoint — reports Stripe mode and stats.
+
+    Returns mode, active subscription count, webhook secret status,
+    and does NOT leak secret material.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.billing_models import BillingSubscription
+
+    # Active subscription count
+    active_count = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.status == "active"
+        )
+    )).scalar() or 0
+
+    # Recent webhook events (last 24h summary — count per type)
+    # We don't have a webhook events table, but we can count recent
+    # BillingSubscription updates as a proxy for webhook activity.
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent_activity = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.updated_at >= since
+        )
+    )).scalar() or 0
+
+    # Tier breakdown
+    free_count = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.tier == "free"
+        )
+    )).scalar() or 0
+    basic_count = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.tier == "basic"
+        )
+    )).scalar() or 0
+    lifetime_count = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.tier == "lifetime"
+        )
+    )).scalar() or 0
+    enterprise_count = (await db.execute(
+        select(func.count(BillingSubscription.id)).where(
+            BillingSubscription.tier == "enterprise"
+        )
+    )).scalar() or 0
+
+    return {
+        "mode": settings.stripe_mode,
+        "test_key_in_use": bool(
+            settings.stripe_api_key and settings.stripe_api_key.startswith("sk_test_")
+        ),
+        "live_key_in_use": bool(
+            settings.stripe_api_key and settings.stripe_api_key.startswith("sk_live_")
+        ),
+        "webhook_secret_set": bool(settings.stripe_webhook_secret),
+        "subscriptions": {
+            "active": active_count,
+            "free": free_count,
+            "basic": basic_count,
+            "lifetime": lifetime_count,
+            "enterprise": enterprise_count,
+        },
+        "recent_webhook_activity_24h": recent_activity,
+        "stripe_api_key_configured": bool(settings.stripe_api_key),
+    }

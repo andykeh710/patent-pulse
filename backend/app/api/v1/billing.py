@@ -145,15 +145,28 @@ async def handle_webhook(
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
+    verified = False
     try:
         event = verify_webhook_signature(payload, sig_header)
+        verified = True
     except Exception as e:
-        logger.warning("Invalid Stripe webhook signature: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        logger.warning(
+            "Stripe webhook signature verification FAILED: %s (mode=%s)",
+            e,
+            settings.stripe_mode,
+        )
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
     event_type = event["type"]
+    event_id = event.get("id", "unknown")
     data = event["data"]["object"]
-    logger.info("Stripe webhook: %s", event_type)
+    logger.info(
+        "Stripe webhook: type=%s id=%s verified=%s mode=%s",
+        event_type,
+        event_id,
+        verified,
+        settings.stripe_mode,
+    )
 
     try:
         if event_type == "checkout.session.completed":
