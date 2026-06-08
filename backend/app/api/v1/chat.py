@@ -1,8 +1,8 @@
 """
 Phase 3 — Chat API (SSE streaming).
 
-PR 1: SSE scaffold with mock LLM. Proves the streaming pipe works
-end-to-end before adding retrieval, tools, or Anthropic integration.
+PR 1: SSE scaffold with mock LLM.
+PR 2: Real Anthropic streaming + patent retrieval layer.
 
 Endpoint:
   POST /api/v1/chat/stream
@@ -12,14 +12,16 @@ Endpoint:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import current_user
+from app.ai.anthropic_client import get_chat_client
+from app.api.deps import current_user, get_db
+from app.services.chat_retrieval import build_system_prompt, retrieve_patents
 
 logger = logging.getLogger(__name__)
 
@@ -52,37 +54,64 @@ def _sse_event(event_type: str, **fields) -> str:
 
 async def _check_chat_quota_stub(user_id: str) -> None:
     """Log the quota check; actual enforcement lands in PR 6."""
-
-
-    # We don't have the session injected here — the caller logs tier.
     logger.info(
         "chat_quota_stub: would enforce quota for user=%s",
         user_id,
     )
 
 
-# ── Mock LLM stream ───────────────────────────────────────────────────
+# ── Anthropic stream adapter ──────────────────────────────────────────
 
 
-MOCK_RESPONSE_TEMPLATE = (
-    "Hello, you said: '{message}'. Phase 3 is being built."
-)
+async def _stream_anthropic_response(
+    message: str,
+    db: AsyncSession,
+):
+    """Retrieve patents + stream Anthropic response as SSE events.
 
+    Pipeline:
+      1. Embed query → retrieve top-K patents via pgvector
+      2. Build system prompt with patent context
+      3. Stream Anthropic token-by-token via SSE
+      4. Emit sources + done events
 
-async def _mock_llm_stream(message: str):
-    """Yield SSE events character-by-character with a small delay.
-
-    Replaced by Anthropic streaming in PR 2. For now this proves the
-    SSE pipe works from FastAPI through the proxy to the frontend.
+    Yields:
+        SSE-formatted strings.
     """
-    response_text = MOCK_RESPONSE_TEMPLATE.format(message=message)
+    # ── Step 1: Retrieve ──────────────────────────────────────────
+    patents = await retrieve_patents(message, db)
 
-    for char in response_text:
-        yield _sse_event("token", content=char)
-        await asyncio.sleep(0.03)  # ~33 chars/sec; simulate thinking
+    yield _sse_event(
+        "meta",
+        model="claude-sonnet-4-20250514",
+        retrieved_count=len(patents),
+    )
 
+    # ── Step 2: System prompt ─────────────────────────────────────
+    system_prompt = build_system_prompt(patents)
+
+    # ── Step 3: Anthropic streaming ───────────────────────────────
+    client = get_chat_client()
+
+    try:
+        async for token in client.stream(
+            system=system_prompt,
+            messages=[{"role": "user", "content": message}],
+        ):
+            yield _sse_event("token", content=token)
+
+    except Exception:
+        logger.exception("Anthropic streaming failed")
+        yield _sse_event(
+            "error",
+            message="The chat service is temporarily unavailable. Please try again.",
+        )
+        yield _sse_event("done")
+        return
+
+    # ── Step 4: Sources + done ────────────────────────────────────
+    yield _sse_event("sources", patents=patents)
     yield _sse_event("done")
-    yield _sse_event("meta", input_tokens=0, output_tokens=len(response_text))
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────
@@ -93,11 +122,12 @@ async def chat_stream(
     request: Request,
     body: ChatStreamRequest,
     user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Stream an LLM response as Server-Sent Events.
 
-    Auth required (session cookie). Quota enforcement is stubbed —
-    actual limits land in PR 6.
+    Auth required (session cookie). Retrieves top-K relevant patents
+    and streams an Anthropic response with inline citations.
     """
     from fastapi.responses import StreamingResponse
 
@@ -112,11 +142,11 @@ async def chat_stream(
     await _check_chat_quota_stub(user_id)
 
     return StreamingResponse(
-        _mock_llm_stream(body.message),
+        _stream_anthropic_response(body.message, db),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # disable nginx buffering
+            "X-Accel-Buffering": "no",
         },
     )

@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # LLM provider: "anthropic" | "deepseek"
     llm_provider: str = "deepseek"
 
+    # Phase 3: Chatbot config
+    chat_model: str = "claude-sonnet-4-20250514"
+    chat_retrieve_k: int = 8
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
