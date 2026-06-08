@@ -10,8 +10,8 @@ Adds three columns to track onboarding state:
 - onboarded_at: timestamp when wizard was completed (null = not onboarded)
 """
 
+
 from alembic import op
-import sqlalchemy as sa
 
 revision = "0028"
 down_revision = "0027"
