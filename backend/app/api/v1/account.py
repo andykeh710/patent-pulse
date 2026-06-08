@@ -19,6 +19,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import SESSION_COOKIE_NAME, current_user, get_db
+from app.config import settings
 from app.core.ai_models import AIRun, User
 from app.core.billing_models import BillingSubscription
 from app.core.subscription_models import EmailDelivery
@@ -230,3 +231,133 @@ async def get_suggested_companies_endpoint(
     if persona not in ("operator", "investor", "curious"):
         persona = "curious"
     return await get_suggested_companies(db, persona=persona)
+
+
+# ── Phase 4 PR 3: Usage endpoint ───────────────────────────────
+
+
+class FeatureUsage(BaseModel):
+    used: int
+    limit: int | None = None
+    remaining: int | None = None
+    unlimited: bool = False
+    period: str | None = None  # "daily", "monthly", "yearly", or None
+
+
+class UsageResponse(BaseModel):
+    tier: str
+    features: dict[str, FeatureUsage]
+    renews_at: str | None = None
+
+
+@router.get("/usage", response_model=UsageResponse)
+async def get_account_usage(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return aggregated usage across all gated features.
+
+    Counts themes (topic subscriptions), companies followed, and chat
+    messages from Redis. Views and search are unlimited on all tiers.
+    """
+    from datetime import date
+
+    import redis.asyncio as aioredis
+    from sqlalchemy import func, select as sa_select
+
+    from app.core.ai_models import User, UserCompanyFollow
+    from app.core.billing_models import BillingSubscription
+    from app.core.subscription_models import TopicSubscription as _TopicSubscription
+
+    # ── User + tier ──────────────────────────────────────────────
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    tier = user.tier if user else "free"
+
+    # ── Chat quota from Redis ────────────────────────────────────
+    chat_used = 0
+    chat_limit: int | None = 50  # basic default
+    chat_unlimited = False
+
+    if tier == "free":
+        chat_limit = settings.chat_quota_free
+    elif tier == "basic":
+        chat_limit = settings.chat_quota_basic
+    else:
+        chat_unlimited = True
+        chat_limit = None
+
+    try:
+        redis_client = aioredis.Redis.from_url(settings.redis_url, decode_responses=True)
+        today_str = date.today().isoformat()
+        key = f"chat:quota:{user_id}:{today_str}"
+        chat_used_raw = await redis_client.get(key)
+        chat_used = int(chat_used_raw) if chat_used_raw else 0
+        await redis_client.close()
+    except Exception:
+        chat_used = 0
+
+    chat_remaining: int | None = None
+    if chat_limit is not None:
+        chat_remaining = max(0, chat_limit - chat_used)
+
+    # ── Themes (topic subscriptions) ─────────────────────────────
+    themes_used_raw = await db.execute(
+        sa_select(func.count()).select_from(_TopicSubscription).where(
+            _TopicSubscription.user_id == user_id
+        )
+    )
+    themes_used = themes_used_raw.scalar() or 0
+    themes_limit = 1 if tier == "free" else None
+    themes_unlimited = tier != "free"
+    themes_remaining: int | None = None
+    if themes_limit is not None:
+        themes_remaining = max(0, themes_limit - themes_used)
+
+    # ── Companies followed ───────────────────────────────────────
+    companies_used_raw = await db.execute(
+        sa_select(func.count()).select_from(UserCompanyFollow).where(
+            UserCompanyFollow.user_id == user_id
+        )
+    )
+    companies_used = companies_used_raw.scalar() or 0
+    companies_limit = 3 if tier == "free" else None
+    companies_unlimited = tier != "free"
+    companies_remaining: int | None = None
+    if companies_limit is not None:
+        companies_remaining = max(0, companies_limit - companies_used)
+
+    # ── Renews_at from billing ───────────────────────────────────
+    renews_at: str | None = None
+    billing_sub = (await db.execute(
+        sa_select(BillingSubscription).where(BillingSubscription.user_id == user_id)
+    )).scalar_one_or_none()
+    if billing_sub and billing_sub.current_period_end:
+        renews_at = billing_sub.current_period_end.isoformat()
+
+    return {
+        "tier": tier,
+        "features": {
+            "views": FeatureUsage(used=0, unlimited=True, period=None),
+            "search": FeatureUsage(used=0, unlimited=True, period=None),
+            "themes": FeatureUsage(
+                used=themes_used,
+                limit=themes_limit,
+                remaining=themes_remaining,
+                unlimited=themes_unlimited,
+            ),
+            "companies": FeatureUsage(
+                used=companies_used,
+                limit=companies_limit,
+                remaining=companies_remaining,
+                unlimited=companies_unlimited,
+            ),
+            "chat": FeatureUsage(
+                used=chat_used,
+                limit=chat_limit,
+                remaining=chat_remaining,
+                unlimited=chat_unlimited,
+                period="daily",
+            ),
+        },
+        "renews_at": renews_at,
+    }

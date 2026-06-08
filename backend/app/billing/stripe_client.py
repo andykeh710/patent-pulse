@@ -43,8 +43,8 @@ def create_checkout_session(
 
     params: dict = {
         "mode": mode,
-        "success_url": f"{base_url}/account/billing?success=true",
-        "cancel_url": f"{base_url}/account/billing?canceled=true",
+        "success_url": f"{base_url}/account/billing?upgraded={tier}",
+        "cancel_url": f"{base_url}/account/billing?cancelled=true",
         "metadata": {"user_id": user_id, "tier": tier},
         "line_items": [{"price": price_id, "quantity": 1}],
     }
