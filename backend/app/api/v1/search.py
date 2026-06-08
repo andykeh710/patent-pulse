@@ -233,7 +233,8 @@ async def search_patents(
             **{k: v for k, v in mapping.items() if k not in exclude}
         )
         item = PatentListItem.from_patent(patent)
-        item.similarity = float(mapping["similarity"])
+        sim = float(mapping["similarity"])
+        item.similarity = 0.0 if sim != sim else sim  # NaN → 0.0
         items.append(item)
 
     pages = (total + page_size - 1) // page_size if total else 0

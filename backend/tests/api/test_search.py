@@ -87,7 +87,7 @@ async def test_semantic_mode_with_query(client: AsyncClient, db_session) -> None
             abstract="This should be last",
             cpc=["G06F"],
             publication_date=today,
-            embedding=_vec(0.0),
+            embedding=_vec(0.1, pos=2),
         ),
     ]
     db_session.add_all(patents)
