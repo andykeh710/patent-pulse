@@ -157,14 +157,30 @@ function SearchContent() {
           </svg>
           <p className="text-[var(--text-muted)] mt-3">
             {mode === "fulltext"
-              ? "Enter keywords to search patents"
-              : "Describe the technology you&apos;re looking for"}
+              ? "Search patents by keyword — title, abstract, and claims text"
+              : "Describe a technology, problem, or invention — semantic search understands meaning, not just keywords"}
           </p>
           <p className="text-sm text-[var(--text-muted)] mt-1">
             {mode === "fulltext"
               ? "Minimum 3 characters"
-              : "Natural language queries work best"}
+              : "Natural language queries work best — try a full sentence"}
           </p>
+          {mode !== "fulltext" && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {["battery thermal management", "CRISPR delivery vectors", "solid-state electrolyte", "autonomous drone navigation"].map(
+                (example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => { setQuery(example); }}
+                    className="px-3 py-1.5 rounded-full text-xs bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-glass)] border border-[var(--border-subtle)] transition-colors"
+                  >
+                    {example}
+                  </button>
+                )
+              )}
+            </div>
+          )}
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

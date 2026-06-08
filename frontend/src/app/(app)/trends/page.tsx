@@ -248,8 +248,23 @@ function TrendList({
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-12 bg-[var(--bg-base)] rounded-lg text-[var(--text-muted)]">
-        No trend data available yet. Run the weekly trend computation first.
+      <div className="text-center py-12 bg-[var(--bg-base)] rounded-lg">
+        <p className="text-[var(--text-muted)]">
+          Trend signals from the past 7 days, computed weekly from CPC
+          filing data.
+        </p>
+        <p className="text-sm text-[var(--text-muted)] mt-2">
+          No trend data available yet — the weekly computation hasn&apos;t
+          completed its first run.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/patents"
+            className="text-sm text-[var(--accent)] hover:underline font-medium"
+          >
+            Browse recent patents →
+          </Link>
+        </div>
       </div>
     );
   }

@@ -355,13 +355,22 @@ function OpportunityContent() {
           )}
         </>
       ) : (
-        <div className="rounded-lg bg-[var(--bg-base)] py-12 text-center text-[var(--text-muted)]">
-          No opportunities match these filters yet. Try widening the cohort or
-          recompute opportunity scores via{" "}
-          <Link href="/admin/ai-runs" className="text-[var(--accent)] hover:underline">
-            Admin → AI Runs
-          </Link>
-          .
+        <div className="rounded-lg bg-[var(--bg-base)] py-12 text-center">
+          <p className="text-[var(--text-muted)]">
+            High-value patents ranked by opportunity score — factoring
+            expiry proximity, claim breadth, and cross-industry potential.
+          </p>
+          <p className="text-sm text-[var(--text-muted)] mt-2">
+            No opportunities match these filters yet.
+          </p>
+          <div className="mt-4">
+            <Link
+              href="/patents"
+              className="text-sm text-[var(--accent)] hover:underline font-medium"
+            >
+              Browse all patents →
+            </Link>
+          </div>
         </div>
       )}
     </div>

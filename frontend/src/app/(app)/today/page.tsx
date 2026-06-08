@@ -426,7 +426,9 @@ export default function TodayPage() {
             </div>
           ) : !topOpps?.items?.length ? (
             <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No opportunity data yet. Run opportunity scoring via Admin → AI Runs.
+              Opportunity scores are still being computed for the patent
+              corpus. Check back soon — new scores appear as processing
+              completes.
             </p>
           ) : (
             <div className="space-y-2">
@@ -468,7 +470,9 @@ export default function TodayPage() {
             </div>
           ) : !hotTrends?.items?.length ? (
             <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No trend data yet. Run weekly trend computation first.
+              Trend data is computed weekly from CPC filing patterns.
+              The first computation hasn&apos;t completed yet — check back
+              soon.
             </p>
           ) : (
             <div className="space-y-2">
