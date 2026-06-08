@@ -10,10 +10,10 @@ from app.core.models import PatentPublication
 FAKE_DIM = 1536
 
 
-def _vec(val: float = 0.0) -> list[float]:
-    """Return a 1536-dim vector with *val* in position 0, zeros elsewhere."""
+def _vec(val: float = 0.0, pos: int = 0) -> list[float]:
+    """Return a 1536-dim vector with *val* in position *pos*, zeros elsewhere."""
     v = [0.0] * FAKE_DIM
-    v[0] = val
+    v[pos] = val
     return v
 
 
@@ -278,7 +278,7 @@ async def test_min_similarity_filter(client: AsyncClient, db_session) -> None:
         title="Distant match",
         abstract="distant",
         publication_date=today,
-        embedding=_vec(0.0),
+        embedding=_vec(0.2, pos=1),
     )
     db_session.add_all([p1, p2])
     await db_session.commit()

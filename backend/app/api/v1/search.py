@@ -64,25 +64,25 @@ async def _paged_raw_query(db, select_sql: str, count_sql: str, params: dict,
 
 
 _SEMANTIC_SELECT = """
-    SELECT p.*, 1 - (p.embedding <=> :emb::vector) AS similarity
+    SELECT p.*, 1 - (p.embedding <=> CAST(:emb AS vector)) AS similarity
     FROM patent_publications p
     WHERE p.embedding IS NOT NULL
       AND {filters}
-      AND 1 - (p.embedding <=> :emb::vector) >= :min_sim
-    ORDER BY p.embedding <=> :emb::vector ASC
+      AND 1 - (p.embedding <=> CAST(:emb AS vector)) >= :min_sim
+    ORDER BY p.embedding <=> CAST(:emb AS vector) ASC
 """
 
 _HYBRID_SELECT = """
     SELECT
         p.*,
-        1 - (p.embedding <=> :emb::vector) AS vector_score,
+        1 - (p.embedding <=> CAST(:emb AS vector)) AS vector_score,
         LEAST(ts_rank(p.search_vector, plainto_tsquery('english', :q)), 1.0)
           AS keyword_score,
         1 - LEAST(
           EXTRACT(EPOCH FROM (NOW() - p.publication_date)) / :max_age,
           1
         ) AS recency_score,
-        :vw * (1 - (p.embedding <=> :emb::vector))
+        :vw * (1 - (p.embedding <=> CAST(:emb AS vector)))
         + :kw * LEAST(
             ts_rank(p.search_vector, plainto_tsquery('english', :q)), 1.0
           )
@@ -93,7 +93,7 @@ _HYBRID_SELECT = """
     FROM patent_publications p
     WHERE p.embedding IS NOT NULL
       AND {filters}
-      AND 1 - (p.embedding <=> :emb::vector) >= :min_sim
+      AND 1 - (p.embedding <=> CAST(:emb AS vector)) >= :min_sim
     ORDER BY similarity DESC
 """
 
@@ -103,7 +103,7 @@ _HYBRID_SELECT = """
 @router.get("", response_model=PaginatedResponse[PatentListItem])
 async def search_patents(
     db: DbSession,
-    q: str = Query(..., min_length=1, description="Search query"),
+    q: str = Query(..., min_length=0, description="Search query"),
     mode: str = Query(default="fulltext", description="Search mode: fulltext, semantic, or hybrid"),
     min_similarity: float = Query(default=0.0, ge=0, le=1),
     cpc: str | None = None,
@@ -136,7 +136,7 @@ async def search_patents(
                 detail="Query must be at least 3 characters for fulltext search.",
             )
         search_query = func.plainto_tsquery("english", q)
-        conditions = [PatentPublication.search_vector.op("@@@")(search_query)]
+        conditions = [PatentPublication.search_vector.op("@@")(search_query)]
 
         if cpc:
             conditions.append(PatentPublication.cpc.contains([cpc]))
@@ -176,7 +176,7 @@ async def search_patents(
     if not q or not q.strip():
         raise HTTPException(
             status_code=400,
-            detail=f"Semantic and hybrid search require a non-empty query string.",
+            detail="Semantic and hybrid search require a non-empty query string.",
         )
 
     # Generate query embedding
