@@ -39,6 +39,13 @@ export default function AccountPage() {
         </button>
       </div>
 
+      <Link
+        href="/onboarding"
+        className="inline-flex items-center gap-1 text-sm text-[var(--accent)] hover:underline"
+      >
+        Personalize feed →
+      </Link>
+
       <SubscriptionsSection />
 
       <DangerZone />
