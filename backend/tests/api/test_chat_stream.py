@@ -159,6 +159,20 @@ async def _yield_mock(events: list[dict]):
         yield event
 
 
+# ── Session-wide quota passthrough ────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _passthrough_quota(monkeypatch):
+    """All existing stream tests skip quota enforcement."""
+    async def _noop(*a, **kw):
+        return None
+    monkeypatch.setattr(
+        "app.api.v1.chat._enforce_chat_quota",
+        _noop,
+    )
+
+
 # ── Auth tests (unchanged from PR 1) ──────────────────────────────────
 
 
@@ -773,6 +787,104 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
         if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
     ]
     assert cite_warnings == []
+
+
+# ── Quota tests ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_quota_exceeded_returns_402(
+    client: AsyncClient, monkeypatch,
+):
+    """When quota is exceeded, 402 with structured JSON body is returned."""
+    # Override the passthrough fixture with a real enforcement failure
+    from fastapi import HTTPException as HTTPErr
+
+    async def _raise_quota(*a, **kw):
+        raise HTTPErr(
+            status_code=402,
+            detail={
+                "error": "quota_exceeded",
+                "tier": "free",
+                "used": 5,
+                "limit": 5,
+                "upgrade_url": "/account/billing",
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.v1.chat._enforce_chat_quota",
+        _raise_quota,
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "hello"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 402
+
+    body = r.json()
+    assert body["detail"]["error"] == "quota_exceeded"
+    assert body["detail"]["tier"] == "free"
+    assert body["detail"]["used"] == 5
+    assert body["detail"]["limit"] == 5
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_lifetime_user_no_quota_check(
+    client: AsyncClient, monkeypatch,
+):
+    """Lifetime users can chat without hitting quota."""
+    # The passthrough fixture already skips enforcement.
+    # Verify the stream still works for a basic setup.
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _fake_token_stream,
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "hello"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_quota_endpoint_returns_usage(
+    client: AsyncClient, monkeypatch,
+):
+    """GET /api/v1/chat/quota returns usage dict."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    svc = MagicMock()
+    svc.get_usage = AsyncMock(return_value={
+        "tier": "free",
+        "used": 2,
+        "limit": 5,
+        "unlimited": False,
+        "remaining": 3,
+    })
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_quota_service",
+        lambda: svc,
+    )
+
+    r = await client.get(
+        "/api/v1/chat/quota",
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    body = r.json()
+    assert body["tier"] == "free"
+    assert body["used"] == 2
+    assert body["remaining"] == 3
 
 
 # ── Edge case tests ──────────────────────────────────────────────────

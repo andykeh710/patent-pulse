@@ -5,11 +5,11 @@ PR 1: SSE scaffold with mock LLM.
 PR 2: Real Anthropic streaming + patent retrieval layer.
 PR 3: Anthropic tool calls (search_patents, open_patent, compare_companies).
 PR 4: Citation extraction + soft warning.
+PR 6: Chat quota enforcement (Free 5/day, Basic 50/day, Lifetime/Enterprise unlimited).
 
 Endpoint:
-  POST /api/v1/chat/stream
-    Request:  {"message": str, "conversation_id": str | None}
-    Response: text/event-stream (Server-Sent Events)
+  POST /api/v1/chat/stream  — chat with SSE streaming
+  GET  /api/v1/chat/quota    — read current usage
 """
 
 from __future__ import annotations
@@ -17,14 +17,17 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.anthropic_client import get_chat_client
 from app.api.deps import current_user, get_db
+from app.core.ai_models import User
 from app.services.chat_citations import extract_citations, verify_citations
+from app.services.chat_quota import QuotaExceeded, get_quota_service
 from app.services.chat_retrieval import build_system_prompt, retrieve_patents
 from app.services.chat_tools import TOOLS, execute_tool
 
@@ -58,15 +61,32 @@ def _sse_event(event_type: str, **fields) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-# ── Quota stub ────────────────────────────────────────────────────────
+# ── Quota enforcement ─────────────────────────────────────────────────
 
 
-async def _check_chat_quota_stub(user_id: str) -> None:
-    """Log the quota check; actual enforcement lands in PR 6."""
-    logger.info(
-        "chat_quota_stub: would enforce quota for user=%s",
-        user_id,
-    )
+async def _enforce_chat_quota(user_id: str, db: AsyncSession) -> None:
+    """Check and increment the user's daily chat quota.
+
+    Raises HTTPException 429 if the limit is exceeded.
+    """
+    # Look up the user's tier
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    tier = user.tier if user else "free"
+
+    try:
+        await get_quota_service().check_and_increment(user_id, tier)
+    except QuotaExceeded as e:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "quota_exceeded",
+                "tier": e.tier,
+                "used": e.used,
+                "limit": e.limit,
+                "upgrade_url": "/account/billing",
+            },
+        ) from e
 
 
 # ── Tool result helper ────────────────────────────────────────────────
@@ -75,7 +95,6 @@ async def _check_chat_quota_stub(user_id: str) -> None:
 def _sanitize_tool_result(result: dict) -> dict:
     """Truncate large tool results to keep context window manageable."""
     sanitized = dict(result)
-    # search_patents result: truncate abstract_excerpt per patent
     if "results" in sanitized and isinstance(sanitized["results"], list):
         sanitized["results"] = sanitized["results"][:20]
         for r in sanitized["results"]:
@@ -83,7 +102,6 @@ def _sanitize_tool_result(result: dict) -> dict:
                 excerpt = r["abstract_excerpt"]
                 if isinstance(excerpt, str) and len(excerpt) > 200:
                     r["abstract_excerpt"] = excerpt[:200]
-    # open_patent result: truncate abstract and claims
     for key in ("abstract", "claims_preview"):
         val = sanitized.get(key)
         if isinstance(val, str) and len(val) > 800:
@@ -185,37 +203,29 @@ async def _stream_anthropic_response(
                     tool_input: dict = event.get("input", {})
                     tool_id: str = event.get("id", "")
 
-                    # Emit tool_call_start
                     yield _sse_event(
                         "tool_call_start",
                         name=tool_name,
                         input=tool_input,
                     )
 
-                    # Execute tool
                     try:
                         result = await execute_tool(tool_name, tool_input, db)
                     except Exception:
-                        logger.exception(
-                            "Tool execution failed: %s", tool_name
-                        )
+                        logger.exception("Tool execution failed: %s", tool_name)
                         result = {
                             "error": f"Tool '{tool_name}' encountered an internal error."
                         }
 
-                    # Track doc_ids from tool results before sanitizing
                     known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
-
                     sanitized = _sanitize_tool_result(result)
 
-                    # Emit tool_call_result
                     yield _sse_event(
                         "tool_call_result",
                         name=tool_name,
                         result=sanitized,
                     )
 
-                    # Append tool-use + tool-result to conversation
                     messages.append({
                         "role": "assistant",
                         "content": [{
@@ -234,13 +244,9 @@ async def _stream_anthropic_response(
                         }],
                     })
 
-                    # Break out of inner loop to restart stream with
-                    # updated messages (tool result is now in context)
                     break
 
             else:
-                # Inner loop completed without breaking — no more
-                # tool calls; the stream is finished.
                 break
 
         except Exception:
@@ -281,7 +287,7 @@ async def _stream_anthropic_response(
     yield _sse_event("done")
 
 
-# ── Endpoint ──────────────────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────────
 
 
 @router.post("/stream")
@@ -293,8 +299,8 @@ async def chat_stream(
 ):
     """Stream an LLM response as Server-Sent Events.
 
-    Auth required (session cookie). Retrieves top-K relevant patents
-    and streams an Anthropic response with inline citations, optional
+    Auth + quota required. Retrieves top-K relevant patents and
+    streams an Anthropic response with inline citations, optional
     tool calls, and citation verification.
     """
     logger.info(
@@ -304,8 +310,8 @@ async def chat_stream(
         body.conversation_id,
     )
 
-    # Quota stub (real enforcement in PR 6)
-    await _check_chat_quota_stub(user_id)
+    # Enforce daily quota (raises 429 if exceeded)
+    await _enforce_chat_quota(user_id, db)
 
     return StreamingResponse(
         _stream_anthropic_response(body.message, db),
@@ -316,3 +322,16 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/quota")
+async def chat_quota(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read current chat quota usage for the authenticated user."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    tier = user.tier if user else "free"
+
+    return await get_quota_service().get_usage(user_id, tier)

@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     chat_model: str = "claude-sonnet-4-20250514"
     chat_retrieve_k: int = 8
 
+    # Phase 3 PR 6: Chat quota — tier-based daily limits
+    chat_quota_free: int = 5
+    chat_quota_basic: int = 50
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
