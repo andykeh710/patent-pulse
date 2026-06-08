@@ -665,3 +665,92 @@ async def admin_source_fetches(
         }
         for r in rows
     ]
+
+
+# ── Phase 1: Admin embedding management ──────────────────────────
+
+
+@router.post("/embed/{patent_id}")
+async def admin_re_embed_patent(
+    patent_id: str,
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Force (re-)generate the embedding for a single patent.
+
+    Overwrites any existing embedding. Requires admin access.
+    """
+    from uuid import UUID
+
+    from app.ai.embedder import EmbeddingError, PatentEmbedder
+    from app.core.models import PatentPublication
+
+    try:
+        pid = UUID(patent_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid patent ID format")
+
+    result = await db.execute(
+        select(PatentPublication).where(PatentPublication.id == pid)
+    )
+    patent = result.scalar_one_or_none()
+
+    if not patent:
+        raise HTTPException(status_code=404, detail="Patent not found")
+
+    if not patent.title and not patent.abstract:
+        raise HTTPException(
+            status_code=400,
+            detail="Patent has no title or abstract — nothing to embed",
+        )
+
+    try:
+        with PatentEmbedder() as embedder:
+            embedding = embedder.generate_patent_embedding(patent)
+    except EmbeddingError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Embedding generation failed: {e}",
+        )
+
+    patent.embedding = embedding
+    await db.commit()
+
+    return {
+        "patent_id": str(patent.id),
+        "doc_id": patent.doc_id,
+        "status": "re-embedded",
+        "dimensions": len(embedding),
+    }
+
+
+@router.get("/embedding-stats")
+async def admin_embedding_stats(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Return embedding coverage statistics.
+
+    Requires admin access.
+    """
+    from app.core.models import PatentPublication
+
+    row = (await db.execute(
+        select(
+            func.count(PatentPublication.id).label("total"),
+            func.count(PatentPublication.id).filter(
+                PatentPublication.embedding.isnot(None)
+            ).label("embedded"),
+        )
+    )).one()
+
+    total = row.total or 0
+    embedded = row.embedded or 0
+    coverage_pct = round(embedded / total * 100, 1) if total > 0 else 0.0
+
+    return {
+        "total_patents": total,
+        "embedded": embedded,
+        "missing": total - embedded,
+        "coverage_pct": coverage_pct,
+    }
