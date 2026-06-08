@@ -8,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ai_models import TrendSnapshot
 from app.core.models import PatentPublication
+from app.services.persona_weights import get_weights
+
+# Maximum fraction of top-N items that can share the same signal type.
+_MAX_SINGLE_TYPE_FRACTION = 0.6
 
 
 async def assemble_briefing(
@@ -15,8 +19,14 @@ async def assemble_briefing(
     user_id: str | None = None,
     followed_companies: list[str] | None = None,
     limit: int = 12,
+    persona: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Build a ranked briefing feed. Returns items with required fields."""
+    """Build a ranked briefing feed, optionally boosted by persona.
+
+    If persona is set, applies rank-boost multipliers from
+    persona_weights.get_weights() and a diversity guard (max 60%
+    of any single signal type in top-N).
+    """
     items: list[dict[str, Any]] = []
     now = datetime.now(timezone.utc)
     cutoff = (now - timedelta(days=14)).replace(tzinfo=None)
@@ -27,7 +37,7 @@ async def assemble_briefing(
         select(TrendSnapshot)
         .where(TrendSnapshot.created_at >= cutoff)
         .order_by(desc(TrendSnapshot.z_score))
-        .limit(4)
+        .limit(6)
     )
     for t in trend_rows.scalars().all():
         items.append({
@@ -48,7 +58,7 @@ async def assemble_briefing(
         .where(PatentPublication.opportunity_score.isnot(None))
         .where(PatentPublication.publication_date >= cutoff.date())
         .order_by(desc(PatentPublication.opportunity_score))
-        .limit(4)
+        .limit(6)
     )
     for p in patent_rows.scalars().all():
         assignee = (p.assignees or ["Unknown"])[0] if p.assignees else "Unknown"
@@ -100,7 +110,54 @@ async def assemble_briefing(
         "href": "/themes",
     })
 
-    return items[:limit]
+    # ── Persona-aware ranking ──────────────────────────────────
+    weights = get_weights(persona)
+
+    # Assign a base score so weights can differentiate.
+    # For trend/notable items, use an implicit quality score;
+    # for company/expiring/foryou, use a default.
+    for idx, item in enumerate(items):
+        itype = item["type"]
+        if itype == "trend":
+            base = 0.5 + (0.5 * (len(items) - idx) / max(len(items), 1))
+        elif itype == "notable":
+            base = 0.4 + (0.6 * (len(items) - idx) / max(len(items), 1))
+        else:
+            base = 0.5
+        item["_score"] = base * weights.get(itype, 1.0)
+
+    # Sort by boosted score descending
+    items.sort(key=lambda i: i["_score"], reverse=True)
+
+    # ── Diversity guard ────────────────────────────────────────
+    top_n = min(limit, len(items))
+    seen_types: dict[str, int] = {}
+    diverse: list[dict[str, Any]] = []
+
+    for item in items:
+        itype = item["type"]
+        current_count = seen_types.get(itype, 0)
+        # If adding this item would make this type exceed 60% of top_n
+        if (current_count + 1) > int(top_n * _MAX_SINGLE_TYPE_FRACTION):
+            continue  # Skip — try the next item
+        seen_types[itype] = current_count + 1
+        diverse.append(item)
+        if len(diverse) >= top_n:
+            break
+
+    # If diversity filter left us short, fill with remaining items
+    if len(diverse) < top_n:
+        already = {id(i) for i in diverse}
+        for item in items:
+            if id(item) not in already:
+                diverse.append(item)
+                if len(diverse) >= top_n:
+                    break
+
+    for item in diverse:
+        item.pop("_score", None)
+
+    return diverse[:limit]
 
 
 def _trend_reason(trend, companies: list[str]) -> str:
