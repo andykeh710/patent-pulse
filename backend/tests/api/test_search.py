@@ -98,6 +98,8 @@ async def test_semantic_mode_with_query(client: AsyncClient, db_session) -> None
         response = await client.get(
             "/api/v1/search?q=exact&mode=semantic&min_similarity=0"
         )
+    if response.status_code != 200:
+        print("DEBUG 422:", response.json())  # CI debug
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3
