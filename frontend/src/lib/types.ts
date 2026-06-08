@@ -80,6 +80,7 @@ export interface PatentListItem {
   summary_what_it_is: string | null;
   estimated_expiry_date: string | null;
   figure_page_url: string | null;
+  similarity?: number;
 }
 
 export interface PatentDetail {
@@ -199,6 +200,7 @@ export interface PatentListParams {
 
 export interface SearchParams {
   q: string;
+  mode?: "fulltext" | "semantic" | "hybrid";
   cpc?: string;
   assignee?: string;
   date_from?: string;
