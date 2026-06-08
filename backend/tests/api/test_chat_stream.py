@@ -1,4 +1,4 @@
-"""Tests for Phase 3 PR 2 — Anthropic streaming + patent retrieval."""
+"""Tests for Phase 3 PR 2–3 — Anthropic streaming + patent retrieval + tool calls."""
 
 import json
 
@@ -59,22 +59,78 @@ MOCK_PATENTS = [
 ]
 
 MOCK_TOKENS = [
-    "Based",
-    " on",
-    " the",
-    " retrieved",
-    " patents",
-    ",",
-    " Toyota",
-    " has",
-    " filed",
-    " a",
-    " thermal",
-    " management",
-    " system",
-    " [US20240123456A1]",
-    ".",
+    {"type": "text", "content": "Based"},
+    {"type": "text", "content": " on"},
+    {"type": "text", "content": " the"},
+    {"type": "text", "content": " retrieved"},
+    {"type": "text", "content": " patents"},
+    {"type": "text", "content": ","},
+    {"type": "text", "content": " Toyota"},
+    {"type": "text", "content": " has"},
+    {"type": "text", "content": " filed"},
+    {"type": "text", "content": " a"},
+    {"type": "text", "content": " thermal"},
+    {"type": "text", "content": " management"},
+    {"type": "text", "content": " system"},
+    {"type": "text", "content": " [US20240123456A1]"},
+    {"type": "text", "content": "."},
 ]
+
+# Tool-call mock: one text token, then a tool_use, then more text
+MOCK_TOOL_STREAM = [
+    {"type": "text", "content": "Let me search for that."},
+    {
+        "type": "tool_use",
+        "id": "toolu_001",
+        "name": "search_patents",
+        "input": {"query": "solid state batteries", "limit": 5},
+    },
+    {"type": "text", "content": "I found 3 patents related to solid-state batteries."},
+]
+
+# Tool result returned by the handler
+MOCK_TOOL_RESULT = {
+    "results": [
+        {
+            "doc_id": "USPTO:US99999",
+            "title": "Solid-State Battery Electrolyte",
+            "abstract_excerpt": "A solid-state electrolyte comprising...",
+            "similarity": 0.95,
+            "assignees": ["QuantumScape Corp"],
+            "publication_date": "2025-01-10",
+        },
+    ],
+    "count": 1,
+}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────
+
+async def _mock_retrieve_patents(*a, **kw):
+    """Async mock returning MOCK_PATENTS."""
+    return MOCK_PATENTS
+
+
+async def _mock_retrieve_empty(*a, **kw):
+    """Async mock returning empty list."""
+    return []
+
+
+async def _async_return(value):
+    """Return a value from an async function — for mocking async callables."""
+    return value
+
+
+async def _fake_token_stream(self, **kw):
+    """Simulate an Anthropic streaming response — just text tokens."""
+    for token in MOCK_TOKENS:
+        yield token
+
+
+async def _fake_tool_stream(self, **kw):
+    """Simulate an Anthropic streaming response with a tool call."""
+    for event in MOCK_TOOL_STREAM:
+        yield event
 
 
 # ── Auth tests (unchanged from PR 1) ──────────────────────────────────
@@ -102,13 +158,12 @@ async def test_chat_stream_invalid_cookie_returns_401(client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_returns_sse_content_type(client: AsyncClient, monkeypatch):
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
-    # Provide a fake stream
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -123,12 +178,12 @@ async def test_chat_stream_returns_sse_content_type(client: AsyncClient, monkeyp
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_yields_sse_data_lines(client: AsyncClient, monkeypatch):
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -150,12 +205,12 @@ async def test_chat_stream_yields_sse_data_lines(client: AsyncClient, monkeypatc
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_includes_done_event(client: AsyncClient, monkeypatch):
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -177,12 +232,12 @@ async def test_chat_stream_includes_done_event(client: AsyncClient, monkeypatch)
 async def test_chat_stream_emits_meta_event(client: AsyncClient, monkeypatch):
     """First SSE event should be 'meta' with model and retrieved_count."""
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -204,12 +259,12 @@ async def test_chat_stream_emits_meta_event(client: AsyncClient, monkeypatch):
 async def test_chat_stream_emits_sources_before_done(client: AsyncClient, monkeypatch):
     """A 'sources' event with patent list must appear before 'done'."""
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -234,12 +289,12 @@ async def test_chat_stream_emits_sources_before_done(client: AsyncClient, monkey
 async def test_chat_stream_streams_from_anthropic(client: AsyncClient, monkeypatch):
     """Token events should contain the mock Anthropic response text."""
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -262,12 +317,12 @@ async def test_chat_stream_streams_from_anthropic(client: AsyncClient, monkeypat
 async def test_chat_stream_empty_retrieval(client: AsyncClient, monkeypatch):
     """When no patents match, stream still works with empty-context prompt."""
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: [],
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_empty,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -287,11 +342,11 @@ async def test_chat_stream_empty_retrieval(client: AsyncClient, monkeypatch):
 async def test_chat_stream_anthropic_error(client: AsyncClient, monkeypatch):
     """Anthropic errors produce an 'error' event + 'done'."""
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
 
-    async def _fail(**kw):
+    def _fail(self, **kw):
         raise RuntimeError("Simulated Anthropic failure")
 
     monkeypatch.setattr(
@@ -310,6 +365,195 @@ async def test_chat_stream_anthropic_error(client: AsyncClient, monkeypatch):
     types = [e["type"] for e in events]
     assert "error" in types
     assert "done" in types
+
+
+# ── Tool call tests ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_tool_call_start_event(client: AsyncClient, monkeypatch):
+    """When Anthropic emits a tool_use, tool_call_start event is emitted."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+
+    # Stateful mock: tool call on first pass, plain text on subsequent
+    calls = []
+
+    async def _stream_with_one_tool(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_one_tool,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "search solid state batteries"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    event_types = [e["type"] for e in events]
+
+    assert "tool_call_start" in event_types
+    assert "tool_call_result" in event_types
+
+    tcs = [e for e in events if e["type"] == "tool_call_start"]
+    assert len(tcs) >= 1
+    assert tcs[0]["name"] == "search_patents"
+    assert "input" in tcs[0]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_tool_call_result_event(client: AsyncClient, monkeypatch):
+    """tool_call_result event contains the tool output."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+
+    calls = []
+
+    async def _stream_with_one_tool(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_one_tool,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "search solid state batteries"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    tcr = [e for e in events if e["type"] == "tool_call_result"]
+    assert len(tcr) >= 1
+    assert tcr[0]["name"] == "search_patents"
+    assert "result" in tcr[0]
+    assert tcr[0]["result"]["count"] == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monkeypatch):
+    """After a tool_result, the stream resumes with more tokens."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+
+    calls = []
+
+    async def _stream_with_one_tool(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "I found 3 patents related to solid-state batteries."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_one_tool,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "search solid state batteries"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+
+    # There should be token events BEFORE the tool call
+    tcs_idx = next(
+        i for i, e in enumerate(events) if e["type"] == "tool_call_start"
+    )
+    tokens_before = [
+        e for e in events[:tcs_idx] if e["type"] == "token"
+    ]
+    assert len(tokens_before) >= 1
+    assert any("search" in t["content"].lower() for t in tokens_before)
+
+    # And token events AFTER the tool result (text from second pass)
+    tcr_idx = next(
+        i for i, e in enumerate(events) if e["type"] == "tool_call_result"
+    )
+    tokens_after = [
+        e for e in events[tcr_idx:] if e["type"] == "token"
+    ]
+    assert len(tokens_after) >= 1
+    assert any("found" in t["content"].lower() for t in tokens_after)
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_sources_after_tool_calls(client: AsyncClient, monkeypatch):
+    """sources event still appears (and after tool calls, before done)."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+
+    calls = []
+
+    async def _stream_with_one_tool(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_one_tool,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "test"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    event_types = [e["type"] for e in events]
+    assert "sources" in event_types
+    assert "done" in event_types
 
 
 # ── Edge case tests ──────────────────────────────────────────────────
@@ -338,12 +582,12 @@ async def test_chat_stream_missing_message_field_rejected(client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_conversation_id_is_optional(client: AsyncClient, monkeypatch):
     monkeypatch.setattr(
-        "app.services.chat_retrieval.retrieve_patents",
-        lambda *a, **kw: MOCK_PATENTS,
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        lambda self, **kw: _fake_token_stream(),
+        _fake_token_stream,
     )
 
     r = await client.post(
@@ -353,12 +597,3 @@ async def test_chat_stream_conversation_id_is_optional(client: AsyncClient, monk
     )
     assert r.status_code == 200
     assert "text/event-stream" in r.headers["content-type"]
-
-
-# ── Helpers ───────────────────────────────────────────────────────────
-
-
-async def _fake_token_stream():
-    """Simulate an Anthropic streaming response."""
-    for token in MOCK_TOKENS:
-        yield token
