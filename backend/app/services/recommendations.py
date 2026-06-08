@@ -44,6 +44,7 @@ async def recommend_for_user(
 
 
 async def _recommend(session: AsyncSession, user_id: str, limit: int) -> list[dict]:
+    await session.execute(text("SET LOCAL hnsw.ef_search = 100"))
     # Check user embedding
     from app.core.models import UserEmbedding
 
