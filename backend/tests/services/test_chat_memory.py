@@ -81,6 +81,15 @@ async def test_append_turn_writes_user_and_assistant_in_one_rpush():
     assert '"role": "assistant"' in assistant_payload
     assert '"content": "hi there"' in assistant_payload
 
+    pipe.ltrim.assert_called_once()
+    _, start, stop = pipe.ltrim.call_args[0]
+    assert start == -MAX_MESSAGES_PER_CONVERSATION
+    assert stop == -1
+
+    pipe.expire.assert_called_once()
+    _, ttl = pipe.expire.call_args[0]
+    assert ttl == 30 * 60
+
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_get_history_empty_when_key_missing():
