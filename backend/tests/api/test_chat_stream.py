@@ -173,6 +173,7 @@ def _make_memory_mock(
     store.new_conversation_id = AsyncMock(return_value=conversation_id)
     store.get_history = AsyncMock(return_value=history if history is not None else [])
     store.append_message = AsyncMock()
+    store.append_turn = AsyncMock()
     return store
 
 
@@ -848,9 +849,11 @@ async def test_chat_stream_continuing_conversation_loads_history(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_persists_messages_after_streaming(
-    client: AsyncClient, monkeypatch,
+    monkeypatch,
 ):
-    """After the stream completes, user + assistant messages are persisted."""
+    """After the stream completes, user + assistant persist as one turn."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -865,24 +868,24 @@ async def test_chat_stream_persists_messages_after_streaming(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "solid state batteries", "conversation_id": None},
-        cookies=_cookie(),
-    )
-    assert r.status_code == 200
+    chunks = [
+        chunk
+        async for chunk in _stream_anthropic_response(
+            "solid state batteries",
+            None,
+            "local-user",
+            MagicMock(),
+        )
+    ]
+    events = _parse_events("".join(chunks))
+    assert events[-1]["type"] == "done"
 
-    # Two append calls: user message + assistant response
-    assert store.append_message.await_count >= 2
-
-    calls = store.append_message.await_args_list
-    # First call: user message
-    assert calls[0].args[0] == "local-user"
-    assert calls[0].args[2] == "user"
-    assert calls[0].args[3] == "solid state batteries"
-    # Second call: assistant response
-    assert calls[1].args[2] == "assistant"
-    assert len(calls[1].args[3]) > 0  # non-empty response text
+    store.append_turn.assert_awaited_once()
+    args = store.append_turn.await_args.args
+    assert args[0] == "local-user"
+    assert args[2] == "solid state batteries"
+    assert len(args[3]) > 0  # non-empty response text
+    store.append_message.assert_not_awaited()
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -893,6 +896,7 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
     store = _make_memory_mock()
     store.get_history.side_effect = RuntimeError("Redis connection refused")
     store.append_message.side_effect = RuntimeError("Redis connection refused")
+    store.append_turn.side_effect = RuntimeError("Redis connection refused")
 
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",

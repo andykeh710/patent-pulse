@@ -63,6 +63,26 @@ async def test_append_and_get_roundtrip():
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_append_turn_writes_user_and_assistant_in_one_rpush():
+    redis = _mock_redis()
+    store = ConversationStore(redis)
+
+    await store.append_turn("user-1", "conv-1", "hello", "hi there")
+
+    redis.pipeline.assert_called_once_with(transaction=True)
+    pipe = redis.pipeline.return_value
+    pipe.rpush.assert_called_once()
+    assert len(pipe.rpush.call_args[0]) == 3
+
+    _, user_payload, assistant_payload = pipe.rpush.call_args[0]
+    assert user_payload != assistant_payload
+    assert '"role": "user"' in user_payload
+    assert '"content": "hello"' in user_payload
+    assert '"role": "assistant"' in assistant_payload
+    assert '"content": "hi there"' in assistant_payload
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_get_history_empty_when_key_missing():
     redis = _mock_redis()
     redis.lrange = AsyncMock(return_value=[])
