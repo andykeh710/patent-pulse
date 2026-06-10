@@ -17,6 +17,7 @@ from app.config import settings
 from app.core.ai_models import User
 from app.core.subscription_models import EmailDelivery
 from app.database import async_session_maker
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 webhook_router = APIRouter(tags=["webhooks"])
@@ -27,6 +28,7 @@ public_router = APIRouter(tags=["public"])
 
 
 @webhook_router.post("/webhooks/resend")
+@limiter.exempt
 async def resend_webhook(request: Request) -> dict:
     """Handle Resend delivery events.
 
