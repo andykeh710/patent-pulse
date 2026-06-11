@@ -886,6 +886,70 @@ async def test_chat_stream_persists_messages_after_streaming(
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_stream_generator_owns_db_session(monkeypatch):
+    """The SSE generator must keep its DB session open for streaming work."""
+    from app.api.v1 import chat as chat_module
+
+    store = _make_memory_mock()
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: store,
+    )
+
+    class FakeSessionContext:
+        def __init__(self):
+            self.db = object()
+            self.entered = False
+            self.exited = False
+
+        async def __aenter__(self):
+            self.entered = True
+            return self.db
+
+        async def __aexit__(self, exc_type, exc, tb):
+            self.exited = True
+            return None
+
+    session_context = FakeSessionContext()
+
+    def fake_session_maker():
+        return session_context
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        fake_session_maker,
+        raising=False,
+    )
+
+    async def _retrieve_with_stream_db(query, db):
+        assert db is session_context.db
+        assert session_context.entered is True
+        assert session_context.exited is False
+        return MOCK_PATENTS
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _retrieve_with_stream_db,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _fake_token_stream,
+    )
+
+    chunks = []
+    async for chunk in chat_module._stream_anthropic_response(
+        "solid state batteries",
+        None,
+        "local-user",
+    ):
+        chunks.append(chunk)
+
+    assert chunks
+    assert session_context.entered is True
+    assert session_context.exited is True
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_redis_failure_degrades_gracefully(
     client: AsyncClient, monkeypatch,
 ):
