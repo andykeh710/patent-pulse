@@ -887,7 +887,7 @@ async def test_chat_stream_persists_messages_after_streaming(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_stream_generator_owns_db_session(monkeypatch):
-    """The SSE generator must keep its DB session open for streaming work."""
+    """The SSE generator must use a short-lived DB session for retrieval."""
     from app.api.v1 import chat as chat_module
 
     store = _make_memory_mock()
@@ -897,7 +897,8 @@ async def test_stream_generator_owns_db_session(monkeypatch):
     )
 
     class FakeSessionContext:
-        def __init__(self):
+        def __init__(self, index: int):
+            self.index = index
             self.db = object()
             self.entered = False
             self.exited = False
@@ -910,10 +911,12 @@ async def test_stream_generator_owns_db_session(monkeypatch):
             self.exited = True
             return None
 
-    session_context = FakeSessionContext()
+    session_contexts = []
 
     def fake_session_maker():
-        return session_context
+        context = FakeSessionContext(len(session_contexts))
+        session_contexts.append(context)
+        return context
 
     monkeypatch.setattr(
         "app.api.v1.chat.async_session_maker",
@@ -922,10 +925,15 @@ async def test_stream_generator_owns_db_session(monkeypatch):
     )
 
     async def _retrieve_with_stream_db(query, db):
-        assert db is session_context.db
-        assert session_context.entered is True
-        assert session_context.exited is False
+        assert db is session_contexts[0].db
+        assert session_contexts[0].entered is True
+        assert session_contexts[0].exited is False
         return MOCK_PATENTS
+
+    async def _stream_after_retrieval_session_closes(self, **kw):
+        assert session_contexts[0].exited is True
+        for token in MOCK_TOKENS:
+            yield token
 
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -933,7 +941,7 @@ async def test_stream_generator_owns_db_session(monkeypatch):
     )
     monkeypatch.setattr(
         "app.ai.anthropic_client.AnthropicChatClient.stream",
-        _fake_token_stream,
+        _stream_after_retrieval_session_closes,
     )
 
     chunks = []
@@ -945,8 +953,97 @@ async def test_stream_generator_owns_db_session(monkeypatch):
         chunks.append(chunk)
 
     assert chunks
-    assert session_context.entered is True
-    assert session_context.exited is True
+    assert len(session_contexts) == 1
+    assert session_contexts[0].entered is True
+    assert session_contexts[0].exited is True
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_generator_uses_short_lived_tool_db_sessions(monkeypatch):
+    """Tool calls should get their own DB session, released before streaming resumes."""
+    from app.api.v1 import chat as chat_module
+
+    store = _make_memory_mock()
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: store,
+    )
+
+    class FakeSessionContext:
+        def __init__(self, index: int):
+            self.index = index
+            self.db = object()
+            self.entered = False
+            self.exited = False
+
+        async def __aenter__(self):
+            self.entered = True
+            return self.db
+
+        async def __aexit__(self, exc_type, exc, tb):
+            self.exited = True
+            return None
+
+    session_contexts = []
+
+    def fake_session_maker():
+        context = FakeSessionContext(len(session_contexts))
+        session_contexts.append(context)
+        return context
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        fake_session_maker,
+        raising=False,
+    )
+
+    async def _retrieve_with_first_db(query, db):
+        assert db is session_contexts[0].db
+        return MOCK_PATENTS
+
+    stream_calls = []
+
+    async def _stream_with_tool_then_text(self, **kw):
+        stream_calls.append(1)
+        if len(stream_calls) == 1:
+            assert session_contexts[0].exited is True
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            assert session_contexts[1].exited is True
+            yield {"type": "text", "content": "Done."}
+
+    async def _execute_with_tool_db(name, input, db):
+        assert db is session_contexts[1].db
+        assert session_contexts[0].exited is True
+        assert session_contexts[1].entered is True
+        assert session_contexts[1].exited is False
+        return MOCK_TOOL_RESULT
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _retrieve_with_first_db,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_tool_then_text,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        _execute_with_tool_db,
+    )
+
+    chunks = []
+    async for chunk in chat_module._stream_anthropic_response(
+        "search solid state batteries",
+        None,
+        "local-user",
+    ):
+        chunks.append(chunk)
+
+    assert chunks
+    assert len(session_contexts) == 2
+    assert all(context.entered and context.exited for context in session_contexts)
 
 
 @pytest.mark.asyncio(loop_scope="function")
