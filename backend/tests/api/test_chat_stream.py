@@ -953,6 +953,9 @@ async def test_stream_generator_owns_db_session(monkeypatch):
         chunks.append(chunk)
 
     assert chunks
+    event_types = [event["type"] for event in _parse_events("".join(chunks))]
+    assert "error" not in event_types
+    assert "sources" in event_types
     assert len(session_contexts) == 1
     assert session_contexts[0].entered is True
     assert session_contexts[0].exited is True
@@ -1042,6 +1045,9 @@ async def test_stream_generator_uses_short_lived_tool_db_sessions(monkeypatch):
         chunks.append(chunk)
 
     assert chunks
+    event_types = [event["type"] for event in _parse_events("".join(chunks))]
+    assert "error" not in event_types
+    assert "tool_call_result" in event_types
     assert len(session_contexts) == 2
     assert all(context.entered and context.exited for context in session_contexts)
 
