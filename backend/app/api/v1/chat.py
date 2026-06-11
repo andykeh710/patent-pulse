@@ -162,156 +162,156 @@ async def _stream_anthropic_response(
         history = []
 
     # FastAPI 0.115 closes yield dependencies before StreamingResponse
-    # consumption, so DB work inside the stream owns its session lifetime.
+    # consumption, so DB work inside the stream owns short session lifetimes.
     async with async_session_maker() as db:
-        # ── Step 3: Retrieve ──────────────────────────────────────────
         patents = await retrieve_patents(message, db)
 
-        yield _sse_event(
-            "meta",
-            model="claude-sonnet-4-20250514",
-            retrieved_count=len(patents),
-            conversation_id=conversation_id,
-        )
+    yield _sse_event(
+        "meta",
+        model="claude-sonnet-4-20250514",
+        retrieved_count=len(patents),
+        conversation_id=conversation_id,
+    )
 
-        # ── Step 4: System prompt ─────────────────────────────────────
-        system_prompt = build_system_prompt(patents)
+    # ── Step 4: System prompt ─────────────────────────────────────
+    system_prompt = build_system_prompt(patents)
 
-        # ── Citation-tracking state ───────────────────────────────────
-        full_text_parts: list[str] = []
-        known_doc_ids: set[str] = {p["doc_id"] for p in patents}
+    # ── Citation-tracking state ───────────────────────────────────
+    full_text_parts: list[str] = []
+    known_doc_ids: set[str] = {p["doc_id"] for p in patents}
 
-        # ── Step 5: Anthropic messages (history + current turn) ───────
-        # Build messages: prior turns from Redis + current user message.
-        messages: list[dict] = [
-            {"role": m["role"], "content": m["content"]}
-            for m in history
-        ]
-        messages.append({"role": "user", "content": message})
+    # ── Step 5: Anthropic messages (history + current turn) ───────
+    # Build messages: prior turns from Redis + current user message.
+    messages: list[dict] = [
+        {"role": m["role"], "content": m["content"]}
+        for m in history
+    ]
+    messages.append({"role": "user", "content": message})
 
-        # ── Step 6: Streaming with tool loop ──────────────────────────
-        client = get_chat_client()
-        tool_call_count = 0
+    # ── Step 6: Streaming with tool loop ──────────────────────────
+    client = get_chat_client()
+    tool_call_count = 0
 
-        while True:
-            try:
-                async for event in client.stream(
-                    system=system_prompt,
-                    messages=messages,
-                    tools=TOOLS,
-                ):
-                    if event["type"] == "text":
-                        full_text_parts.append(event["content"])
-                        yield _sse_event("token", content=event["content"])
+    while True:
+        try:
+            async for event in client.stream(
+                system=system_prompt,
+                messages=messages,
+                tools=TOOLS,
+            ):
+                if event["type"] == "text":
+                    full_text_parts.append(event["content"])
+                    yield _sse_event("token", content=event["content"])
 
-                    elif event["type"] == "tool_use":
-                        tool_call_count += 1
-                        if tool_call_count > MAX_TOOL_CALLS_PER_TURN:
-                            yield _sse_event(
-                                "warning",
-                                message="Tool call limit reached (5 per turn).",
-                            )
-                            yield _sse_event("done")
-                            return
-
-                        tool_name: str = event.get("name", "")
-                        tool_input: dict = event.get("input", {})
-                        tool_id: str = event.get("id", "")
-
+                elif event["type"] == "tool_use":
+                    tool_call_count += 1
+                    if tool_call_count > MAX_TOOL_CALLS_PER_TURN:
                         yield _sse_event(
-                            "tool_call_start",
-                            name=tool_name,
-                            input=tool_input,
+                            "warning",
+                            message="Tool call limit reached (5 per turn).",
                         )
+                        yield _sse_event("done")
+                        return
 
-                        try:
+                    tool_name: str = event.get("name", "")
+                    tool_input: dict = event.get("input", {})
+                    tool_id: str = event.get("id", "")
+
+                    yield _sse_event(
+                        "tool_call_start",
+                        name=tool_name,
+                        input=tool_input,
+                    )
+
+                    try:
+                        async with async_session_maker() as db:
                             result = await execute_tool(tool_name, tool_input, db)
-                        except Exception:
-                            logger.exception("Tool execution failed: %s", tool_name)
-                            result = {
-                                "error": f"Tool '{tool_name}' encountered an internal error."
-                            }
+                    except Exception:
+                        logger.exception("Tool execution failed: %s", tool_name)
+                        result = {
+                            "error": f"Tool '{tool_name}' encountered an internal error."
+                        }
 
-                        known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
-                        sanitized = _sanitize_tool_result(result)
+                    known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
+                    sanitized = _sanitize_tool_result(result)
 
-                        yield _sse_event(
-                            "tool_call_result",
-                            name=tool_name,
-                            result=sanitized,
-                        )
+                    yield _sse_event(
+                        "tool_call_result",
+                        name=tool_name,
+                        result=sanitized,
+                    )
 
-                        messages.append({
-                            "role": "assistant",
-                            "content": [{
-                                "type": "tool_use",
-                                "id": tool_id,
-                                "name": tool_name,
-                                "input": tool_input,
-                            }],
-                        })
-                        messages.append({
-                            "role": "user",
-                            "content": [{
-                                "type": "tool_result",
-                                "tool_use_id": tool_id,
-                                "content": json.dumps(sanitized),
-                            }],
-                        })
+                    messages.append({
+                        "role": "assistant",
+                        "content": [{
+                            "type": "tool_use",
+                            "id": tool_id,
+                            "name": tool_name,
+                            "input": tool_input,
+                        }],
+                    })
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_id,
+                            "content": json.dumps(sanitized),
+                        }],
+                    })
 
-                        break
-
-                else:
                     break
 
-            except Exception:
-                logger.exception("Anthropic streaming failed")
-                yield _sse_event(
-                    "error",
-                    message=(
-                        "The chat service is temporarily unavailable. "
-                        "Please try again."
-                    ),
-                )
-                yield _sse_event("done")
-                return
+            else:
+                break
 
-        # ── Step 7: Citation verification ─────────────────────────────
-        full_text = "".join(full_text_parts)
-        cited = extract_citations(full_text)
-        verification = verify_citations(cited, known_doc_ids)
-
-        yield _sse_event(
-            "citations",
-            verified=verification["verified"],
-            unverified=verification["unverified"],
-        )
-
-        if verification["unverified"]:
+        except Exception:
+            logger.exception("Anthropic streaming failed")
             yield _sse_event(
-                "warning",
-                code="uncited_or_invalid_doc_ids",
+                "error",
                 message=(
-                    "Some patent references could not be verified "
-                    "against retrieved sources."
+                    "The chat service is temporarily unavailable. "
+                    "Please try again."
                 ),
             )
+            yield _sse_event("done")
+            return
 
-        # ── Step 8: Persist conversation ──────────────────────────────
-        # Persist only the final user message + assistant text.
-        # Tool-call sequences are intentionally NOT persisted — each turn
-        # starts fresh with retrieval + tools.
-        try:
-            await store.append_message(user_id, conversation_id, "user", message)
-            await store.append_message(
-                user_id, conversation_id, "assistant", full_text,
-            )
-        except Exception:
-            logger.exception("Failed to persist conversation turn")
+    # ── Step 7: Citation verification ─────────────────────────────
+    full_text = "".join(full_text_parts)
+    cited = extract_citations(full_text)
+    verification = verify_citations(cited, known_doc_ids)
 
-        # ── Step 9: Sources + done ────────────────────────────────────
-        yield _sse_event("sources", patents=patents)
-        yield _sse_event("done")
+    yield _sse_event(
+        "citations",
+        verified=verification["verified"],
+        unverified=verification["unverified"],
+    )
+
+    if verification["unverified"]:
+        yield _sse_event(
+            "warning",
+            code="uncited_or_invalid_doc_ids",
+            message=(
+                "Some patent references could not be verified "
+                "against retrieved sources."
+            ),
+        )
+
+    # ── Step 8: Persist conversation ──────────────────────────────
+    # Persist only the final user message + assistant text.
+    # Tool-call sequences are intentionally NOT persisted — each turn
+    # starts fresh with retrieval + tools.
+    try:
+        await store.append_message(user_id, conversation_id, "user", message)
+        await store.append_message(
+            user_id, conversation_id, "assistant", full_text,
+        )
+    except Exception:
+        logger.exception("Failed to persist conversation turn")
+
+    # ── Step 9: Sources + done ────────────────────────────────────
+    yield _sse_event("sources", patents=patents)
+    yield _sse_event("done")
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────
