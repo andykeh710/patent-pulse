@@ -552,6 +552,143 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_executes_multiple_tool_calls_from_one_response(
+    monkeypatch,
+):
+    """All tool_use blocks from one Anthropic response are executed."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    calls = []
+    first_pass_tools = [
+        {"type": "text", "content": "I will compare and then open the strongest patent."},
+        {
+            "type": "tool_use",
+            "id": "toolu_compare",
+            "name": "compare_companies",
+            "input": {"names": ["Toyota", "Honda"]},
+        },
+        {
+            "type": "tool_use",
+            "id": "toolu_open",
+            "name": "open_patent",
+            "input": {"doc_id": "USPTO:US99999"},
+        },
+    ]
+
+    async def _stream_with_two_tools(self, **kw):
+        calls.append(kw.get("messages", []))
+        if len(calls) == 1:
+            for event in first_pass_tools:
+                yield event
+        else:
+            yield {"type": "text", "content": "The comparison and patent details are ready."}
+
+    executed_tools = []
+
+    async def _execute_tool(name, input, db):
+        executed_tools.append(name)
+        if name == "compare_companies":
+            return {
+                "companies": [
+                    {
+                        "company": "Toyota",
+                        "total_patents": 1,
+                        "recent_patents_3y": 1,
+                        "avg_opportunity_score": 80.0,
+                        "top_opportunity_score": 80.0,
+                        "top_patent_id": "USPTO:US99999",
+                        "top_patent_title": "Solid-State Battery Electrolyte",
+                    }
+                ],
+                "compared": 2,
+            }
+        return {
+            "doc_id": "USPTO:US99999",
+            "title": "Solid-State Battery Electrolyte",
+            "abstract": "A solid-state electrolyte comprising...",
+        }
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_two_tools,
+    )
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
+
+    from app.api.v1.chat import _stream_anthropic_response
+
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "Compare Toyota and Honda, then open the top patent.",
+            None,
+            "local-user",
+            object(),
+        )
+    ]
+    events = _parse_events("".join(chunks))
+
+    assert calls, "Anthropic stream should be called at least once"
+    assert executed_tools == ["compare_companies", "open_patent"]
+
+    starts = [e for e in events if e["type"] == "tool_call_start"]
+    results = [e for e in events if e["type"] == "tool_call_result"]
+
+    assert [e["name"] for e in starts] == ["compare_companies", "open_patent"]
+    assert [e["name"] for e in results] == ["compare_companies", "open_patent"]
+    assert any(
+        e["type"] == "token" and "details are ready" in e["content"]
+        for e in events
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_releases_db_transaction_before_model_stream(
+    monkeypatch,
+):
+    """Read-only retrieval must not hold a DB transaction during LLM streaming."""
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    fake_db = AsyncMock()
+
+    async def _stream_after_retrieval(self, **kw):
+        assert fake_db.rollback.await_count == 1
+        yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_after_retrieval,
+    )
+
+    from app.api.v1.chat import _stream_anthropic_response
+
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "battery tech",
+            None,
+            "local-user",
+            fake_db,
+        )
+    ]
+    events = _parse_events("".join(chunks))
+
+    assert fake_db.rollback.await_count == 1
+    assert "done" in [e["type"] for e in events]
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_sources_after_tool_calls(client: AsyncClient, monkeypatch):
     """sources event still appears (and after tool calls, before done)."""
     monkeypatch.setattr(

@@ -118,6 +118,18 @@ def _collect_tool_doc_ids(name: str, result: dict) -> set[str]:
     return ids
 
 
+async def _release_chat_db_transaction(db: AsyncSession) -> None:
+    """Release read-only chat transactions before waiting on the model."""
+    rollback = getattr(db, "rollback", None)
+    if rollback is None:
+        return
+
+    try:
+        await rollback()
+    except Exception:
+        logger.exception("Failed to release chat DB transaction")
+
+
 # ── Anthropic stream adapter ──────────────────────────────────────────
 
 
@@ -164,6 +176,7 @@ async def _stream_anthropic_response(
 
     # ── Step 3: Retrieve ──────────────────────────────────────────
     patents = await retrieve_patents(message, db)
+    await _release_chat_db_transaction(db)
 
     yield _sse_event(
         "meta",
@@ -192,6 +205,9 @@ async def _stream_anthropic_response(
     tool_call_count = 0
 
     while True:
+        tool_use_blocks: list[dict] = []
+        tool_result_blocks: list[dict] = []
+
         try:
             async for event in client.stream(
                 system=system_prompt,
@@ -229,6 +245,8 @@ async def _stream_anthropic_response(
                         result = {
                             "error": f"Tool '{tool_name}' encountered an internal error."
                         }
+                    finally:
+                        await _release_chat_db_transaction(db)
 
                     known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
                     sanitized = _sanitize_tool_result(result)
@@ -239,28 +257,30 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
+                    tool_use_blocks.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
                     })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
+                    tool_result_blocks.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": json.dumps(sanitized),
                     })
 
-                    break
+            if tool_use_blocks:
+                messages.append({
+                    "role": "assistant",
+                    "content": tool_use_blocks,
+                })
+                messages.append({
+                    "role": "user",
+                    "content": tool_result_blocks,
+                })
+                continue
 
-            else:
-                break
+            break
 
         except Exception:
             logger.exception("Anthropic streaming failed")
