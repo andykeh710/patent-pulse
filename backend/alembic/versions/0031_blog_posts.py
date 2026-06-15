@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 revision: str = "0031"
-down_revision: Union[str, None] = "0030_alerts_webhook_configs"
+down_revision: Union[str, None] = "0030"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
