@@ -53,20 +53,8 @@ export default function CompaniesPage() {
           <p className="text-xs text-[var(--text-muted)] mb-4">Uses normalized assignee metadata when available, with patent assignee aggregation as fallback.</p>
           <div className="space-y-4">
             <CoverageBar label="Country Coverage" value={summary?.suppliers_with_country || 0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Country detection requires external data sources (not available from patent office feeds). Planned for a future data enrichment sprint." />
-            <CoverageBar label="Entity Type Coverage" value={summary?.suppliers_with_entity_type || 0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Entity type classification is computed nightly from company name patterns. If zero, the backfill has not yet run on this dataset." />
+            <CoverageBar label="Entity Type Coverage" value={0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Entity type enrichment requires authoritative external data (USPTO PatentsView). Previously inferred values are not shown as verified intelligence. See V3.5a roadmap." />
           </div>
-          {(summary?.entity_types?.length ?? 0) > 0 && (
-            <div className="mt-5">
-              <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Entity Mix</h3>
-              <div className="flex flex-wrap gap-2">
-                {summary?.entity_types.map((item, i) => (
-                  <Badge key={`entity-${item.entity_type}-${i}`} variant="default" size="sm">
-                    {humanizeTag(item.entity_type)} · {item.count}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

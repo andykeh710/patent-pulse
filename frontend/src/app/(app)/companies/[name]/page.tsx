@@ -100,8 +100,11 @@ export default function CompanyProfilePage({
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{profile.name}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
-            {profile.country && <Badge variant="default">{profile.country}</Badge>}
-            {profile.entity_type && <Badge variant="default">{profile.entity_type}</Badge>}
+            {profile.country && profile.enrichment_source && <Badge variant="default">{profile.country}</Badge>}
+            {profile.entity_type && profile.enrichment_source && <Badge variant="default">{profile.entity_type}</Badge>}
+            {!profile.enrichment_source && (
+              <span className="text-xs text-[var(--text-muted)]">Enrichment pending</span>
+            )}
             <span className="text-[var(--text-muted)]">
               Score: <strong className={profile.supplier_score >= 60 ? "text-[var(--score-high)]" : profile.supplier_score >= 35 ? "text-[var(--warning)]" : "text-[var(--text-muted)]"}>{profile.supplier_score}</strong>
             </span>

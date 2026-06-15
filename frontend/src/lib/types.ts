@@ -771,6 +771,7 @@ export interface CompanyProfile {
   name: string;
   country: string | null;
   entity_type: string | null;
+  enrichment_source: string | null;
   patent_count: number;
   active_patent_count: number;
   expiring_soon_count: number;

@@ -15,18 +15,18 @@ router = APIRouter()
 class SupplierSummary(BaseModel):
     total_suppliers: int
     suppliers_with_country: int
-    suppliers_with_entity_type: int
+    entity_type_enrichment_pending: bool  # True when no verified source exists
     total_supplier_patents: int
     average_patents_per_supplier: float
     high_opportunity_suppliers: int
     countries: list[dict[str, int | str]]
-    entity_types: list[dict[str, int | str]]
 
 
 class SupplierItem(BaseModel):
     name: str
     country: str | None
     entity_type: str | None
+    enrichment_source: str | None = None  # None = unverified; 'patentsview' = verified
     patent_count: int
     active_patent_count: int
     expiring_soon_count: int
@@ -134,12 +134,9 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
     ]
 
     country_counts: dict[str, int] = {}
-    entity_counts: dict[str, int] = {}
     for item in items:
         if item.country:
             country_counts[item.country] = country_counts.get(item.country, 0) + 1
-        if item.entity_type:
-            entity_counts[item.entity_type] = entity_counts.get(item.entity_type, 0) + 1
 
     total_patents = sum(item.patent_count for item in items)
     total = len(items)
@@ -147,17 +144,13 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
     return SupplierSummary(
         total_suppliers=total,
         suppliers_with_country=sum(1 for item in items if item.country),
-        suppliers_with_entity_type=sum(1 for item in items if item.entity_type),
+        entity_type_enrichment_pending=True,  # no verified source data yet
         total_supplier_patents=total_patents,
         average_patents_per_supplier=round(total_patents / total, 2) if total else 0.0,
         high_opportunity_suppliers=sum(1 for item in items if item.supplier_score >= 60),
         countries=[
             {"country": country, "count": count}
             for country, count in sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        ],
-        entity_types=[
-            {"entity_type": entity_type, "count": count}
-            for entity_type, count in sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:10]
         ],
     )
 
@@ -289,6 +282,7 @@ class CompanyProfile(BaseModel):
     name: str
     country: str | None
     entity_type: str | None
+    enrichment_source: str | None = None  # None = unverified
     patent_count: int
     active_patent_count: int
     expiring_soon_count: int
