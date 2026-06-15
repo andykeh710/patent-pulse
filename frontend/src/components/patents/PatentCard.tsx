@@ -13,14 +13,34 @@ import { SourceAttribution } from "@/components/ui/SourceAttribution";
 
 interface PatentCardProps {
   patent: PatentListItem;
+  isSaved?: boolean;
+  onToggleSave?: (patentId: string) => void;
 }
 
-export function PatentCard({ patent }: PatentCardProps) {
+export function PatentCard({ patent, isSaved, onToggleSave }: PatentCardProps) {
   return (
     <Link
       href={`/patents/${patent.id}`}
-      className="block bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] transition-all"
+      className="block bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] transition-all relative"
     >
+      {/* Save/bookmark button */}
+      {onToggleSave && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSave(patent.id); }}
+          className={`absolute top-3 right-3 p-1.5 rounded-lg transition-colors ${
+            isSaved
+              ? "text-[var(--accent)] bg-[var(--accent-muted)]"
+              : "text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-muted)]"
+          }`}
+          title={isSaved ? "Remove from watchlist" : "Save to watchlist"}
+          aria-label={isSaved ? "Remove from watchlist" : "Save to watchlist"}
+        >
+          <svg className="w-4 h-4" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+        </button>
+      )}
+
       <div className="flex justify-between items-start gap-3 mb-2">
         <h3 className="font-medium text-[var(--text-primary)] leading-tight">
           {truncate(patent.title, 80) || "Untitled Patent"}

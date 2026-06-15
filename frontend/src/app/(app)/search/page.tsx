@@ -3,11 +3,13 @@
 import { Suspense, useState, useCallback, useEffect, type FormEvent } from "react";
 import { useSearchParams as useNextSearchParams, useRouter, usePathname } from "next/navigation";
 import { usePatentSearch } from "@/hooks/usePatents";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
-import { Badge } from "@/components/ui/Badge";
 import type { SearchParams } from "@/lib/types";
 
 type SearchMode = "fulltext" | "semantic" | "hybrid";
@@ -82,13 +84,11 @@ function SearchContent() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Search Patents</h1>
-        <FreshnessBanner show={["patents"]} className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Find patents by keyword or describe the technology you&apos;re looking for
-        </p>
-      </div>
+      <PageHeader
+        title="Search Patents"
+        description="Find patents by keyword or describe the technology you're looking for."
+        freshnessSources={["patents"]}
+      />
 
       {/* Search bar */}
       <form onSubmit={handleSubmit} className="mb-6">
@@ -188,16 +188,23 @@ function SearchContent() {
           ))}
         </div>
       ) : !hasResults ? (
-        <div className="rounded-lg bg-[var(--bg-base)] py-12 text-center">
-          <p className="text-[var(--text-muted)]">No patents found for &ldquo;{submitted}&rdquo;</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            {mode === "fulltext"
-              ? "Try different keywords or switch to semantic or hybrid search"
+        <EmptyState
+          icon="search"
+          title={`No patents found for "${submitted}"`}
+          message={
+            mode === "fulltext"
+              ? "No patents matched your keywords. Try different terms or switch to semantic search for broader results."
               : mode === "semantic"
-                ? "Try rephrasing your description or switch to hybrid search"
-                : "Try a different description or switch to keyword search"}
-          </p>
-        </div>
+              ? "No patents were similar enough to your description. Try rephrasing or switching to keyword search."
+              : "No patents matched across keyword and semantic indexes. Try a different query."
+          }
+          detail="Patent data is continuously ingested from USPTO, EPO, and WIPO. New records appear weekly."
+          actions={[
+            { label: `Try "${submitted}" as keyword search`, href: `?q=${encodeURIComponent(submitted)}&mode=fulltext`, primary: mode !== "fulltext" },
+            { label: "Browse all patents", href: "/patents" },
+            { label: "Explore by topic", href: "/themes" },
+          ]}
+        />
       ) : (
         <>
           <p className="text-sm text-[var(--text-muted)] mb-4">

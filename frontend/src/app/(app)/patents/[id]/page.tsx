@@ -256,19 +256,17 @@ export default function PatentDetailPage({
   // --- Tab config ---
   const tabs = [
     { id: "overview", label: "Overview" },
+    { id: "commercial", label: "Commercial" },
     { id: "claims", label: "Claims", count: patent.claims_text ? 1 : 0 },
-    { id: "opportunity", label: "Opportunity" },
-    { id: "similar", label: "Similar" },
-    { id: "family", label: "Family", count: patent.family_members?.length || 0 },
     { id: "citations", label: "Citations", count: patent.citations_backward?.length || 0 },
     { id: "legal", label: "Legal / Expiry" },
-    { id: "usage", label: "Usage Signals" },
+    { id: "similar", label: "Similar" },
   ];
 
   return (
     <div>
-      {/* --- Header (always visible) --- */}
-      <div className="mb-6">
+      {/* --- Breadcrumb + risk flags (title/badges/metadata moved to ExecutiveSummary) --- */}
+      <div className="mb-4">
         <Link href="/patents" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] mb-2 inline-flex items-center gap-1">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -276,75 +274,23 @@ export default function PatentDetailPage({
           Back to patents
         </Link>
 
-        <div className="flex items-start justify-between gap-4 mt-2">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{patent.title || "Untitled Patent"}</h1>
-          <div className="flex items-start gap-3">
-            <button
-              onClick={handleToggleWatchlist}
-              disabled={watchlistLoading}
-              className={`p-2 rounded-lg border transition-colors ${
-                watchlistStatus?.in_watchlist
-                  ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/30 text-[var(--accent)]"
-                  : "border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-border-[var(--accent)]/30"
-              } disabled:opacity-50`}
-              title={watchlistStatus?.in_watchlist ? "Remove from watchlist" : "Save to watchlist"}
-            >
-              <svg className="w-5 h-5" fill={watchlistStatus?.in_watchlist ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
-            </button>
-            <div className="flex flex-col items-end gap-1.5">
-              <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
-              <ScoreBadge score={patent.interesting_score} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-[var(--text-muted)]">
-          <span>{patent.publication_number}</span>
-          <span>•</span>
-          <span>{patent.office}</span>
-          <span>•</span>
-          <Badge variant={patent.legal_status === "GRANTED" ? "success" : "default"}>{patent.legal_status}</Badge>
-          <LegalConfidenceBadge confidence={patent.legal_status_confidence} legalStatus={patent.legal_status} />
-        </div>
         {patent.tags?.risk_flags && patent.tags.risk_flags.length > 0 && (
           <div className="mt-2"><RiskFlagsBadge flags={patent.tags.risk_flags} /></div>
         )}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {/* Citation counts — clickable, jumps to Citations tab */}
-          {((patent.citations_backward?.length ?? 0) > 0 || (patent.citations_forward?.length ?? 0) > 0) ? (
-            <button
-              onClick={() => setActiveTab("citations")}
-              className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-            >
-              <span>Citations:</span>
-              <span className="font-medium">{patent.citations_backward?.length ?? 0} ←</span>
-              <span className="font-medium">{patent.citations_forward?.length ?? 0} →</span>
-            </button>
-          ) : (
-            <span className="text-xs text-[var(--text-muted)]">Citations: none</span>
-          )}
-        </div>
-        <div className="mt-3">
-          <ExternalPatentLinks publicationNumber={patent.publication_number} office={patent.office} docId={patent.doc_id} />
-          <SourceAttribution office={patent.office} />
 
-          {/* Figures — thumbnail via Google Patents og:image (backend-resolved + Redis-cached).
-              Brand rule "link-only, never host or re-serve" explicitly overridden 2026-06-02 per Andy.
-              We extract Google's CDN URL and embed <img> directly; bytes are NOT proxied through us.
-              Falls back to link-card if the scrape fails or the patent has no og:image. */}
-          {patent.figure_page_url && (
+        {/* Figures — link-out to Google Patents */}
+        {patent.figure_page_url && (
+          <div className="mt-3">
             <PatentFiguresPanel
               publicationNumber={patent.publication_number}
               figurePageUrl={patent.figure_page_url}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Data Completeness Panel */}
-      <DataCompletenessPanel patent={patent} />
+      {/* Executive Summary — above the fold */}
+      <ExecutiveSummary patent={patent} isInWatchlist={watchlistStatus?.in_watchlist} watchlistLoading={watchlistLoading} onToggleWatchlist={handleToggleWatchlist} />
 
       <FreshnessBanner show={["patents", "summaries", "trends", "ai_runs"]} className="mb-4" />
 
@@ -364,8 +310,8 @@ export default function PatentDetailPage({
         <ClaimsPanel claimsText={patent.claims_text} />
       )}
 
-      {activeTab === "opportunity" && (
-        <OpportunityTab
+      {activeTab === "commercial" && (
+        <CommercialTab
           patent={patent}
           effectiveWhyNow={effectiveWhyNow}
           whyNowLoading={whyNowLoading}
@@ -386,10 +332,6 @@ export default function PatentDetailPage({
         <SimilarTab patentId={id} />
       )}
 
-      {activeTab === "family" && (
-        <FamilyTab patent={patent} />
-      )}
-
       {activeTab === "citations" && (
         <CitationsTab patent={patent} />
       )}
@@ -397,9 +339,123 @@ export default function PatentDetailPage({
       {activeTab === "legal" && (
         <LegalExpiryTab patent={patent} />
       )}
-      {activeTab === "usage" && (
-        <UsageSignalsPanel patentId={patent.id} />
-      )}
+
+      {/* Data Completeness — footer, collapsed by default */}
+      <div className="mt-8 pt-6 border-t border-[var(--border-subtle)]">
+        <DataCompletenessPanel patent={patent} />
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// EXECUTIVE SUMMARY — above the fold
+// =============================================================================
+
+function ExecutiveSummary({
+  patent,
+  isInWatchlist,
+  watchlistLoading,
+  onToggleWatchlist,
+}: {
+  patent: PatentDetail;
+  isInWatchlist?: boolean;
+  watchlistLoading: boolean;
+  onToggleWatchlist: () => void;
+}) {
+  return (
+    <div className="mb-6 bg-[var(--bg-elevated)] rounded-lg border border-[var(--accent)]/20 p-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          {/* Title */}
+          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+            {patent.title || "Untitled Patent"}
+          </h1>
+
+          {/* Key metadata row */}
+          <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
+            <span className="text-[var(--text-secondary)]">{patent.assignees?.[0] || "Unknown assignee"}</span>
+            <span className="text-[var(--text-muted)]">·</span>
+            <Badge variant={patent.legal_status === "GRANTED" ? "success" : "default"}>
+              {patent.legal_status || "Unknown"}
+            </Badge>
+            {patent.estimated_expiry_date && (
+              <>
+                <span className="text-[var(--text-muted)]">·</span>
+                <span className="text-[var(--text-muted)] text-xs">
+                  Est. expiry {formatDate(patent.estimated_expiry_date)}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* AI Summary */}
+          {patent.summary?.commercial_significance && (
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
+              {patent.summary.commercial_significance}
+            </p>
+          )}
+
+          {/* Why it matters — if available */}
+          {patent.why_now_text && (
+            <div className="flex items-start gap-2 mb-3 text-sm">
+              <span className="text-[var(--accent)] font-medium shrink-0">Why it matters:</span>
+              <span className="text-[var(--text-secondary)]">{patent.why_now_text}</span>
+            </div>
+          )}
+
+          {/* Action row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={onToggleWatchlist}
+              disabled={watchlistLoading}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isInWatchlist
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
+                  : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+              } disabled:opacity-50`}
+            >
+              {isInWatchlist ? "Saved" : "Save to watchlist"}
+            </button>
+            <Link
+              href={`/chat?seed=Tell+me+about+patent+${encodeURIComponent(patent.doc_id || patent.publication_number)}`}
+              className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-glass)] transition-colors"
+            >
+              Ask AI
+            </Link>
+            <Link
+              href={`/patents/${patent.id}`}
+              className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-muted)] hover:bg-[var(--bg-glass)] transition-colors"
+            >
+              Share
+            </Link>
+          </div>
+        </div>
+
+        {/* Score badges */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
+          <ScoreBadge score={patent.interesting_score} />
+          <LegalConfidenceBadge
+            confidence={patent.legal_status_confidence}
+            legalStatus={patent.legal_status}
+          />
+        </div>
+      </div>
+
+      {/* Key dates + source row */}
+      <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--text-muted)]">
+        <span>Publication: {patent.publication_date ? formatDate(patent.publication_date) : "—"}</span>
+        {patent.filing_date && <span>Filed: {formatDate(patent.filing_date)}</span>}
+        {patent.grant_date && <span>Granted: {formatDate(patent.grant_date)}</span>}
+        <span>{patent.publication_number} · {patent.office}</span>
+        <ExternalPatentLinks
+          publicationNumber={patent.publication_number}
+          office={patent.office}
+          docId={patent.doc_id}
+        />
+        <SourceAttribution office={patent.office} />
+      </div>
     </div>
   );
 }
@@ -478,7 +534,7 @@ function OverviewTab({
   );
 }
 
-function OpportunityTab({
+function CommercialTab({
   patent,
   effectiveWhyNow,
   whyNowLoading,
@@ -518,6 +574,8 @@ function OpportunityTab({
       </div>
 
       <div className="space-y-6">
+        <UsageSignalsPanel patentId={patent.id} />
+        <FamilyTab patent={patent} />
         {patent.opportunity_breakdown && (
           <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
             <OpportunityBreakdown breakdown={patent.opportunity_breakdown} />
