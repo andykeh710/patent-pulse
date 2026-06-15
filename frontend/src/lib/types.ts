@@ -779,6 +779,7 @@ export interface CompanyProfile {
   supplier_score: number;
   top_cpc: { cpc: string; count: number }[];
   recent_patents: { id: string; doc_id: string; title: string | null; publication_date: string | null; opportunity_score: number | null }[];
+  top_inventors: { name: string; patent_count: number }[];
 }
 
 // ---------------------------------------------------------------------------
