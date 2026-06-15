@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { submitFeedback } from "@/lib/activation";
 
 interface FeedbackWidgetProps {
   /** Which screen this feedback is from */
   screen: string;
-  /** Optional: what the user was doing */
-  context?: string;
 }
 
 /**
@@ -18,13 +17,16 @@ interface FeedbackWidgetProps {
  *
  * Non-blocking — failures don't affect UX.
  */
-export function FeedbackWidget({ screen, context }: FeedbackWidgetProps) {
+export function FeedbackWidget({ screen }: FeedbackWidgetProps) {
   const [submitted, setSubmitted] = useState(false);
 
   const handleFeedback = (useful: boolean) => {
     setSubmitted(true);
-    // Log to console for dev; wire to POST /api/v1/feedback when ready
-    console.debug("[feedback]", { screen, context, useful, ts: new Date().toISOString() });
+    submitFeedback({
+      route: window.location.pathname,
+      surface: screen,
+      rating: useful ? "useful" : "not_useful",
+    });
   };
 
   if (submitted) {
