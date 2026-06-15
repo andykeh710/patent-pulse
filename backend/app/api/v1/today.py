@@ -461,7 +461,13 @@ async def mark_today_seen(
     db: DbSession,
     user_id: str = Depends(current_user),
 ) -> dict:
-    """Mark the user's Today view as seen. Shifts last_seen → previous_seen."""
+    """Mark the user's Today view as seen. Shifts last_seen → previous_seen.
+
+    Idempotent within a 5-minute window — repeated calls (e.g. from
+    hard browser reloads) within 5 minutes of the last mark will not
+    shift the timestamp. This prevents "Since earlier today" churn
+    when users are actively refreshing to read.
+    """
     from sqlalchemy import select, update
     from app.core.ai_models import User
 
@@ -473,6 +479,13 @@ async def mark_today_seen(
     )
     row = result.one_or_none()
     current_last = row[0] if row else None
+
+    # Idempotency: if last_seen was set within the last 5 minutes,
+    # skip the update. Prevents hard-reload churn.
+    if current_last is not None:
+        delta = (now - current_last).total_seconds()
+        if delta < 300:
+            return {"status": "skipped", "reason": "within idempotency window", "marked_at": now.isoformat()}
 
     # Shift: previous = current last_seen, last_seen = now
     await db.execute(

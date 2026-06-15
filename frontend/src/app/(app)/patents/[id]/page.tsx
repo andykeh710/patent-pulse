@@ -423,12 +423,12 @@ function ExecutiveSummary({
             >
               Ask AI
             </Link>
-            <Link
-              href={`/patents/${patent.id}`}
+            <button
+              onClick={() => { navigator.clipboard.writeText(window.location.href).catch(() => {}); }}
               className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-muted)] hover:bg-[var(--bg-glass)] transition-colors"
             >
-              Share
-            </Link>
+              Copy link
+            </button>
           </div>
         </div>
 

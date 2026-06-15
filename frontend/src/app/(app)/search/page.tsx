@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import type { SearchParams } from "@/lib/types";
 

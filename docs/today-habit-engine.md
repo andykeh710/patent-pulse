@@ -72,6 +72,7 @@ interface TodayInsight {
 - Uses existing User model — no new table needed
 - `previous_today_seen_at` enables rollback/diagnostics
 - **Preflight fix (Sprint 3.5):** Added `markSeenRef` to prevent repeat mark-seen on rapid refreshes. Repeated reloads within the same React mount lifecycle will not create misleading "Since earlier today" behavior. The ref ensures mark-seen fires exactly once per page session.
+- **Sprint 4.5 preflight:** Added server-side idempotency. `POST /today/mark-seen` now skips updates if `last_today_seen_at` is within 5 minutes of the current time. This protects against hard browser reloads (new React mounts) that would bypass the client-side ref guard.
 
 ### Mark-seen verification (Sprint 3.5 preflight)
 

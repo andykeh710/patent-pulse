@@ -274,3 +274,28 @@ async def test_state_reflects_mark_seen(client: AsyncClient, db_session):
     # State after: not null
     r3 = await client.get("/api/v1/today/state", cookies=_cookie("local-user"))
     assert r3.json()["last_seen_at"] is not None
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_mark_seen_idempotent_within_window(client: AsyncClient, db_session):
+    """Repeated mark-seen within 5 minutes skips update (hard-reload protection)."""
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from app.core.ai_models import User
+
+    # Set last_seen to just now (within idempotency window)
+    now = datetime.now(timezone.utc)
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    user.last_today_seen_at = now
+    user.previous_today_seen_at = None
+    await db_session.commit()
+
+    # Call mark-seen — should skip because within 5 minutes
+    r = await client.post("/api/v1/today/mark-seen", cookies=_cookie("local-user"))
+    assert r.status_code == 200
+    assert r.json()["status"] == "skipped"
+
+    # Verify last_seen was NOT shifted
+    await db_session.refresh(user)
+    assert user.last_today_seen_at == now  # unchanged
+    assert user.previous_today_seen_at is None  # unchanged
