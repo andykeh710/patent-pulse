@@ -174,7 +174,7 @@ export default function ComponentShowcase() {
           icon="search"
           title="No results found"
           message="Try adjusting your search or filters."
-          action={{ label: "Clear filters", onClick: () => {} }}
+          actions={[{ label: "Clear filters", onClick: () => {} }]}
         />
       </section>
     </div>

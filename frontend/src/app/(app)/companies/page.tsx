@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useSupplierMap, useSupplierSummary, useSuppliers } from "@/hooks/useSuppliers";
 import { formatNumber, humanizeTag } from "@/lib/utils";
 import type { SupplierItem, SupplierListParams, SupplierMapCountry } from "@/lib/types";
@@ -32,13 +35,11 @@ export default function CompaniesPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Companies / Assignees</h1>
-        <FreshnessBanner show={["patents"]} className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Portfolio strength, opportunity exposure, geographic coverage, and risk from patent assignee data
-        </p>
-      </div>
+      <PageHeader
+        title="Companies / Assignees"
+        description="Portfolio strength, opportunity exposure, geographic coverage, and risk from patent assignee data."
+        freshnessSources={["patents"]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SummaryCard label="Total Companies" value={summary?.total_suppliers} isLoading={summaryLoading} />

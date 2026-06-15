@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
 import { useCliffs } from "@/hooks/useTrends";
 import { Badge } from "@/components/ui/Badge";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ExpirySummaryCards } from "@/components/expiry/ExpirySummaryCards";
 import { ExpiryRadarSection } from "@/components/expiry/ExpiryRadarSection";
 import type { ExpiryRadarCardProps } from "@/components/expiry/ExpiryRadarCard";
@@ -203,16 +203,11 @@ function ExpiryContent() {
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Expiry Radar</h1>
-          <FreshnessBanner show={["patents"]} className="mt-2" />
-          <p className="text-[var(--text-secondary)] mt-1">
-            Track patents approaching or past expiration — with confidence
-            labels and active family risk awareness.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Expiry Radar"
+        description="Track patents approaching or past expiration — with confidence labels and active family risk awareness."
+        freshnessSources={["patents"]}
+      />
 
       {/* Summary cards */}
       <ExpirySummaryCards data={summaryData ?? null} isLoading={summaryLoading} />
