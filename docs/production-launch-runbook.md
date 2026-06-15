@@ -21,6 +21,43 @@ Halt the launch and escalate if any of these occur:
 - Worker or beat are unhealthy after restart
 - Postgres password rotation breaks backend connectivity
 
+## Email / Resend Health (Non-Blocking)
+
+The health endpoint probes `https://api.resend.com/domains` with the configured
+API key. A 403 means the key is invalid or lacks domain permissions.
+This is a configuration issue — not a code bug.
+
+**If Resend shows `unauthorized` or `unreachable` on health:**
+- Magic-link emails will not send. Users must use a pre-generated login link
+  or manual invite.
+- This is acceptable for a controlled launch where Andy provisions accounts.
+- RESEND_API_KEY and EMAIL_FROM_ADDRESS must both be valid before
+  enabling public self-serve signup.
+
+**To fix Resend later:**
+- Get a valid API key from https://resend.com/api-keys
+- Verify the sending domain at https://resend.com/domains
+- Set EMAIL_FROM_ADDRESS to a verified domain address
+- Set RESEND_API_KEY to the new key in .env
+- Restart backend: `docker compose up -d backend`
+
+## .env Duplicate Key Cleanup
+
+If `.env` contains duplicate keys (e.g. MAGIC_LINK_BASE_URL twice), the
+last value wins per Pydantic BaseSettings behavior. Remove duplicates to
+avoid ambiguity.
+
+```bash
+# Check for duplicates
+cd /opt/invention-index-8
+grep -n 'MAGIC_LINK_BASE_URL\|EMAIL_PRODUCTION_ACKNOWLEDGED\|EMAIL_SEND_MODE\|EMAIL_FROM_ADDRESS\|RESEND_API_KEY' .env
+
+# Expected: each key appears exactly once
+# If duplicates exist, edit .env and remove the earlier duplicate line,
+# keeping only the last occurrence (the one that takes effect)
+vi .env
+```
+
 ---
 
 ## A. Pre-Deploy Verification (Andy to run on production)

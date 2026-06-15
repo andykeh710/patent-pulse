@@ -81,6 +81,7 @@ async def _check_resend() -> str:
         return "skipped"
     try:
         import urllib.request
+        import urllib.error
         req = urllib.request.Request(
             "https://api.resend.com/domains",
             headers={"Authorization": f"Bearer {settings.resend_api_key}"},
@@ -91,6 +92,17 @@ async def _check_resend() -> str:
             timeout=8,
         )
         return "ok"
+    except urllib.error.HTTPError as e:
+        if e.code == 403:
+            logger.warning(
+                "Health: Resend probe returned 403 — check RESEND_API_KEY is valid "
+                "and has domain permissions at https://resend.com/api-keys"
+            )
+            return "unauthorized"
+        logger.warning(
+            "Health: Resend probe HTTP %s: %s", e.code, e.reason,
+        )
+        return "unreachable"
     except Exception as e:
         logger.warning(
             "Health: Resend probe failed: %s: %s",
