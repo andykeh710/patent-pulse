@@ -48,18 +48,27 @@ Page
 
 ## 2. Search Changes
 
-### Completed
+### Completed (Sprint 4)
 - Replaced inline header with `PageHeader` component
-- No-results state uses `EmptyState` with:
-  - Mode-specific message (hybrid/semantic/keyword)
-  - Detail explanation (data ingestion cadence)
-  - 3 suggested actions (try keyword, browse all, explore topics)
+- No-results state uses `EmptyState` with mode-specific suggestions
+
+### Completed (Sprint 4.5)
+- **Filters:** legal status dropdown (Granted/Published/Any)
+- **Sort dropdown:** Relevance, Newest first, Oldest first, Expiring soonest
+- **FilterChips:** visible active filters with remove + clear-all
+- **URL state:** all filter/sort/mode state survives page reload via URL params
+- **Saved searches:** full CRUD (create, list, open, delete) server-side
+  - Model: `saved_searches` table (migration 0033)
+  - Endpoints: `GET/POST/DELETE /api/v1/saved-searches`
+  - Frontend: save input, list below search prompt, open restores full state
+- **Backend:** search endpoint now supports `legal_status`, `sort_by`, `sort_order`
+- **Result cards:** `PatentCard` with save button support
 
 ### Deferred
-- Filter chips (assignee, date range, CPC) — needs backend search filter parameters
-- Sort dropdown — needs backend sort support
-- Saved searches — needs new data model + API endpoint
-- Quick-preview drawer — needs side-panel infrastructure
+- CPC/assignee filter dropdowns (needs facet data from backend)
+- Date range picker (low priority — most users search by topic)
+- Summarized/has-figures filters (niche)
+- Patent preview drawer (requires side-panel infrastructure)
 
 ---
 

@@ -3,8 +3,9 @@ from fastapi import APIRouter
 from app.api.v1 import (
     account, admin, ai_runs, api_keys, auth, billing, blog, chat,
     content, expiry, exports, families, onboarding, opportunity,
-    patents, reports, search, semantic_search, share, subscriptions,
-    suppliers, themes, today, trends, usage_signals, watchlist, webhooks,
+    patents, reports, saved_searches, search, semantic_search, share,
+    subscriptions, suppliers, themes, today, trends, usage_signals,
+    watchlist, webhooks,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -36,3 +37,4 @@ v1_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 v1_router.include_router(webhooks.webhook_router, tags=["webhooks"])
 v1_router.include_router(share.router, tags=["share"])
 v1_router.include_router(blog.router, prefix="/blog", tags=["blog"])
+v1_router.include_router(saved_searches.router, tags=["saved-searches"])

@@ -21,6 +21,7 @@ import type {
   RunMetadata,
   RunSummary,
   SearchParams,
+  SavedSearch,
   SimilarPatentsResponse,
   Stats,
   SupplierListParams,
@@ -178,6 +179,21 @@ export const searchApi = {
     apiFetch<PaginatedResponse<PatentListItem>>(
       `/api/v1/search?${toQueryString(params)}`
     ),
+};
+
+export const savedSearchesApi = {
+  list: () =>
+    apiFetch<{ items: SavedSearch[]; total: number }>(`/api/v1/saved-searches`),
+  create: (data: { name: string; query: string; mode: string; filters_json?: Record<string, unknown>; sort_by: string; sort_order: string }) =>
+    apiFetch<SavedSearch>(`/api/v1/saved-searches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiFetch<{ status: string }>(`/api/v1/saved-searches/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const expiryApi = {

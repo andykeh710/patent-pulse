@@ -205,8 +205,24 @@ export interface SearchParams {
   assignee?: string;
   date_from?: string;
   date_to?: string;
+  legal_status?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  query: string;
+  mode: string;
+  filters_json: Record<string, unknown> | null;
+  sort_by: string;
+  sort_order: string;
+  created_at: string;
+  updated_at: string;
+  last_opened_at: string | null;
 }
 
 export interface ExpiryParams {
