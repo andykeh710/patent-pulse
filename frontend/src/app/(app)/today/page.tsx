@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
@@ -204,9 +204,12 @@ export default function TodayPage() {
     page_size: 5,
   });
 
-  // Mark seen after data loads
+  // Mark seen after data loads — only if not recently marked (prevents
+  // rapid-refresh churn that would mislabel the comparison window).
+  const markSeenRef = useRef(false);
   useEffect(() => {
-    if (state && !stateError) {
+    if (state && !stateError && !markSeenRef.current) {
+      markSeenRef.current = true;
       todayApi.markSeen().catch(() => {
         // Silent — analytics failure must not block UX
       });

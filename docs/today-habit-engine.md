@@ -71,6 +71,17 @@ interface TodayInsight {
 - `markSeen` failure is silent — doesn't block UX
 - Uses existing User model — no new table needed
 - `previous_today_seen_at` enables rollback/diagnostics
+- **Preflight fix (Sprint 3.5):** Added `markSeenRef` to prevent repeat mark-seen on rapid refreshes. Repeated reloads within the same React mount lifecycle will not create misleading "Since earlier today" behavior. The ref ensures mark-seen fires exactly once per page session.
+
+### Mark-seen verification (Sprint 3.5 preflight)
+
+| Requirement | Status | Implementation |
+|------------|--------|---------------|
+| Comparison window based on prior visit | ✅ | `state` fetched via SWR before `useEffect` fires mark-seen |
+| mark-seen only after data loads | ✅ | Guard: `if (state && !stateError)` |
+| Not triggered by prefetches/crawlers | ✅ | `revalidateOnFocus: false`, `dedupingInterval: 60_000` |
+| Repeated refreshes don't mislead | ✅ | `markSeenRef` prevents double-fire within same mount |
+| UTC storage/compare, local display-only | ✅ | Backend uses `datetime.now(timezone.utc)`, frontend displays `comparison_label` only |
 
 ---
 
@@ -163,7 +174,48 @@ Events are logged via `console.debug` in development. Production-ready event pip
 
 ---
 
-## 9. Deferred / Follow-up
+## 9. Backend Test Coverage (Sprint 3.5 preflight)
+
+12 tests in `backend/tests/api/test_today_state.py`:
+
+| Test | Covers |
+|------|--------|
+| `test_today_state_first_time_user_no_cookie` | Unauthenticated user, null last_seen |
+| `test_today_state_first_time_with_cookie_no_history` | Auth'd first-time, welcome label |
+| `test_today_state_returning_user` | 3-day-ago comparison, date in label |
+| `test_today_state_returning_same_day` | "Since earlier today" |
+| `test_today_state_timestamps_are_utc_iso8601` | Valid ISO 8601, within 120s of now |
+| `test_mark_seen_requires_auth` | 401 without cookie |
+| `test_mark_seen_first_time` | last_seen set, previous stays None |
+| `test_mark_seen_shift` | last_seen → previous, new last_seen |
+| `test_mark_seen_idempotent` | Double-call works correctly |
+| `test_mark_seen_utc_storage` | Timestamps have UTC timezone |
+| `test_migration_columns_default_null` | New users start with NULL columns |
+| `test_state_reflects_mark_seen` | Full integration: state → mark → state |
+
+## 10. Deferred / Follow-up
+
+| Item | Status | Sprint |
+|------|--------|--------|
+| LLM-generated Daily Brief synthesis | Deferred | Sprint 4+ |
+| Personalized persona-weighted insights | Deferred | Sprint 4+ |
+| Saved search recommendations | Deferred | Sprint 4 (Search) |
+| Company follow/watch integration | Deferred | Sprint 5 (Companies) |
+| Production event pipeline | Deferred | Sprint 6 |
+| Backend venv fix to run tests locally | Deferred | Post-Sprint 3 |
+
+---
+
+## 11. Sprint 3.5 Preflight Results
+
+| Check | Result |
+|-------|--------|
+| Lint: 0 errors, 0 warnings (excl. documented `<img>`) | ✅ |
+| Backend tests: 12 new tests for today/state + mark-seen | ✅ |
+| Migration 0032: columns nullable, timezone-aware | ✅ |
+| mark-seen semantics: fires once, after load, UTC | ✅ |
+| Repeated refreshes: guarded by markSeenRef | ✅ |
+| docs/today-habit-engine.md updated | ✅ |
 
 | Item | Status | Sprint |
 |------|--------|--------|
