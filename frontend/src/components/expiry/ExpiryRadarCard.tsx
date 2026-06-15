@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { StatusBadge, expiryStatusTone, confidenceTone } from "@/components/ui/StatusBadge";
 
 // Allowed values from backend Sprint 2A.
 const STATUS_LABELS: Record<string, string> = {
@@ -13,30 +14,6 @@ const STATUS_LABELS: Record<string, string> = {
   lapsed_confirmed: "Lapsed (confirmed)",
   expired_confirmed: "Expired (confirmed)",
   unknown: "Unknown",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  active_estimated: "bg-[var(--score-high-bg)] text-[var(--score-high)]",
-  expiring_soon: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
-  expired_estimated: "bg-red-100 text-red-700",
-  lapsed_possible: "bg-orange-100 text-orange-700",
-  lapsed_confirmed: "bg-red-100 text-red-700",
-  expired_confirmed: "bg-red-200 text-red-800",
-  unknown: "bg-[var(--bg-elevated)] text-[var(--text-muted)]",
-};
-
-const CONFIDENCE_LABELS: Record<string, string> = {
-  confirmed: "Confirmed",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-};
-
-const CONFIDENCE_COLORS: Record<string, string> = {
-  confirmed: "bg-emerald-100 text-emerald-700",
-  high: "bg-[var(--score-high-bg)] text-[var(--score-high)]",
-  medium: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]",
-  low: "bg-red-100 text-red-700",
 };
 
 export interface ExpiryRadarCardProps {
@@ -55,42 +32,77 @@ export interface ExpiryRadarCardProps {
   legalStatusConfidence: string;
   usageSignalCount?: number | null;
   usageHasSelfCitationRisk?: boolean | null;
+  /** Whether this patent is in the user's watchlist */
+  isSaved?: boolean;
+  /** Called when the user toggles save/unsave */
+  onToggleSave?: (patentId: string) => void;
+}
+
+/** Derive a brief commercial-relevance sentence from the card data.
+ *  Deterministic, evidence-backed — no LLM. */
+function whyItMatters(props: ExpiryRadarCardProps): string | null {
+  const reasons: string[] = [];
+  if (props.expiryOpportunityScore != null && props.expiryOpportunityScore >= 70) {
+    reasons.push("strong expiry opportunity score");
+  }
+  if (props.usageSignalCount != null && props.usageSignalCount > 0) {
+    reasons.push(`${props.usageSignalCount} commercial usage ${props.usageSignalCount === 1 ? "signal" : "signals"}`);
+  }
+  if (props.expiryStatus === "expiring_soon" && props.daysUntilExpiry != null && props.daysUntilExpiry <= 90) {
+    reasons.push("expiring within 90 days");
+  }
+  if (props.activeFamilyRisk) {
+    reasons.push("active family members in other jurisdictions");
+  }
+  if (reasons.length === 0) return null;
+  return "Why this may matter: " + reasons.join(", ") + ".";
 }
 
 export function ExpiryRadarCard({
-  id,
-  docId,
-  title,
-  assignee,
-  estimatedExpiryDate,
-  daysUntilExpiry,
-  expiryStatus,
-  expiryConfidence,
-  activeFamilyRisk,
-  opportunityScore,
-  expiryOpportunityScore,
-  legalStatus,
-  legalStatusConfidence,
-  usageSignalCount,  // keep undefined (null check) — render "assessed" empty state
-  usageHasSelfCitationRisk,
+  id, docId, title, assignee, estimatedExpiryDate, daysUntilExpiry,
+  expiryStatus, expiryConfidence, activeFamilyRisk, opportunityScore,
+  expiryOpportunityScore, legalStatus, legalStatusConfidence,
+  usageSignalCount, usageHasSelfCitationRisk,
+  isSaved, onToggleSave,
 }: ExpiryRadarCardProps) {
   const statusLabel = STATUS_LABELS[expiryStatus] || expiryStatus;
-  const statusColor = STATUS_COLORS[expiryStatus] || "bg-[var(--bg-elevated)] text-[var(--text-muted)]";
-  const confLabel = CONFIDENCE_LABELS[expiryConfidence] || expiryConfidence;
-  const confColor = CONFIDENCE_COLORS[expiryConfidence] || "bg-[var(--bg-elevated)] text-[var(--text-muted)]";
+  const statusTone = expiryStatusTone(expiryStatus);
+  const confTone = confidenceTone(expiryConfidence);
 
-  const expiryDateDisplay = estimatedExpiryDate
-    ? formatDate(estimatedExpiryDate)
-    : "Unknown";
+  const expiryDateDisplay = estimatedExpiryDate ? formatDate(estimatedExpiryDate) : "Unknown";
+  const relevanceSentence = whyItMatters({
+    id, docId, title, assignee, estimatedExpiryDate, daysUntilExpiry,
+    expiryStatus, expiryConfidence, activeFamilyRisk, opportunityScore,
+    expiryOpportunityScore, legalStatus, legalStatusConfidence,
+    usageSignalCount, usageHasSelfCitationRisk,
+  });
 
   return (
-    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:shadow-sm transition-shadow">
+    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:shadow-sm transition-shadow relative">
+      {/* Save/bookmark button */}
+      {onToggleSave && (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSave(id); }}
+          className={`absolute top-3 right-3 p-1.5 rounded-lg transition-colors ${
+            isSaved
+              ? "text-[var(--accent)] bg-[var(--accent-muted)]"
+              : "text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-muted)]"
+          }`}
+          title={isSaved ? "Remove from watchlist" : "Save to watchlist"}
+          aria-label={isSaved ? "Remove from watchlist" : "Save to watchlist"}
+        >
+          <svg className="w-4 h-4" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+        </button>
+      )}
+
       <div className="flex items-start justify-between gap-3">
         {/* Left: patent info */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-8">
           <Link
             href={`/patents/${id}`}
-            className="text-sm font-medium text-[var(--accent)] hover:text-text-[var(--accent-hover)] truncate block"
+            className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] truncate block"
           >
             {title || docId}
           </Link>
@@ -110,27 +122,17 @@ export function ExpiryRadarCard({
                   ? "bg-[var(--score-medium-bg)] text-[var(--score-medium)]"
                   : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
               }`}
-              title="Expiry opportunity score"
             >
               {expiryOpportunityScore.toFixed(0)}
-            </span>
-          )}
-          {opportunityScore != null && (
-            <span className="text-xs text-[var(--text-muted)]" title="General opportunity score">
-              ({opportunityScore.toFixed(0)})
             </span>
           )}
         </div>
       </div>
 
-      {/* Status row */}
+      {/* Status row — uses StatusBadge from Sprint 2 */}
       <div className="flex flex-wrap items-center gap-1.5 mt-3">
-        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${statusColor}`}>
-          {statusLabel}
-        </span>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${confColor}`}>
-          {confLabel}
-        </span>
+        <StatusBadge label={statusLabel} tone={statusTone} />
+        <StatusBadge label={expiryConfidence} tone={confTone} />
         {activeFamilyRisk && (
           <span
             className="text-xs font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-700"
@@ -141,7 +143,7 @@ export function ExpiryRadarCard({
         )}
         {legalStatus && (
           <span className="text-xs text-[var(--text-muted)]">
-            {legalStatus} · {legalStatusConfidence}
+            {legalStatus}
           </span>
         )}
       </div>
@@ -166,7 +168,14 @@ export function ExpiryRadarCard({
         )}
       </div>
 
-      {/* Usage signals (Sprint 5) */}
+      {/* Why it matters */}
+      {relevanceSentence && (
+        <p className="mt-2 text-xs text-[var(--text-secondary)] italic border-l-2 border-[var(--accent)]/30 pl-2">
+          {relevanceSentence}
+        </p>
+      )}
+
+      {/* Usage signals */}
       <div className="mt-2 text-xs">
         {usageSignalCount != null && usageSignalCount > 0 ? (
           <span className="inline-flex items-center gap-1">
@@ -176,14 +185,14 @@ export function ExpiryRadarCard({
         ) : usageSignalCount != null && usageSignalCount === 0 ? (
           <span className="text-[var(--text-muted)]">Usage signals: none detected</span>
         ) : (
-          <span className="text-[var(--text-muted)]" title="Usage signals assessed — check patent detail">Usage signals assessed — check patent detail</span>
+          <span className="text-[var(--text-muted)]">Usage signals assessed — check patent detail</span>
         )}
         {usageHasSelfCitationRisk && (
-          <span className="text-xs text-amber-600 ml-2" title="Some evidence shares assignee with source patent">⚠ Self-cite</span>
+          <span className="text-xs text-amber-600 ml-2">⚠ Self-cite</span>
         )}
       </div>
 
-      {/* Source attribution + legal caveat + verify-at-source */}
+      {/* Source + legal caveat */}
       <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
         <SourceAttribution docId={docId} />
         <p className="text-xs text-[var(--text-muted)]">
