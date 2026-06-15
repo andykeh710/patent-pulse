@@ -1,241 +1,201 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { BRAND } from "@/lib/brand";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { InsightCard } from "@/components/ui/InsightCard";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
 import { StarterTopics } from "@/components/ui/StarterTopics";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
-import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
+import { Tour } from "@/components/tour/Tour";
 import { useOpportunityList } from "@/hooks/useOpportunity";
-import { useHotTrends } from "@/hooks/useTrends";
 import { usePriorityWatch, usePatentStats } from "@/hooks/usePatents";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useThemes } from "@/hooks/useThemes";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { todayApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { Tour } from "@/components/tour/Tour";
-import { useSearchParams } from "next/navigation";
 import type {
+  TodayState,
+  TodayInsight,
   FilingTrendCard,
   ExpiringOpportunityCard,
   NotablePatentCard,
   CompanyMoveCard,
 } from "@/lib/types";
+import type { OpportunityItem } from "@/lib/types";
+import type { PatentListItem } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Highlight card components (Step 9)
-// ---------------------------------------------------------------------------
+// -- Insight builders (deterministic, evidence-backed) --
 
-function FilingTrendHighlight({ data }: { data: FilingTrendCard | null }) {
-  if (!data) return null;
-  return (
-    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-[var(--accent)]">Trend</span>
-        <span className="text-xs text-[var(--text-muted)]">Filing momentum</span>
-      </div>
-      <Link
-        href={`/trends/${data.trend_surface}/${data.trend_key}`}
-        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
-      >
-        {data.trend_label}
-      </Link>
-      <p className="text-xs text-[var(--text-muted)] mt-1">
-        {data.count_4w} patents (4wk) · z-score {data.z_score}
-      </p>
-      {data.top_assignees.length > 0 && (
-        <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
-          Top: {data.top_assignees.join(", ")}
-        </p>
-      )}
-    </div>
-  );
-}
+function buildInsights(
+  state: TodayState | undefined,
+  highlights: {
+    filing_trend: FilingTrendCard | null;
+    expiring_opportunity: ExpiringOpportunityCard | null;
+    notable_patent: NotablePatentCard | null;
+    company_move: CompanyMoveCard | null;
+  } | undefined,
+  stats: { total_patents: number; patents_this_week: number; summarized_count: number; top_assignees?: { assignee: string; count: number }[] } | undefined,
+  watchlist: unknown[] | undefined,
+  _topOpps: { items?: OpportunityItem[] } | undefined,
+  _expiring: { items?: PatentListItem[] } | undefined,
+  _companies: { items?: { name: string; patent_count: number; supplier_score: number }[] } | undefined,
+): TodayInsight[] {
+  const insights: TodayInsight[] = [];
+  const now = new Date().toISOString();
 
-function ExpiringOppHighlight({ data }: { data: ExpiringOpportunityCard | null }) {
-  if (!data) {
-    return (
-      <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-medium-bg)] text-[var(--score-medium)]">Expiry</span>
-          <span className="text-xs text-[var(--text-muted)]">High-opportunity window</span>
-        </div>
-        <p className="text-sm text-[var(--text-muted)]">
-          No high-value patents expiring within 90 days yet.
-        </p>
-        <p className="text-xs text-[var(--text-muted)] mt-1">
-          As v3 scoring reaches more patents, this card will populate.{" "}
-          <Link href="/expiry" className="text-[var(--accent)] hover:underline">
-            Browse all expiry data →
-          </Link>
-        </p>
-      </div>
-    );
+  // 1. New patents this week
+  if (stats && stats.patents_this_week > 0) {
+    insights.push({
+      id: "new-patents-week",
+      type: "update",
+      title: `${stats.patents_this_week.toLocaleString()} new patents this week`,
+      summary: `The patent corpus grew by ${stats.patents_this_week.toLocaleString()} records since your last visit window.`,
+      why_it_matters: "New filings may indicate competitor activity or emerging technology areas.",
+      evidence: [
+        { label: "New patents", value: stats.patents_this_week },
+        { label: "Total corpus", value: stats.total_patents },
+      ],
+      confidence: "high",
+      timestamp: now,
+      primary_action: { label: "Browse new patents", href: "/patents?sort_by=publication_date&sort_order=desc" },
+      secondary_action: { label: "Search by technology", href: "/search" },
+    });
   }
-  return (
-    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-medium-bg)] text-[var(--score-medium)]">Expiry</span>
-        <span className="text-xs text-[var(--text-muted)]">High-opportunity window</span>
-      </div>
-      <Link
-        href="/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70"
-        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
-      >
-        {data.count} high-value patents expiring within 90 days
-      </Link>
-      <p className="text-xs text-[var(--text-muted)] mt-1">{data.caveat}</p>
-    </div>
-  );
+
+  // 2. Filing trend
+  if (highlights?.filing_trend) {
+    const t = highlights.filing_trend;
+    insights.push({
+      id: `trend-${t.trend_surface}-${t.trend_key}`,
+      type: "signal",
+      title: `${t.trend_label} filing activity trending up`,
+      summary: `${t.count_4w} patents filed in the last 4 weeks with a z-score of ${t.z_score.toFixed(1)}, indicating above-average activity.`,
+      why_it_matters: "Above-average filing momentum in this area may signal competitive R&D investment.",
+      evidence: [
+        { label: "4-week count", value: t.count_4w },
+        { label: "Z-score", value: t.z_score.toFixed(1) },
+        ...(t.top_assignees.length > 0 ? [{ label: "Top assignees", value: t.top_assignees.join(", ") }] : []),
+      ],
+      confidence: "medium",
+      timestamp: now,
+      primary_action: { label: "View trend detail", href: `/trends/${t.trend_surface}/${t.trend_key}` },
+      secondary_action: { label: "Explore trends", href: "/trends" },
+    });
+  }
+
+  // 3. Expiring opportunities
+  if (highlights?.expiring_opportunity) {
+    const e = highlights.expiring_opportunity;
+    insights.push({
+      id: "expiring-opportunities",
+      type: "opportunity",
+      title: `${e.count} high-value patents expiring within 90 days`,
+      summary: `${e.count} patents with strong opportunity scores are approaching estimated expiry.`,
+      why_it_matters: "Expiring patents may create design freedom or licensing opportunities. Verify with official registers before acting.",
+      evidence: [
+        { label: "Count", value: e.count },
+        { label: "Window", value: "90 days" },
+      ],
+      confidence: "medium",
+      timestamp: now,
+      primary_action: { label: "View Expiry Radar", href: "/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70" },
+      secondary_action: { label: "All expiry data", href: "/expiry" },
+    });
+  }
+
+  // 4. Notable patent
+  if (highlights?.notable_patent) {
+    const n = highlights.notable_patent;
+    insights.push({
+      id: `notable-${n.id}`,
+      type: "signal",
+      title: n.title || n.publication_number,
+      summary: n.summary_first_sentence || `Patent from ${n.assignee || "unknown assignee"} with high opportunity score.`,
+      why_it_matters: `Strong opportunity score (${n.opportunity_score.toFixed(1)}) suggests commercial relevance in its technology area.`,
+      evidence: [
+        { label: "Assignee", value: n.assignee || "Unknown" },
+        { label: "Opportunity score", value: n.opportunity_score.toFixed(1) },
+        { label: "Doc ID", value: n.doc_id },
+      ],
+      confidence: n.has_abstract && n.has_claims && !n.limited_source ? "high" : "medium",
+      timestamp: now,
+      primary_action: { label: "View patent", href: `/patents/${n.id}` },
+    });
+  }
+
+  // 5. Company move
+  if (highlights?.company_move) {
+    const c = highlights.company_move;
+    insights.push({
+      id: `company-${c.assignee}`,
+      type: "update",
+      title: `${c.assignee} filing surge: +${c.delta} vs 4-week average`,
+      summary: `${c.count_this_week} filings this week compared to a ${c.count_4wk_avg.toFixed(1)} weekly average.`,
+      why_it_matters: "A filing surge may indicate a new product cycle, strategic IP push, or competitive positioning.",
+      evidence: [
+        { label: "This week", value: c.count_this_week },
+        { label: "4-week avg", value: c.count_4wk_avg.toFixed(1) },
+        { label: "Delta", value: `+${c.delta}` },
+      ],
+      confidence: "medium",
+      timestamp: now,
+      primary_action: { label: "View company profile", href: `/companies/${encodeURIComponent(c.assignee)}` },
+      secondary_action: { label: "All companies", href: "/companies" },
+    });
+  }
+
+  // 6. Watchlist activity
+  if (watchlist && watchlist.length > 0) {
+    insights.push({
+      id: "watchlist-status",
+      type: "update",
+      title: `${watchlist.length} saved ${watchlist.length === 1 ? "patent" : "patents"} in your watchlist`,
+      summary: "Review your saved patents for new enrichment data, expiry updates, or usage signals.",
+      why_it_matters: "Saved patents are monitored for changes. Regular review keeps your intelligence current.",
+      evidence: [{ label: "Saved patents", value: watchlist.length }],
+      confidence: "high",
+      timestamp: now,
+      primary_action: { label: "Open watchlist", href: "/watchlist" },
+      secondary_action: { label: "Save a search", href: "/search" },
+    });
+  }
+
+  return insights;
 }
 
-function NotablePatentHighlight({ data }: { data: NotablePatentCard | null }) {
-  if (!data) return null;
-  return (
-    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--score-high-bg)] text-[var(--score-high)]">Notable</span>
-        <span className="text-xs text-[var(--text-muted)]">Recent high-scorer</span>
-      </div>
-      <Link
-        href={`/patents/${data.id}`}
-        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] line-clamp-1"
-      >
-        {data.title || data.publication_number}
-      </Link>
-      <p className="text-xs text-[var(--text-muted)] mt-1">
-        {data.assignee} · {data.publication_number}
-      </p>
-      {data.summary_first_sentence && (
-        <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">
-          {data.summary_first_sentence}
-        </p>
-      )}
-      <div className="flex items-center gap-2 mt-2">
-        {data.limited_source && (
-          <span className="text-xs text-[var(--score-medium)] bg-[var(--score-medium-bg)] px-1.5 py-0.5 rounded">
-            Limited source text available
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CompanyMoveHighlight({ data }: { data: CompanyMoveCard | null }) {
-  if (!data) return null;
-  return (
-    <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[var(--accent-muted)] text-[var(--type-foryou)]">Company</span>
-        <span className="text-xs text-[var(--text-muted)]">Filing surge</span>
-      </div>
-      <Link
-        href={`/companies/${encodeURIComponent(data.assignee)}`}
-        className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
-      >
-        {data.assignee}
-      </Link>
-      <p className="text-xs text-[var(--text-muted)] mt-1">
-        {data.count_this_week} filings this week · +{data.delta} vs 4wk avg
-      </p>
-    </div>
-  );
-}
-
-function AtAGlanceCard({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg border p-3 ${
-        highlight
-          ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20"
-          : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
-      }`}
-    >
-      <p className="text-xs text-[var(--text-muted)]">{label}</p>
-      <p
-        className={`text-lg font-bold truncate ${
-          highlight ? "text-[var(--accent)]" : "text-[var(--text-primary)]"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function FirstTimeOnboarding() {
-  return (
-    <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-8 text-center">
-      <div className="max-w-lg mx-auto">
-        <div className="text-4xl mb-4">📊</div>
-        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-          Welcome to {BRAND.name}
-        </h2>
-        <p className="text-sm text-[var(--text-secondary)] mb-6">
-          Track patent filings, spot expiring opportunities, and discover
-          commercial signals across any technology area. Start by creating
-          a topic below — your personalized command center will appear here.
-        </p>
-        <StarterTopics showHeading={false} />
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
-            <div className="text-lg mb-1">🔍</div>
-            <h3 className="font-medium text-sm text-[var(--text-primary)]">Browse all patents</h3>
-            <p className="text-xs text-[var(--text-muted)] mt-1">
-              63,000+ patents from USPTO, EPO, and WIPO
-            </p>
-            <Link
-              href="/patents"
-              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
-            >
-              Start browsing →
-            </Link>
-          </div>
-          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
-            <div className="text-lg mb-1">📈</div>
-            <h3 className="font-medium text-sm text-[var(--text-primary)]">Explore trends</h3>
-            <p className="text-xs text-[var(--text-muted)] mt-1">
-              Hot tech areas, growing assignees, and cliff analysis
-            </p>
-            <Link
-              href="/trends"
-              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
-            >
-              See trends →
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// -- Component --
 
 export default function TodayPage() {
-  // Tour state
   const searchParams = useSearchParams();
-  const showTour = searchParams.get("tour") === "1" &&
+  const showTour =
+    searchParams.get("tour") === "1" &&
     (typeof window !== "undefined" ? localStorage.getItem("tourCompleted") !== "true" : false);
 
-  // Data hooks — all existing, all SWR-cached
-  const { data: topOpps, isLoading: topOppsLoading } = useOpportunityList({
+  // Data
+  const { data: state, error: stateError } = useSWR("today-state", () => todayApi.state(), {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
+  const { data: highlights } = useSWR("today-highlights", () => todayApi.highlights(), {
+    revalidateOnFocus: false,
+    dedupingInterval: 300_000,
+  });
+  const { data: stats } = usePatentStats();
+  const { data: themes, isLoading: themesLoading } = useThemes();
+  const { data: watchlist, isLoading: watchlistLoading } = useWatchlist();
+  const { data: topOpps } = useOpportunityList({
     tab: "top",
     sort: "opportunity_score",
     page_size: 5,
   });
-  const { data: hotTrends, isLoading: trendsLoading } = useHotTrends(undefined, 5);
   const { data: expiring, isLoading: expiringLoading } = usePriorityWatch("expiring_soon", 5);
   const { data: companies, isLoading: companiesLoading } = useSuppliers({
     sort_by: "patent_count",
@@ -243,92 +203,193 @@ export default function TodayPage() {
     min_patent_count: 2,
     page_size: 5,
   });
-  // First-time user detection
-  const { data: themes, isLoading: themesLoading } = useThemes();
-  const { data: watchlist, isLoading: watchlistLoading } = useWatchlist();
-  const { data: stats } = usePatentStats();
-  const { data: highlights } = useSWR(
-    "today-highlights",
-    () => todayApi.highlights(),
-    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+
+  // Mark seen after data loads
+  useEffect(() => {
+    if (state && !stateError) {
+      todayApi.markSeen().catch(() => {
+        // Silent — analytics failure must not block UX
+      });
+    }
+  }, [state, stateError]);
+
+  // Build insights from real data
+  const insights = useMemo(
+    () =>
+      buildInsights(
+        state,
+        highlights,
+        stats,
+        watchlist,
+        topOpps,
+        expiring,
+        companies,
+      ),
+    [state, highlights, stats, watchlist, topOpps, expiring, companies],
   );
 
   const isLoading = themesLoading || watchlistLoading;
   const isFirstTime =
     !isLoading &&
     (!themes || themes.length === 0) &&
-    (!watchlist || watchlist.length === 0);
+    (!watchlist || watchlist.length === 0) &&
+    (!state?.last_seen_at);
+
+  // -- States --
 
   if (isFirstTime) {
     return (
       <div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Today</h1>
-          <FreshnessBanner className="mt-2" />
-        </div>
-        <FirstTimeOnboarding />
+        <PageHeader
+          title="Today"
+          description={
+            state?.comparison_label || "Welcome — your first Today briefing"
+          }
+          freshnessSources={["patents"]}
+        />
+        <FirstTimeWelcome />
+      </div>
+    );
+  }
+
+  if (stateError) {
+    return (
+      <div>
+        <PageHeader title="Today" freshnessSources={["patents"]} />
+        <ErrorState
+          title="Unable to load briefing"
+          message="The Today briefing data could not be loaded. This may be temporary."
+          detail={stateError.message}
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }
 
   return (
     <div>
-      {showTour && <Tour onDismiss={() => { if (typeof window !== "undefined") window.location.search = ""; }} />}
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Today</h1>
-        <FreshnessBanner className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Your daily patent intelligence briefing
-        </p>
-      </div>
+      {showTour && (
+        <Tour
+          onDismiss={() => {
+            if (typeof window !== "undefined") window.location.search = "";
+          }}
+        />
+      )}
 
-      {/* Patent Index */}
+      <PageHeader
+        title="Today"
+        description={
+          state?.comparison_label ||
+          "Your daily patent intelligence briefing"
+        }
+        freshnessSources={["patents"]}
+      />
+
+      {/* At-a-glance metrics */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <AtAGlanceCard label="Total patents" value={stats.total_patents.toLocaleString()} />
-          <AtAGlanceCard label="New this week" value={stats.patents_this_week.toLocaleString()} highlight />
-          <AtAGlanceCard label="AI summarized" value={stats.summarized_count.toLocaleString()} />
-          <AtAGlanceCard
+          <MetricTile label="Total patents" value={stats.total_patents.toLocaleString()} />
+          <MetricTile
+            label="New this week"
+            value={stats.patents_this_week.toLocaleString()}
+            highlight
+          />
+          <MetricTile
+            label="AI summarized"
+            value={stats.summarized_count.toLocaleString()}
+          />
+          <MetricTile
             label="Top assignee"
             value={stats.top_assignees?.[0]?.assignee || "—"}
           />
         </div>
       )}
 
-      {/* Data freshness note */}
-      <div className="mb-6 text-xs text-[var(--text-muted)] flex items-center gap-2">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--score-high)]"></span>
-        Patent intelligence updates continuously as enrichment, scoring, and
-        summarization jobs complete. Forward citation coverage is affected by
-        USPTO availability.{" "}
-        <Link href="/admin/data-health" className="text-[var(--accent)] hover:underline">
-          View pipeline status →
-        </Link>
-      </div>
-
-      {/* What's New This Week */}
+      {/* Daily Brief — synthesized from highlights */}
       {highlights && (
-        <div className="mb-6">
+        <section className="mb-6">
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
-            What&apos;s New This Week
+            This Week&apos;s Highlights
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FilingTrendHighlight data={highlights.filing_trend} />
-            <ExpiringOppHighlight data={highlights.expiring_opportunity} />
-            <NotablePatentHighlight data={highlights.notable_patent} />
-            <CompanyMoveHighlight data={highlights.company_move} />
+            {highlights.filing_trend && (
+              <HighlightInsight
+                type="signal"
+                title={highlights.filing_trend.trend_label}
+                summary={`${highlights.filing_trend.count_4w} patents (4wk) · z-score ${highlights.filing_trend.z_score.toFixed(1)}`}
+                detail={
+                  highlights.filing_trend.top_assignees.length > 0
+                    ? `Top: ${highlights.filing_trend.top_assignees.join(", ")}`
+                    : undefined
+                }
+                href={`/trends/${highlights.filing_trend.trend_surface}/${highlights.filing_trend.trend_key}`}
+              />
+            )}
+            {highlights.expiring_opportunity && (
+              <HighlightInsight
+                type="opportunity"
+                title={`${highlights.expiring_opportunity.count} high-value patents expiring soon`}
+                summary="Within 90-day window with strong opportunity scores."
+                href="/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70"
+              />
+            )}
+            {highlights.notable_patent && (
+              <HighlightInsight
+                type="signal"
+                title={highlights.notable_patent.title || highlights.notable_patent.publication_number}
+                summary={`${highlights.notable_patent.assignee} · Opportunity score ${highlights.notable_patent.opportunity_score.toFixed(1)}`}
+                detail={highlights.notable_patent.summary_first_sentence}
+                href={`/patents/${highlights.notable_patent.id}`}
+              />
+            )}
+            {highlights.company_move && (
+              <HighlightInsight
+                type="update"
+                title={`${highlights.company_move.assignee}: +${highlights.company_move.delta} filing surge`}
+                summary={`${highlights.company_move.count_this_week} this week vs ${highlights.company_move.count_4wk_avg.toFixed(1)} avg`}
+                href={`/companies/${encodeURIComponent(highlights.company_move.assignee)}`}
+              />
+            )}
           </div>
-        </div>
+        </section>
       )}
 
       <div className="space-y-6">
-        {/* Your Topics — or prompt to create them */}
+        {/* Top Signals — InsightCards */}
+        {insights.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                Top Signals
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {insights.slice(0, 6).map((insight) => (
+                <InsightCard
+                  key={insight.id}
+                  type={insight.type}
+                  title={insight.title}
+                  summary={insight.summary}
+                  whyItMatters={insight.why_it_matters}
+                  evidence={insight.evidence
+                    .map((e) => `${e.label}: ${e.value}`)
+                    .join(" · ")}
+                  confidence={insight.confidence}
+                  timestamp={insight.timestamp}
+                  primaryAction={insight.primary_action}
+                  secondaryAction={insight.secondary_action}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Your Topics */}
         {themes && themes.length > 0 ? (
           <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Topics</h2>
-              <Link href="/themes" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
+              <Link href="/themes" className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)]">
                 Manage topics →
               </Link>
             </div>
@@ -336,23 +397,15 @@ export default function TodayPage() {
               {themes.slice(0, 6).map((topic) => (
                 <Link
                   key={topic.id}
-                  href={`/themes`}
-                  className="rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-sm transition-all"
+                  href="/themes"
+                  className="rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-all"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-medium text-sm text-[var(--text-primary)] truncate">{topic.name}</h3>
+                    <h3 className="font-medium text-sm text-[var(--text-primary)] truncate">
+                      {topic.name}
+                    </h3>
                     {!topic.is_active && (
-                      <Badge variant="default" size="sm" className="text-[var(--text-muted)]">inactive</Badge>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {topic.cpc_prefixes.slice(0, 3).map((cpc) => (
-                      <span key={cpc} className="text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] rounded px-1.5 py-0.5">
-                        {cpc}
-                      </span>
-                    ))}
-                    {topic.cpc_prefixes.length > 3 && (
-                      <span className="text-xs text-[var(--text-muted)]">+{topic.cpc_prefixes.length - 3}</span>
+                      <Badge variant="default" size="sm">inactive</Badge>
                     )}
                   </div>
                   <p className="text-xs text-[var(--text-muted)]">
@@ -363,169 +416,40 @@ export default function TodayPage() {
             </div>
           </section>
         ) : (
-          <section className="bg-gradient-to-r from-bg-[var(--bg-elevated)] to-[var(--bg-surface)] rounded-lg border border-border-[var(--accent)]/20 p-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-[var(--bg-surface)] rounded-lg shadow-sm">
-                <svg className="w-6 h-6 text-bg-[var(--bg-elevated)]0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your {BRAND.name}</h2>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                  <Link href="/themes" className="text-[var(--accent)] hover:underline">
-                    Create topics
-                  </Link>{" "}
-                  to track technology areas that matter to you. Matched patents and
-                  trend signals will appear here automatically.
-                </p>
-              </div>
-            </div>
+          <section className="bg-gradient-to-r from-[var(--bg-elevated)] to-[var(--bg-surface)] rounded-lg border border-[var(--accent)]/20 p-6">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              Personalize your briefing
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              <Link href="/themes" className="text-[var(--accent)] hover:underline">
+                Create topics
+              </Link>{" "}
+              to track technology areas that matter to you. Matched patents and
+              trend signals will appear here automatically.
+            </p>
           </section>
         )}
-
-        {/* Your saved patents — discoverability for watchlist */}
-        {watchlist && watchlist.length > 0 && (
-          <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Your Saved Patents</h2>
-              <Link href="/watchlist" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
-                View all ({watchlist.length}) →
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {watchlist.slice(0, 5).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/patents/${item.patent.id}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                      {item.patent.title || "Untitled patent"}
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {item.patent.assignees?.[0] || "Unknown"} · {item.patent.doc_id}
-                    </p>
-                  </div>
-                  {item.patent.opportunity_score != null && (
-                    <OpportunityScoreBadge score={item.patent.opportunity_score} size="sm" />
-                  )}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Top Opportunities */}
-        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Top Opportunities</h2>
-            <Link href="/opportunity" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
-              View all →
-            </Link>
-          </div>
-
-          {topOppsLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded" />
-              ))}
-            </div>
-          ) : !topOpps?.items?.length ? (
-            <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              Opportunity scores are still being computed for the patent
-              corpus. Check back soon — new scores appear as processing
-              completes.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {topOpps.items.slice(0, 5).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/patents/${item.id}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                      {item.title || "Untitled patent"}
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {item.assignees?.[0] || "Unknown"} · {item.doc_id}
-                    </p>
-                  </div>
-                  <OpportunityScoreBadge score={item.opportunity_score} size="sm" />
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Emerging Trends */}
-        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Emerging Trends</h2>
-            <Link href="/trends" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
-              View all →
-            </Link>
-          </div>
-
-          {trendsLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded" />
-              ))}
-            </div>
-          ) : !hotTrends?.items?.length ? (
-            <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              Trend data is computed weekly from CPC filing patterns.
-              The first computation hasn&apos;t completed yet — check back
-              soon.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {hotTrends.items.slice(0, 5).map((item, i) => (
-                <div
-                  key={`${item.surface}-${item.key}-${i}`}
-                  className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default" size="sm">{item.surface}</Badge>
-                      <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.key}</p>
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {item.count_4w} patents (4wk) · z-score {item.z_score.toFixed(1)}
-                    </p>
-                  </div>
-                  <div className={`text-sm font-semibold ${item.growth_pct > 0 ? "text-[var(--score-high)]" : "text-[var(--expiry-lapsed-confirmed)]"}`}>
-                    {item.growth_pct > 0 ? "+" : ""}{item.growth_pct.toFixed(1)}%
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
 
         {/* Expiring Opportunities */}
         <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Expiring Opportunities</h2>
-            <Link href="/expiry" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
+            <Link href="/expiry" className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
-
           {expiringLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded" />
-              ))}
-            </div>
+            <LoadingState variant="card" count={3} />
           ) : !expiring?.items?.length ? (
-            <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No expiring patents found in the 5-year window.
-            </p>
+            <EmptyState
+              icon="calendar"
+              title="No expiring patents in window"
+              message="No patents with estimated expiry dates were found in the 5-year window."
+              detail="Expiry data is being computed as ingestion and enrichment jobs complete."
+              actions={[
+                { label: "View Expiry Radar", href: "/expiry", primary: true },
+              ]}
+            />
           ) : (
             <div className="space-y-2">
               {expiring.items.slice(0, 5).map((item) => (
@@ -558,21 +482,20 @@ export default function TodayPage() {
         <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Companies Moving</h2>
-            <Link href="/companies" className="text-sm text-[var(--accent)] hover:text-text-[var(--accent-hover)]">
+            <Link href="/companies" className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)]">
               View all →
             </Link>
           </div>
-
           {companiesLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded" />
-              ))}
-            </div>
+            <LoadingState variant="table" count={5} />
           ) : !companies?.items?.length ? (
-            <p className="text-sm text-[var(--text-muted)] text-center py-8">
-              No company data available yet.
-            </p>
+            <EmptyState
+              icon="list"
+              title="No company data yet"
+              message="Company data is derived from patent assignee records."
+              detail="Enrichment runs periodically. Check back after the next data refresh."
+              actions={[{ label: "Browse all patents", href: "/patents", primary: true }]}
+            />
           ) : (
             <div className="space-y-2">
               {companies.items.slice(0, 5).map((item) => (
@@ -582,13 +505,22 @@ export default function TodayPage() {
                   className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.name}</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                      {item.name}
+                    </p>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {item.active_patent_count} active · {item.technology_area_count} tech areas
-                      {item.country ? ` · ${item.country}` : ""}
+                      {item.patent_count} patents
                     </p>
                   </div>
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-[var(--score-high)]" : item.supplier_score >= 35 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
+                  <span
+                    className={`text-sm font-semibold ${
+                      item.supplier_score >= 60
+                        ? "text-[var(--score-high)]"
+                        : item.supplier_score >= 35
+                        ? "text-[var(--score-medium)]"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                  >
                     {item.supplier_score}
                   </span>
                 </Link>
@@ -596,11 +528,192 @@ export default function TodayPage() {
             </div>
           )}
         </section>
+
+        {/* Recommended Actions */}
+        <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+            Recommended Actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ActionSuggestion
+              label="Save a search"
+              description="Create a saved patent search for technology areas you track."
+              href="/search"
+            />
+            <ActionSuggestion
+              label="Review watchlist"
+              description={
+                watchlist && watchlist.length > 0
+                  ? `You have ${watchlist.length} saved patents. Check for updates.`
+                  : "Save patents to build your personal intelligence workspace."
+              }
+              href="/watchlist"
+            />
+            <ActionSuggestion
+              label="Explore expiry opportunities"
+              description="Find patents approaching expiration in your technology areas."
+              href="/expiry"
+            />
+            <ActionSuggestion
+              label="Browse companies"
+              description="See which organizations are filing in your areas of interest."
+              href="/companies"
+            />
+          </div>
+        </section>
       </div>
 
       <div className="mt-8">
         <SourceAttribution />
       </div>
     </div>
+  );
+}
+
+// -- Sub-components --
+
+function FirstTimeWelcome() {
+  return (
+    <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-8 text-center">
+      <div className="max-w-lg mx-auto">
+        <div className="text-4xl mb-4">📊</div>
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+          Welcome to Invention Index 8
+        </h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
+          Track patent filings, spot expiring opportunities, and discover
+          commercial signals across any technology area. Today gets better as
+          you save patents, searches, companies, and technology areas.
+        </p>
+        <StarterTopics showHeading={false} />
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
+            <div className="text-lg mb-1">🔍</div>
+            <h3 className="font-medium text-sm text-[var(--text-primary)]">
+              Search by technology
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Find patents in semiconductor packaging, battery tech, AI/ML, and more
+            </p>
+            <Link
+              href="/search"
+              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
+            >
+              Start searching →
+            </Link>
+          </div>
+          <div className="rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)] p-4">
+            <div className="text-lg mb-1">📈</div>
+            <h3 className="font-medium text-sm text-[var(--text-primary)]">
+              Explore trends
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Hot tech areas, growing assignees, and filing momentum
+            </p>
+            <Link
+              href="/trends"
+              className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
+            >
+              See trends →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HighlightInsight({
+  type,
+  title,
+  summary,
+  detail,
+  href,
+}: {
+  type: "signal" | "opportunity" | "update";
+  title: string;
+  summary: string;
+  detail?: string;
+  href: string;
+}) {
+  const colors = {
+    signal: "bg-[var(--accent-muted)] text-[var(--accent)]",
+    opportunity: "bg-[var(--score-high-bg)] text-[var(--score-high)]",
+    update: "bg-[var(--text-muted)]/12 text-[var(--text-muted)]",
+  };
+  const labels = { signal: "Trend", opportunity: "Expiry", update: "Update" };
+
+  return (
+    <Link
+      href={href}
+      className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${colors[type]}`}>
+          {labels[type]}
+        </span>
+      </div>
+      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+        {title}
+      </h3>
+      <p className="text-xs text-[var(--text-muted)]">{summary}</p>
+      {detail && (
+        <p className="text-xs text-[var(--text-secondary)] mt-1 truncate">
+          {detail}
+        </p>
+      )}
+    </Link>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        highlight
+          ? "bg-[var(--bg-elevated)] border-[var(--accent)]/20"
+          : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
+      }`}
+    >
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
+      <p
+        className={`text-lg font-bold truncate ${
+          highlight ? "text-[var(--accent)]" : "text-[var(--text-primary)]"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ActionSuggestion({
+  label,
+  description,
+  href,
+}: {
+  label: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors"
+    >
+      <h3 className="font-medium text-sm text-[var(--text-primary)]">{label}</h3>
+      <p className="text-xs text-[var(--text-muted)] mt-1">{description}</p>
+      <span className="text-xs text-[var(--accent)] mt-2 inline-block">
+        Go →
+      </span>
+    </Link>
   );
 }

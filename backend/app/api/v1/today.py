@@ -399,3 +399,90 @@ async def get_briefing(
             persona = row[0]
 
     return await assemble_briefing(db, user_id=user_id, persona=persona)
+
+
+# ── Since-last-visit tracking (Sprint 3) ──────────────────────
+
+
+class TodayStateResponse(BaseModel):
+    """Lightweight state for the Today screen header."""
+    generated_at: str          # ISO 8601 UTC
+    last_seen_at: str | None   # ISO 8601 UTC — null for first-time users
+    comparison_label: str       # Human-readable, e.g. "Since June 14, 2026"
+
+
+class MarkSeenRequest(BaseModel):
+    """Mark the user's Today view as seen. Idempotent."""
+
+
+@router.get("/state", response_model=TodayStateResponse)
+async def get_today_state(
+    db: DbSession,
+    user_id: str = Depends(current_user_optional),
+) -> TodayStateResponse:
+    """Return the user's Today view state for since-last-visit display."""
+    from sqlalchemy import select
+    from app.core.ai_models import User
+
+    now = datetime.now(timezone.utc)
+    last_seen: datetime | None = None
+    previous_seen: datetime | None = None
+
+    if user_id:
+        result = await db.execute(
+            select(User.last_today_seen_at, User.previous_today_seen_at).where(User.id == user_id)
+        )
+        row = result.one_or_none()
+        if row:
+            last_seen = row[0]
+            previous_seen = row[1]
+
+    comparison = last_seen or previous_seen
+    if comparison:
+        days = (now - comparison).days
+        if days == 0:
+            label = "Since earlier today"
+        elif days == 1:
+            label = f"Since yesterday ({comparison.strftime('%b %d, %Y')})"
+        else:
+            label = f"Since {comparison.strftime('%b %d, %Y')}"
+    else:
+        label = "Welcome — your first Today briefing"
+
+    return TodayStateResponse(
+        generated_at=now.isoformat(),
+        last_seen_at=last_seen.isoformat() if last_seen else None,
+        comparison_label=label,
+    )
+
+
+@router.post("/mark-seen")
+async def mark_today_seen(
+    db: DbSession,
+    user_id: str = Depends(current_user),
+) -> dict:
+    """Mark the user's Today view as seen. Shifts last_seen → previous_seen."""
+    from sqlalchemy import select, update
+    from app.core.ai_models import User
+
+    now = datetime.now(timezone.utc)
+
+    # Get current last_seen
+    result = await db.execute(
+        select(User.last_today_seen_at).where(User.id == user_id)
+    )
+    row = result.one_or_none()
+    current_last = row[0] if row else None
+
+    # Shift: previous = current last_seen, last_seen = now
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(
+            previous_today_seen_at=current_last,
+            last_today_seen_at=now,
+        )
+    )
+    await db.commit()
+
+    return {"status": "ok", "marked_at": now.isoformat()}

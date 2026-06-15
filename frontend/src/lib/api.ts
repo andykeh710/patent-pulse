@@ -39,6 +39,7 @@ import type {
   TrendResponse,
   TrendsSummary,
   TodayHighlightsResponse,
+  TodayState,
   WatchlistItemResponse,
   SemanticSearchResponse,
   LinkedInPostResponse,
@@ -162,6 +163,14 @@ export const patentsApi = {
 export const todayApi = {
   highlights: () =>
     apiFetch<TodayHighlightsResponse>(`/api/v1/today/highlights`),
+  state: () =>
+    apiFetch<TodayState>(`/api/v1/today/state`),
+  markSeen: () =>
+    apiFetch<{ status: string; marked_at: string }>(`/api/v1/today/mark-seen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
 };
 
 export const searchApi = {

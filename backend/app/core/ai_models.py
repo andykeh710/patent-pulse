@@ -56,6 +56,8 @@ class User(Base):
     industry_focus: Mapped[str | None] = mapped_column(String(64), nullable=True)
     interests_freetext: Mapped[str | None] = mapped_column(Text, nullable=True)
     onboarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_today_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    previous_today_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     company_follows = relationship("UserCompanyFollow", back_populates="user", cascade="all, delete-orphan")

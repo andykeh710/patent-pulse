@@ -836,3 +836,36 @@ export interface TodayHighlightsResponse {
   notable_patent: NotablePatentCard | null;
   company_move: CompanyMoveCard | null;
 }
+
+// -- Sprint 3: Today habit engine types --
+
+export interface TodayState {
+  generated_at: string;       // ISO 8601 UTC
+  last_seen_at: string | null; // ISO 8601 UTC
+  comparison_label: string;    // e.g. "Since June 14, 2026"
+}
+
+export type TodayInsightType = "signal" | "risk" | "opportunity" | "update" | "recommendation";
+
+export interface TodayInsight {
+  id: string;
+  type: TodayInsightType;
+  title: string;
+  summary: string;
+  why_it_matters: string;
+  evidence: Array<{
+    label: string;
+    value: string | number;
+    href?: string;
+  }>;
+  confidence: "high" | "medium" | "low";
+  timestamp: string;
+  primary_action: {
+    label: string;
+    href: string;
+  };
+  secondary_action?: {
+    label: string;
+    href: string;
+  };
+}
