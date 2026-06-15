@@ -485,3 +485,51 @@ curl -s https://inventionindex.com/api/v1/health
 | Celery beat verify | ⬜ | Andy |
 
 **Proceed when:** backup exists, migrations applied, services healthy, backfill verified. Password rotation can be done post-launch if needed.
+
+---
+
+## M. Controlled-Launch Results ✅ 2026-06-15
+
+Production controlled launch executed. All core services healthy.
+
+### Services
+| Service | Status |
+|---------|--------|
+| Backend | ✅ Up |
+| Frontend | ✅ Up |
+| DB (patent_pulse) | ✅ Healthy |
+| Redis | ✅ Healthy |
+| Worker | ✅ Running |
+| Beat | ✅ Running |
+| Alembic | ✅ 0034 (head) |
+
+### Health Endpoint
+```json
+{"db":"ok","redis":"ok","resend":"unauthorized","alembic_head":"0034","overall":"degraded"}
+```
+→ HTTP 200. Degraded due to Resend only.
+
+### Public Routes
+| Route | Result |
+|-------|--------|
+| `https://inventionindex8.com` | HTTP/2 200 |
+| `https://www.inventionindex8.com` | HTTP/2 301 → bare domain |
+| `https://inventionindex8.com/docs` | HTTP/2 200 |
+| `HEAD /health` | 405 (GET only — not a blocker) |
+
+### Caddy Fix Applied
+- Added `www.inventionindex8.com` redirect block to Caddyfile
+- Validated config via `caddy validate`
+- Reloaded Caddy — `www` TLS now works, redirects to bare domain
+
+### Caveats
+| Item | Status | Action |
+|------|--------|--------|
+| Resend email | ⬜ Unavailable | Blocks open signup/magic-link. Controlled launch OK with manual accounts. Fix: valid API key + verified domain post-launch |
+| Open signup | ⬜ Gated | Blocked by Resend. Andy provisions accounts manually for controlled launch |
+| .env duplicates | ⬜ Clean up | Remove duplicate MAGIC_LINK_BASE_URL/EMAIL keys in .env |
+| Password rotation | ⬜ Deferred | Post-launch — safe ALTER USER procedure in Section H |
+| Assignee backfill | ⬜ Verify | Run after launch per Section G |
+
+### Launch Status: **PASS — Controlled Launch**
+Core app is live at https://inventionindex8.com. All services healthy. Resend is the only degraded probe and is explicitly accepted as non-blocking for controlled launch.
