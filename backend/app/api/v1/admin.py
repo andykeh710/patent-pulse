@@ -91,7 +91,10 @@ class TriggerIngestRequest(BaseModel):
 
 
 @router.post("/trigger-ingest", response_model=TaskStatusResponse)
-async def trigger_ingest(request: TriggerIngestRequest) -> TaskStatusResponse:
+async def trigger_ingest(
+    request: TriggerIngestRequest,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Manually trigger patent ingestion (development only).
 
@@ -151,7 +154,10 @@ async def get_task_status(task_id: str) -> TaskStatusResponse:
 
 
 @router.post("/trigger-summarize", response_model=TaskStatusResponse)
-async def trigger_batch_summarize(limit: int = 10) -> TaskStatusResponse:
+async def trigger_batch_summarize(
+    limit: int = 10,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Manually trigger batch summarization (development only).
     """
@@ -170,7 +176,10 @@ async def trigger_batch_summarize(limit: int = 10) -> TaskStatusResponse:
 
 
 @router.post("/trigger-family-resolution", response_model=TaskStatusResponse)
-async def trigger_family_resolution(limit: int = 100) -> TaskStatusResponse:
+async def trigger_family_resolution(
+    limit: int = 100,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Manually trigger INPADOC family resolution (development only).
 
@@ -194,11 +203,14 @@ async def trigger_family_resolution(limit: int = 100) -> TaskStatusResponse:
 
 
 @router.post("/trigger-expiry-backfill", response_model=TaskStatusResponse)
-async def trigger_expiry_backfill(settings: AppSettings) -> TaskStatusResponse:
+async def trigger_expiry_backfill(
+    app_settings: AppSettings,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Trigger backfill of USPTO grants from 2006-2011 for expiry window population (development only).
     """
-    if settings.environment == "production":
+    if app_settings.environment == "production":
         raise HTTPException(status_code=403, detail="Not available in production")
 
     from app.tasks.ingest_grants import ingest_expiry_window_grants
@@ -269,6 +281,7 @@ async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
 @router.post("/trigger-enrich-abstracts", response_model=TaskStatusResponse)
 async def trigger_enrich_abstracts(
     batch_size: int = 200,
+    admin: _UserModel = Depends(require_admin),
 ) -> TaskStatusResponse:
     """
     Fetch abstracts from EPO OPS for patents missing them (development only).
@@ -290,7 +303,10 @@ async def trigger_enrich_abstracts(
 
 
 @router.post("/trigger-resummarize", response_model=TaskStatusResponse)
-async def trigger_resummarize(limit: int = 50) -> TaskStatusResponse:
+async def trigger_resummarize(
+    limit: int = 50,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Re-summarize patents that now have abstracts but were previously
     summarized with title-only (development only).
@@ -306,11 +322,14 @@ async def trigger_resummarize(limit: int = 50) -> TaskStatusResponse:
 
 
 @router.post("/trigger-match-themes", response_model=TaskStatusResponse)
-async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
+async def trigger_match_themes(
+    app_settings: AppSettings,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
     """
     Trigger theme matching for all active themes (development only).
     """
-    if settings.environment == "production":
+    if app_settings.environment == "production":
         raise HTTPException(status_code=403, detail="Not available in production")
 
     from app.tasks.theme_matcher import match_all_themes
