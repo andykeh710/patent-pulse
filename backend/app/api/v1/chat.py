@@ -192,6 +192,10 @@ async def _stream_anthropic_response(
     tool_call_count = 0
 
     while True:
+        assistant_text_parts: list[str] = []
+        tool_use_blocks: list[dict] = []
+        tool_result_blocks: list[dict] = []
+
         try:
             async for event in client.stream(
                 system=system_prompt,
@@ -200,6 +204,7 @@ async def _stream_anthropic_response(
             ):
                 if event["type"] == "text":
                     full_text_parts.append(event["content"])
+                    assistant_text_parts.append(event["content"])
                     yield _sse_event("token", content=event["content"])
 
                 elif event["type"] == "tool_use":
@@ -239,27 +244,39 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
+                    tool_use_blocks.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
+                    })
+                    tool_result_blocks.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": json.dumps(sanitized),
+                    })
+
+            else:
+                if tool_result_blocks:
+                    assistant_content: list[dict] = []
+                    assistant_text = "".join(assistant_text_parts)
+                    if assistant_text:
+                        assistant_content.append({
+                            "type": "text",
+                            "text": assistant_text,
+                        })
+                    assistant_content.extend(tool_use_blocks)
+
                     messages.append({
                         "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
+                        "content": assistant_content,
                     })
                     messages.append({
                         "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
+                        "content": tool_result_blocks,
                     })
+                    continue
 
-                    break
-
-            else:
                 break
 
         except Exception:

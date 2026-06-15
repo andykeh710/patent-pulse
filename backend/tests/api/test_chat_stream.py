@@ -650,6 +650,96 @@ async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypat
     assert "sources" not in event_types
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_handles_parallel_tool_calls_in_one_assistant_turn(monkeypatch):
+    """A single assistant turn can contain text followed by multiple tool_use blocks."""
+    from app.api.v1 import chat as chat_module
+
+    store = _make_memory_mock()
+    captured_messages: list[list[dict]] = []
+    executed_tools: list[str] = []
+
+    monkeypatch.setattr(
+        chat_module,
+        "retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        chat_module,
+        "get_conversation_store",
+        lambda: store,
+    )
+
+    async def _stream_with_parallel_tools(self, **kw):
+        captured_messages.append(kw.get("messages", []))
+        if len(captured_messages) == 1:
+            yield {"type": "text", "content": "Let me check both tools."}
+            yield {
+                "type": "tool_use",
+                "id": "toolu_search",
+                "name": "search_patents",
+                "input": {"query": "solid state batteries", "limit": 5},
+            }
+            yield {
+                "type": "tool_use",
+                "id": "toolu_open",
+                "name": "open_patent",
+                "input": {"doc_id": "USPTO:US99999"},
+            }
+        else:
+            yield {"type": "text", "content": "Both tools are complete."}
+
+    async def _execute_tool(name, input, db):
+        executed_tools.append(name)
+        if name == "search_patents":
+            return MOCK_TOOL_RESULT
+        return {
+            "doc_id": input["doc_id"],
+            "title": "Solid-State Battery Electrolyte",
+        }
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_parallel_tools,
+    )
+    monkeypatch.setattr(chat_module, "execute_tool", _execute_tool)
+
+    chunks = [
+        chunk
+        async for chunk in chat_module._stream_anthropic_response(
+            "Compare and open the strongest battery patent",
+            None,
+            "local-user",
+            MagicMock(),
+        )
+    ]
+    events = _parse_events("".join(chunks))
+
+    assert executed_tools == ["search_patents", "open_patent"]
+    assert [e["name"] for e in events if e["type"] == "tool_call_start"] == [
+        "search_patents",
+        "open_patent",
+    ]
+
+    continuation_messages = captured_messages[1]
+    assistant_turn = continuation_messages[-2]
+    tool_result_turn = continuation_messages[-1]
+
+    assert assistant_turn["role"] == "assistant"
+    assert [block["type"] for block in assistant_turn["content"]] == [
+        "text",
+        "tool_use",
+        "tool_use",
+    ]
+    assert assistant_turn["content"][0]["text"] == "Let me check both tools."
+
+    assert tool_result_turn["role"] == "user"
+    assert [block["tool_use_id"] for block in tool_result_turn["content"]] == [
+        "toolu_search",
+        "toolu_open",
+    ]
+
+
 # ── Citation tests ────────────────────────────────────────────────────
 
 

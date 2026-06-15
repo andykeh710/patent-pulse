@@ -28,7 +28,7 @@ from app.api.v1 import (
     webhooks,
 )
 
-v1_router = APIRouter(prefix="/api/v1")
+v1_router = APIRouter()
 
 v1_router.include_router(patents.router, prefix="/patents", tags=["patents"])
 v1_router.include_router(search.router, prefix="/search", tags=["search"])

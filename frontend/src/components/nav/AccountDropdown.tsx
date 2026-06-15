@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 
 export function AccountDropdown() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -18,6 +18,11 @@ export function AccountDropdown() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
 
   if (!isAuthenticated) {
     return (
@@ -53,11 +58,18 @@ export function AccountDropdown() {
             { label: "Watchlist", href: "/watchlist" },
             { label: "Account", href: "/account" },
             { label: "Billing", href: "/account/billing" },
-            { label: "Logout", href: "/login", action: () => { document.cookie = "auth_session=; path=/; max-age=0"; router.push("/login"); } },
+            { label: "Logout", href: "/login", action: handleLogout },
           ].map((item) => (
             <button
               key={item.label}
-              onClick={() => { setOpen(false); item.action ? item.action() : router.push(item.href); }}
+              onClick={() => {
+                setOpen(false);
+                if (item.action) {
+                  void item.action();
+                  return;
+                }
+                router.push(item.href);
+              }}
               className="w-full text-left px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)] transition-colors"
             >
               {item.label}

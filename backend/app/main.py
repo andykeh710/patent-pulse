@@ -82,7 +82,7 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(health_router)
-app.include_router(v1_router)
+app.include_router(v1_router, prefix="/api/v1")
 app.include_router(public_router)
 
 
