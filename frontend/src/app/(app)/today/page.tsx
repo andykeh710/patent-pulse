@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
 import { StarterTopics } from "@/components/ui/StarterTopics";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { FeedbackWidget } from "@/components/ui/FeedbackWidget";
 import { Tour } from "@/components/tour/Tour";
 import { useOpportunityList } from "@/hooks/useOpportunity";
 import { usePriorityWatch, usePatentStats } from "@/hooks/usePatents";
@@ -568,6 +569,7 @@ export default function TodayPage() {
 
       <div className="mt-8">
         <SourceAttribution />
+        <FeedbackWidget screen="today" />
       </div>
     </div>
   );

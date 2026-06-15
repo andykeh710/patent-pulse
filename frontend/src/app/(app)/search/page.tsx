@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { FeedbackWidget } from "@/components/ui/FeedbackWidget";
 import { savedSearchesApi } from "@/lib/api";
 import { useWatchlist, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
 import type { SearchParams, SavedSearch } from "@/lib/types";
@@ -422,6 +423,7 @@ function SearchContent() {
 
       <div className="mt-8">
         <SourceAttribution />
+        <FeedbackWidget screen="search" />
       </div>
     </div>
   );
