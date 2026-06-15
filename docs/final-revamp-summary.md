@@ -1,7 +1,20 @@
 # Final Revamp Summary
 
-**Date:** 2026-06-14
-**All branches merged to:** `sprint-7-retention-feedback`
+**Date:** 2026-06-15
+**Release branch:** `release/revamp-launch-validation`
+**All sprints merged to:** `sprint-7-retention-feedback`
+
+---
+
+## Migration Audit
+
+| # | Name | Sprint | Status |
+|---|------|--------|--------|
+| 0032 | today_seen_at | 3 | ✅ |
+| 0033 | saved_searches | 4.5 | ✅ |
+| 0034 | feedback + alert_intents | 7 | ✅ (created in launch gate) |
+
+Full chain: 0001 → 0034. No gaps. Clean downgrade path for all.
 
 ---
 
@@ -54,18 +67,46 @@
 
 ## Launch-Readiness Checklist
 
-- [x] Frontend builds (6.5s)
-- [x] TypeScript compiles
-- [x] Lint clean
-- [x] 53/53 frontend tests pass
-- [x] All main screens have PageHeader
-- [x] Loading/empty/error states on all major screens
-- [x] Follow/save/watchlist available on patents, companies, searches
-- [x] Feedback collection on Today + Search
-- [x] Activation state endpoint
-- [x] Alert intent capture
-- [ ] Production assignee backfill
-- [ ] Production Postgres password rotation
-- [ ] Feedback migration applied
-- [ ] Celery beat health monitoring
-- [ ] Backend tests runnable locally
+| Check | Status | Notes |
+|-------|--------|-------|
+| Frontend builds | ✅ | 6.8s |
+| TypeScript compiles | ✅ | 0 errors |
+| Lint clean | ✅ | 0 errors, 2 documented `<img>` warnings |
+| Tests pass | ✅ | 53/53 frontend |
+| Migrations apply in order | ✅ | 0001→0034 chain verified |
+| Admin endpoints guarded | ✅ | All 16+ trigger + admin endpoints require `require_admin` |
+| User-scoped resources isolated | ✅ | Feedback/activation/alert-intent all require `current_user` |
+| No debug artifacts committed | ✅ | Clean `git status` |
+| All 11 docs present | ✅ | app-map through final-revamp-summary |
+| Feedback persists | ✅ | `POST /api/v1/feedback` → `feedback` table (migration 0034) |
+| Alert intent persists | ✅ | `POST /api/v1/alert-intent` → `alert_intents` table |
+| Activation state computed | ✅ | `GET /api/v1/activation-state` — cross-table counts |
+| Watchlist 3-tab workspace | ✅ | Saved Patents, Followed Companies, Saved Searches |
+| Production assignee backfill | ⬜ | Andy action — documented in ops blockers |
+| Postgres password rotation | ⬜ | Andy action — documented in ops blockers |
+| Feedback migration applied | ⬜ | Deploy + run `alembic upgrade head` |
+| Celery beat health monitoring | ⬜ | Post-launch improvement |
+| Backend tests runnable locally | ⬜ | venv broken (Python 3.9 vs 3.12) — documented |
+
+## Production Ops Blockers (Andy)
+
+| # | Task | Priority | Runbook |
+|---|------|----------|---------|
+| 1 | Run production assignee backfill | P1 | `.hermes/runbooks/2026-06-14_post-sprint-1-5-ops-tickets.md` |
+| 2 | Rotate Postgres password | P1 | Same runbook |
+| 3 | Run `alembic upgrade head` for migration 0034 | P1 | Docker exec into backend container |
+| 4 | Verify Celery beat is running and healthy | P1 | `docker compose logs celery-beat` |
+| 5 | Staging smoke test | P2 | This doc — Andy to execute |
+
+## Post-Launch Backlog (Not Blocking)
+
+| Item | Sprint | Priority |
+|------|--------|----------|
+| CPC/assignee filter dropdowns on Search | Future | P2 |
+| Patent preview drawer | Future | P2 |
+| Company "What Changed" module | Future | P2 |
+| Alert delivery (not just intent) | Future | P2 |
+| Analytics dashboard UI | Future | P3 |
+| npm audit major upgrades (Next 16, Sentry 10) | Future | P3 |
+| Country detection data source for assignees | Future | P3 |
+| Rate limiting on feedback/admin endpoints | Future | P3 |
