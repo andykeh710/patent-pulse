@@ -40,19 +40,31 @@ SELECT
 FROM (
     SELECT
         normalize_assignee(av.val) AS name,
-        MIN(av.val) AS display_name,
+        -- Pick the longest raw name as the display form — it is the
+        -- most likely to contain a legal-suffix / entity-type indicator.
+        (array_agg(av.val ORDER BY length(av.val) DESC))[1] AS display_name,
         -- Entity type heuristic: classify assignee based on name patterns.
-        -- Best-effort; false positives are possible (e.g. "University of
-        -- Pizza Inc" will match "university" first).  Country detection
-        -- requires an external data source (not available from patent
-        -- office feeds) and is deferred to a future enrichment pipeline.
+        -- Best-effort; false positives are possible (e.g. a name containing
+        -- both 'UNIVERSITY' and 'INC' will match 'university' first).
+        -- Country detection requires an external data source (not available
+        -- from patent office feeds) and is deferred to a future pipeline.
         CASE
-            WHEN upper(MIN(av.val)) ~ '\\y(UNIVERSITY|UNIVERSIT[A-Z]+|COLLEGE|INSTITUTE OF TECHNOLOGY|UNIV\\b|U\\.? OF)\\y'
-                THEN 'university'
-            WHEN upper(MIN(av.val)) ~ '\\y(GOVERNMENT|DEPARTMENT OF|MINISTRY OF|DEFENSE|ARMY|NAVY|AIR FORCE|NATIONAL LAB)\\y'
-                THEN 'gov'
-            WHEN upper(MIN(av.val)) ~ '\\y(INC\\b|INCORPORATED|CORP\\b|CORPORATION|LTD\\b|LIMITED|LLC\\b|GMBH|S\\.?A\\.?\\b|S\\.?P\\.?A\\.?|B\\.?V\\.?|N\\.?V\\.?|A\\.?B\\.?|O\\.?Y\\.?|A\\.?S\\.?\\b|A\\.?G\\.?\\b|S\\.?E\\.?\\b|K\\.?K\\.?|PTE|S\\.?À\\.? R\\.?L\\.?|S\\.?R\\.?L\\.?|S\\.?A\\.?S\\.?)\\y'
-                THEN 'corporation'
+            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
+                 ~ '\y(UNIVERSITY|UNIVERSIT[A-Z]+|COLLEGE|INSTITUTE OF TECHNOLOGY|INSTITUTE\b|UNIV\b|U\.? OF|SCHOOL OF)\y'
+                 THEN 'university'
+            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
+                 ~ '\y(GOVERNMENT|DEPARTMENT OF|MINISTRY OF|DEFENSE|ARMY|NAVY|AIR FORCE|NATIONAL LAB|NASA\b)\y'
+                 THEN 'gov'
+            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
+                 ~ '\y(INC\b|INCORPORATED|CORP\b|CORPORATION|LTD\b|LIMITED|LLC\b|LP\b|PLC\b|LLP\b|'
+                    'GMBH|A\.?G\b|S\.?A\.?\b|SAS\b|S\.?P\.?A\.?\b|S\.?R\.?L\.?\b|S\.?À R\.?L\.?\b|'
+                    'B\.?V\.?\b|N\.?V\.?\b|A\.?B\.?\b|O\.?Y\.?\b|A\.?S\.?\b|S\.?E\.?\b|'
+                    'K\.?K\.?|KABUSHIKI KAISHA|KAISHA\b|PTE\b|'
+                    'CO\b|CO\.? LTD\b|COMPANY\b|COMPANY LTD\b|'
+                    'TECHNOLOG(?:Y|IES)\b|ELECTRONICS?\b|SEMICONDUCTOR\b|'
+                    'MOTORS?\b|DISPLAY\b|PRODUCTS\b|'
+                    'SYSTEMS?\b|SOLUTIONS?\b|GROUP\b|HOLDINGS?\b|ENTERPRISES?\b)\y'
+                 THEN 'corporation'
             ELSE NULL
         END AS entity_type,
         COUNT(DISTINCT p.id) AS patent_count

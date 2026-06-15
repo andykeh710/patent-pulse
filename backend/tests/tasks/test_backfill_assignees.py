@@ -175,3 +175,61 @@ async def test_backfill_handles_variant_assignee_spellings(db_session):
     # "IBM Corporation" → "IBM CORPORATION"
     # "INTL BUSINESS MACHINES INC" → "INTL BUSINESS MACHINES INC"
     assert stats["total_processed"] == 3  # three distinct normalized names
+
+
+# ── Sprint 1.5/Post-Launch: production-name entity_type coverage ──
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_entity_type_on_production_names(db_session):
+    """Representative production assignee names should all classify."""
+    names_and_expected = [
+        ("SAMSUNG ELECTRONICS CO LTD", "corporation"),
+        ("INTERNATIONAL BUSINESS MACHINES CORP", "corporation"),
+        ("TOYOTA JIDOSHA KABUSHIKI KAISHA", "corporation"),
+        ("QUALCOMM INC", "corporation"),
+        ("TAIWAN SEMICONDUCTOR MANUFACTURING COMPANY LTD", "corporation"),
+        ("APPLE INC", "corporation"),
+        ("DELL PRODUCTS LP", "corporation"),
+        ("HYUNDAI MOTOR CO", "corporation"),
+        ("KABUSHIKI KAISHA TOSHIBA", "corporation"),
+        ("UNIVERSITY OF CALIFORNIA", "university"),
+        ("NATIONAL AERONAUTICS AND SPACE ADMINISTRATION", "gov"),
+    ]
+    for name, expected_entity_type in names_and_expected:
+        db_session.add(
+            PatentPublication(
+                doc_id=f"USPTO:TEST_{name[:20].replace(' ','_')}",
+                publication_number=f"TEST_{hash(name) % 1000000:06d}",
+                office="USPTO",
+                title="Test patent",
+                assignees=[name],
+                cpc=["G06F"],
+            )
+        )
+    await db_session.commit()
+
+    from app.tasks.backfill_assignees import backfill_assignees_for_session
+
+    await backfill_assignees_for_session(db_session)
+
+    # Verify each name classified correctly
+    from app.core.ai_models import Assignee
+    from sqlalchemy import select
+
+    for name, expected_entity_type in names_and_expected:
+        normalized = name.strip().lower()
+        # normalize_assignee strips suffixes; build expected normalized
+        import re
+        suffix_re = re.compile(r'[ ,.]+(inc|corp|ltd|llc|gmbh|sa|ag|co)\.?$', re.IGNORECASE)
+        expected_normalized = suffix_re.sub("", name.strip()).strip().lower()
+
+        result = await db_session.execute(
+            select(Assignee).where(Assignee.normalized_name == expected_normalized)
+        )
+        row = result.scalar_one_or_none()
+        assert row is not None, f"Assignee '{name}' (normalized: {expected_normalized}) not found after backfill"
+        assert row.entity_type == expected_entity_type, (
+            f"Assignee '{name}' expected entity_type '{expected_entity_type}', "
+            f"got '{row.entity_type}'"
+        )
