@@ -1,8 +1,25 @@
 # Staging Deployment + Smoke Test — Launch Step 3
 
 **Date:** 2026-06-15
-**Executor:** Andy
-**Release branch:** release/revamp-launch-validation
+**Release branch:** `release/revamp-launch-validation`
+**Last release commit:** `9a0dc7e` — migration chain repair
+
+---
+
+## Migration Chain Repair (Launch Blocker — Fixed)
+
+Three migration files (0029, 0030, 0031) had filename-based `down_revision`
+values that didn't match the actual `revision` attributes in their parent
+files. This caused `KeyError` when Alembic built the dependency graph.
+
+**Fixed:** `9a0dc7e` changes down_revision to numeric IDs matching the
+parent revision attribute.
+
+- 0029: `"0028_user_onboarding_fields"` → `"0028"`
+- 0030: `"0029_email_deliveries_tracking"` → `"0029"`
+- 0031: `"0030_alerts_webhook_configs"` → `"0030"`
+
+After fix: `alembic heads` returns single head 0034. Chain: 0027→...→0034.
 
 ---
 
