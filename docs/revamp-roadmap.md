@@ -187,24 +187,24 @@
 
 ---
 
-## Phase 5 — Expiry Radar + Opportunity Workflows (Sprint 6)
+## Phase 5 — Expiry Radar + Opportunity Workflows (Sprint 6) ✅ SHIPPED (2026-06-14)
 
 **Goal:** Turn expiry data into actionable commercial opportunities.
 
-### PR 5.1: Expiry Radar why-it-matters
-- **Frontend:** Add commercial relevance explanation to each expiry card using Insight Card pattern
-- **Backend:** Call `opportunity_narrative.py` to generate per-patent "why this expiry matters"
-- **Verification:** Every expiry card show a why-it-matters sentence
+### PR 5.1: Expiry Radar why-it-matters ✅
+- **Frontend:** `whyItMatters()` in ExpiryRadarCard — deterministic derivation from opportunity score, usage signals, days-until-expiry, and family risk. No LLM.
+- **Verification:** Every expiry card with relevant signals shows a why-it-matters sentence
 
-### PR 5.2: Expiry filters + missing data explanation
-- **Frontend:** Add company, theme, date-range filters
-- **Frontend:** Empty state: explain WHY data is missing ("Expiry data is still being calculated...")
-- **Verification:** Filters work, empty state is explanatory
+### PR 5.2: Expiry filters + missing data explanation ✅
+- **Frontend:** FilterChips display for active filters (status, confidence, family risk, min score) with individual remove + clear-all
+- **Frontend:** EmptyState component replaces inline empty divs in ExpiryRadarSection
+- **Deferred:** company/theme/date-range filter dropdowns (backend filter params already exist for CPC/assignee)
 
-### PR 5.3: Save/Export/Alerts on expiry cards
-- **Frontend:** Add save to watchlist, export CSV, create alert per card
-- **Backend:** Wire alert creation for expiry events
-- **Verification:** Save/export/alert all work from expiry page
+### PR 5.3: Save/Export/Alerts on expiry cards ✅
+- **Frontend:** Save/bookmark button on every expiry card with stopPropagation
+- **Frontend:** Watchlist integration (useWatchlist + savedIds + handleToggleSave)
+- **Existing:** CSV export button already present on expiry page
+- **Deferred:** per-card alert creation (needs alert infrastructure)
 
 ---
 
