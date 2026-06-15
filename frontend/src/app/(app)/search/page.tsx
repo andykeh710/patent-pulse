@@ -11,6 +11,7 @@ import { FilterChips } from "@/components/ui/FilterChips";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { savedSearchesApi } from "@/lib/api";
+import { useWatchlist, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
 import type { SearchParams, SavedSearch } from "@/lib/types";
 
 type SearchMode = "fulltext" | "semantic" | "hybrid";
@@ -70,6 +71,10 @@ function SearchContent() {
   );
   const [savingSearch, setSavingSearch] = useState(false);
   const [saveName, setSaveName] = useState("");
+
+  // Watchlist for save/unsave on result cards
+  const { data: watchlist, mutate: mutateWatchlist } = useWatchlist();
+  const savedIds = new Set(watchlist?.map((item) => item.patent.id) || []);
 
   // Sync to URL
   useEffect(() => {
@@ -365,9 +370,29 @@ function SearchContent() {
 
           {/* Result cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results!.items.map((patent) => (
-              <PatentCard key={patent.id} patent={patent} />
-            ))}
+            {results!.items.map((patent) => {
+              const isSaved = savedIds.has(patent.id);
+              const handleToggleSave = async (patentId: string) => {
+                if (isSaved) {
+                  const item = watchlist?.find((w) => w.patent.id === patentId);
+                  if (item) {
+                    await removeFromWatchlist(item.id, patentId);
+                    mutateWatchlist();
+                  }
+                } else {
+                  await addToWatchlist(patentId);
+                  mutateWatchlist();
+                }
+              };
+              return (
+                <PatentCard
+                  key={patent.id}
+                  patent={patent}
+                  isSaved={isSaved}
+                  onToggleSave={handleToggleSave}
+                />
+              );
+            })}
           </div>
 
           {/* Pagination */}
