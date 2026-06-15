@@ -490,7 +490,9 @@ curl -s https://inventionindex.com/api/v1/health
 
 ## M. Controlled-Launch Results ✅ 2026-06-15
 
-Production controlled launch executed. All core services healthy.
+Core services healthy. Application health degraded only due to Resend.
+Controlled/manual-account launch passed. Open signup/magic-link launch
+blocked until Resend is fixed.
 
 ### Services
 | Service | Status |
@@ -503,12 +505,6 @@ Production controlled launch executed. All core services healthy.
 | Beat | ✅ Running |
 | Alembic | ✅ 0034 (head) |
 
-### Health Endpoint
-```json
-{"db":"ok","redis":"ok","resend":"unauthorized","alembic_head":"0034","overall":"degraded"}
-```
-→ HTTP 200. Degraded due to Resend only.
-
 ### Public Routes
 | Route | Result |
 |-------|--------|
@@ -517,19 +513,21 @@ Production controlled launch executed. All core services healthy.
 | `https://inventionindex8.com/docs` | HTTP/2 200 |
 | `HEAD /health` | 405 (GET only — not a blocker) |
 
-### Caddy Fix Applied
-- Added `www.inventionindex8.com` redirect block to Caddyfile
-- Validated config via `caddy validate`
-- Reloaded Caddy — `www` TLS now works, redirects to bare domain
+### Completed
+| Item | When |
+|------|------|
+| .env duplicate keys cleaned | Before launch |
+| Redis password rotated (appeared in terminal output) | Before launch |
+| Caddy www redirect added + validated + reloaded | During launch |
 
-### Caveats
-| Item | Status | Action |
-|------|--------|--------|
-| Resend email | ⬜ Unavailable | Blocks open signup/magic-link. Controlled launch OK with manual accounts. Fix: valid API key + verified domain post-launch |
-| Open signup | ⬜ Gated | Blocked by Resend. Andy provisions accounts manually for controlled launch |
-| .env duplicates | ⬜ Clean up | Remove duplicate MAGIC_LINK_BASE_URL/EMAIL keys in .env |
-| Password rotation | ⬜ Deferred | Post-launch — safe ALTER USER procedure in Section H |
-| Assignee backfill | ⬜ Verify | Run after launch per Section G |
+### Remaining Post-Launch Items
+| # | Item | Priority | Notes |
+|---|------|----------|-------|
+| 1 | Fix Resend — valid API key + verified domain | P0 | Blocks open signup/magic-link |
+| 2 | Verify assignee backfill completed | P1 | Run Section G counts, confirm entity_type populated |
+| 3 | Push/deploy latest commit (health wording patch) | P2 | Server may still be on `27df754`; latest is `4d78dca` |
+| 4 | Decide open-signup vs controlled-access posture | P1 | Gate on Resend status |
 
 ### Launch Status: **PASS — Controlled Launch**
-Core app is live at https://inventionindex8.com. All services healthy. Resend is the only degraded probe and is explicitly accepted as non-blocking for controlled launch.
+`https://inventionindex8.com` is live. All core services healthy.
+Resend is the only degraded probe.
