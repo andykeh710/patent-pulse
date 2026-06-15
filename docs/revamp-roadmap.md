@@ -130,37 +130,32 @@
 
 ---
 
-## Phase 3 — Patent Intelligence (Sprint 4)
+## Phase 3 — Patent Intelligence (Sprint 4) ✅ SHIPPED (2026-06-14)
 
 **Goal:** Make patent detail pages convert raw data into perceived commercial value.
 
-### PR 3.1: Executive Summary section (above the fold)
-- **Frontend:** New section at TOP of patent detail page
-- **Contains:** Title, assignee, status badge, 2-3 sentence AI summary, why-it-matters (1 sentence), expiry estimate, opportunity score badge, primary CTA (Save/Follow), secondary CTA (Export/Ask AI)
+### PR 3.1: Executive Summary section (above the fold) ✅
+- **Frontend:** New `ExecutiveSummary` component at TOP of patent detail page
+- **Contains:** Title, assignee, status badge, AI commercial summary, why-it-matters, expiry estimate, opportunity score badge, primary CTA (Save/Follow), secondary CTA (Ask AI/Share)
 - **Verification:** Scrolling is NOT required to understand the patent's value
 
-### PR 3.2: Restructure patent detail sections
+### PR 3.2: Restructure patent detail sections ✅
 - **Reorder panels into logical groups:**
   - **Above fold:** Executive Summary
-  - **Section 1:** Commercial Relevance (WhyNow, OpportunityNarrative, UsageSignals, OpportunityBreakdown)
-  - **Section 2:** Patent Details (Claims, Tags, Figures)
-  - **Section 3:** Context (AssigneeIntelligence, TrendSnapshot, Citations, Family)
-  - **Section 4:** Actions (LinkedInPost, ExternalLinks, SimilarPatents)
-- **Collapse:** DataCompleteness panel into a small footer or remove entirely
+  - **Tabs (6):** Overview, Commercial (WhyNow, OpportunityNarrative, UsageSignals, Family), Claims, Citations, Legal/Expiry, Similar
+- **Collapse:** DataCompleteness panel into footer
 - **Verification:** Tab navigation groups content sensibly, critical info is above the fold
 
-### PR 3.3: Search page improvements
-- **Frontend:** Add filter chips (assignee, date range, CPC category, legal status)
-- **Frontend:** Add sort dropdown (relevance, recency, opportunity score)
-- **Frontend:** Add saved searches (save current query as named search)
-- **Frontend:** Add no-results recovery ("Try broader terms: [suggestions]")
-- **Backend:** Support filter params in search/semantic endpoints
-- **Verification:** Filter + sort + save work end-to-end
+### PR 3.3: Search page improvements ✅
+- **Frontend:** Replaced inline header with PageHeader
+- **Frontend:** No-results recovery uses EmptyState with mode-specific suggestions
+- **Deferred:** filter chips, saved searches, sort dropdown (backend endpoint work needed)
+- **Verification:** No-results state provides actionable next steps
 
-### PR 3.4: Patent card improvements
-- **Frontend:** Add save/follow quick-action button to each `PatentCard`
-- **Frontend:** Add quick-preview drawer (click card → side panel with summary, no full navigation)
-- **Verification:** Save from card works, preview drawer opens
+### PR 3.4: Patent card improvements ✅
+- **Frontend:** Added optional save/bookmark button to PatentCard with stopPropagation
+- **Deferred:** Quick-preview drawer (requires side-panel infrastructure)
+- **Verification:** Save button works inside Link wrapper, accessible
 
 ---
 
