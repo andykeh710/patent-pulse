@@ -524,9 +524,19 @@ blocked until Resend is fixed.
 | # | Item | Priority | Notes |
 |---|------|----------|-------|
 | 1 | Fix Resend — valid API key + verified domain | P0 | Blocks open signup/magic-link |
-| 2 | Verify assignee backfill completed | P1 | Run Section G counts, confirm entity_type populated |
-| 3 | Push/deploy latest commit (health wording patch) | P2 | Server may still be on `27df754`; latest is `4d78dca` |
-| 4 | Decide open-signup vs controlled-access posture | P1 | Gate on Resend status |
+| 2 | Push/deploy latest commit | P2 | Server may be behind; latest is `9ddd02f` |
+| 3 | Decide open-signup vs controlled-access posture | P1 | Gate on Resend status |
+
+### Assignee Enrichment — Honest Status
+- `assignees` table: 16,723 rows, names normalized, patent_count populated ✅
+- `entity_type`: 2,487 rows have heuristic-inferred values from a previous backfill run.
+  These are NOT authoritative. The backfill no longer generates entity_type.
+  UI should mark as inferred or hide until verified.
+- `country`: 0 populated. Requires external source data. Deferred.
+- **Enrichment path:** USPTO PatentsView `/assignee` API provides per-assignee
+  entity_type (organization/person), country, and assignee_id. Ingestion of
+  this data is planned for V3.5.
+- See `docs/v3-v4-roadmap.md § V3.5` for the enrichment plan.
 
 ### Launch Status: **PASS — Controlled Launch**
 `https://inventionindex8.com` is live. All core services healthy.

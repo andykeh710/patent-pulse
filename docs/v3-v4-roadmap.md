@@ -83,7 +83,50 @@ with deeper personalization, stronger evidence, and operational resilience.
 **Dependencies:** New models needed (papers, paper_citations). ArXiv API key.
 **Acceptance:** Papers surface as relevant signals on patent and company pages.
 
-### V3.5 — Evidence Packets
+### V3.5a — Assignee Enrichment with Provenance
+
+**Current state:** 16,723 assignees with normalized names + patent counts.
+entity_type is NULL for 14,236 rows (2,487 have old heuristic values that are
+NOT authoritative). Country is NULL for all rows.
+
+**Source:** USPTO PatentsView `/assignee` API (free, no auth, rate-limited).
+Provides: `assignee_id`, `organization`, `individual_name_first`, 
+`individual_name_last`, `entity_type` (organization/person), `country`.
+
+**Design:**
+
+```
+assignees table columns (new):
+  entity_type           TEXT  -- 'organization' | 'person' | NULL
+  country               TEXT  -- two-letter country code or NULL
+  enrichment_source     TEXT  -- 'patentsview' | 'manual' | NULL
+  enrichment_confidence TEXT  -- 'high' | 'medium' | 'low' | NULL
+  enrichment_verified_at TIMESTAMPTZ
+  source_assignee_id    TEXT  -- PatentsView assignee_id for audit trail
+```
+
+**Data flow:**
+1. New Celery task: `enrich_assignees_from_patentsview`
+2. Query PatentsView `/assignee` endpoint, match by name against our normalized names
+3. Populate entity_type, country, enrichment_source, confidence, source_assignee_id
+4. Store match confidence based on name similarity (exact match = high, fuzzy = medium)
+5. Re-run periodically to catch newly added assignees
+
+**UI behavior:**
+- Show entity_type/country badges ONLY when `enrichment_source` is NOT NULL
+- If source is NULL: show no badge (neutral) — never show "unknown" or guessed value
+- Add hover tooltip: "Source: USPTO PatentsView · Confidence: high"
+- On Company Intelligence pages: show enrichment provenance in metadata section
+
+**Test coverage:**
+- PatentsView API mock: returns assignee metadata for known names
+- Backfill: stores entity_type + country + provenance
+- UI: hides badges when no source, shows with provenance when enriched
+
+**Acceptance:** 70%+ of top-1,000 patent-count assignees have verified entity_type
+from PatentsView. All enriched rows have non-NULL enrichment_source.
+
+### V3.5b — Evidence Packets
 
 **Features:**
 - Patent "Evidence Packet": official links, family tree, expiry confidence breakdown, usage signals, citation graph, maintenance fee status
