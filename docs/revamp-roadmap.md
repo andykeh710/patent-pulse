@@ -159,24 +159,31 @@
 
 ---
 
-## Phase 4 — Company Intelligence (Sprint 5)
+## Phase 4 — Company Intelligence (Sprint 5) ✅ SHIPPED (2026-06-14)
 
 **Goal:** Make company pages feel like commercial intelligence products.
 
-### PR 4.1: Company page enrichment
-- **Backend:** Add endpoints for: portfolio summary, recent filings, top inventors, tech concentration, expiry exposure
-- **Frontend:** Display as structured sections on company detail page
-- **Verification:** Company page shows more than just a patent list
+### PR 4.1: Company page enrichment ✅
+- **Backend:** Added top inventors query to company profile endpoint
+- **Frontend:** Company detail page redesigned with portfolio summary, technology focus, top inventors, expiry exposure card
+- **Verification:** Page shows portfolio composition, tech concentration, inventor roster, and expiry risk — not just a patent list
 
-### PR 4.2: Follow company infrastructure
-- **Backend:** Wire `follow_company.py` to API endpoints. Add `POST /api/v1/companies/{name}/follow` and `DELETE`
-- **Frontend:** Add follow/unfollow button on company list and detail pages
-- **Verification:** Followed companies appear in watchlist, can be unfollowed
+### PR 4.2: Follow company infrastructure ✅
+- **Backend:** Wired `follow_company.py` to API: GET/POST/DELETE `/suppliers/follow/{name}`, GET `/suppliers/follows`
+- **Frontend:** Follow/unfollow button on company detail page with live SWR state
+- **Verification:** Button toggles between "Follow company" and "Following", persists server-side
 
-### PR 4.3: Company "What Changed" module
-- **Backend:** Compare current portfolio snapshot vs snapshot from N days ago. Return diff.
-- **Frontend:** Show "Recent changes" section on company detail: new filings, status changes, expiry updates
-- **Verification:** Module shows real deltas, not static data
+### PR 4.3: Company "What Changed" module ⬜
+- **Deferred:** Filing delta comparison requires period-over-period snapshot infrastructure. Documented as follow-up in docs/company-intelligence.md.
+- **Verification:** N/A — deferred
+
+### Deferred Search items (from Sprint 4.5)
+| Item | Reason | Priority |
+|------|--------|----------|
+| CPC/assignee filter dropdowns | Needs facet aggregation from backend | P2 |
+| Date range picker | Most users search by topic | P3 |
+| Patent preview drawer | Side-panel infrastructure needed | P2 |
+| Save/unsave on result cards | ✅ Completed in Sprint 5 (commit bb8e477) | — |
 
 ---
 
