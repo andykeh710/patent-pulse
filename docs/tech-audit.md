@@ -214,16 +214,79 @@ Ordered by user impact:
 - [x] Security audit complete
 - [x] App map created
 - [ ] Backend venv usable locally
-- [ ] All typecheck/type errors fixed
-- [ ] All tests pass (including timezone fix)
-- [ ] npm audit vulnerabilities addressed
+- [x] All typecheck/type errors fixed
+- [x] All tests pass (including timezone fix)
+- [x] npm audit: safe fixes applied, 7 transitive vulns documented
 
 ### Post-revamp
 - [ ] Core Web Vitals measured (LCP, INP, CLS)
 - [ ] Lighthouse scores on main routes
 - [ ] All empty states explain why
-- [ ] Companies page renders real data
+- [x] Companies page shows honest enrichment state (not misleading "0 of 0")
 - [ ] Expiry Radar shows opportunities, not just dates
 - [ ] Today screen is personalized and actionable
 - [ ] Keyboard navigation works on main routes
 - [ ] Mobile breakpoints functional
+
+---
+
+## 9. Sprint 1 — Stabilization Results (2026-06-14)
+
+### Final Baseline
+
+| Check | Result |
+|-------|--------|
+| `tsc --noEmit` | ✅ PASS (0 errors) |
+| `npm run build` | ✅ PASS (7.5s compiled) |
+| `npm run lint` | ✅ PASS (0 errors, 0 warnings excluding documented `<img>` warning) |
+| `npm test` | ✅ PASS (53/53, 8 suites) |
+| `npm audit` | ⚠️ 7 remaining (5 moderate, 2 high — all transitive, documented) |
+
+### Changes Made
+
+**PR: sprint-1-stabilization** (branch: `sprint-1-stabilization`, commit: `b68b2c8`)
+
+| Area | Files | Change |
+|------|-------|--------|
+| Companies P0 | `companies/page.tsx`, `backfill_assignees.py`, `admin.py` | Fixed misleading "0 of 0" display. Added loading skeletons, enrichment-pending explanations, entity_type heuristic SQL, admin trigger endpoint |
+| TypeScript | `webhooks/page.tsx` | Fixed `Type '{}' is not assignable to 'ReactNode'` — wrapped with `String()` |
+| Tests | `utils.ts`, `utils.test.ts` | Added `timeZone: 'UTC'` to `formatDate` — test now deterministic |
+| Lint: unused imports | 10 files | Removed unused `BRAND`, `Badge`, `Skeleton`, `formatDate`, `PaginatedResponse`, `PatentListItem`, `TrendNarrativeResponse`, `PaginatedPatents` imports |
+| Lint: unused params | 4 files | Removed unused `patent` destructuring from panel components |
+| Lint: dead code | 3 files | Removed unused `Check` component, `PaginatedPatents` interface, `displayName` variable |
+| Lint: expression | `AccountDropdown.tsx` | Replaced comma expression with if/else |
+| Deps: safe audit | `package-lock.json` | `npm audit fix` — updated next 15.5.15→15.5.19, ws, brace-expansion |
+
+### Remaining npm audit vulnerabilities (documented, not fixed)
+
+All 7 require major version bumps. Documented as follow-up issues:
+
+| Package | Vulns | Blocked by |
+|---------|-------|-----------|
+| next → postcss | 1 moderate | Requires next 16 (major) |
+| next | 4 high (13 advisories) | Requires next 16 (major) |
+| @sentry/nextjs → rollup | 1 high | Requires @sentry/nextjs 10.x (2 majors) |
+| @sentry/nextjs → uuid | 1 moderate | Requires @sentry/nextjs 10.x (2 majors) |
+
+**Recommendation:** Defer to post-revamp. Next.js 16 and Sentry 10 are breaking changes that need dedicated testing. Not safe for a stabilization sprint.
+
+### Companies Fix — Root Cause Summary
+
+The `assignees` normalization table was created by migration 0003 but never populated. Zero rows. The LEFT JOIN in `suppliers.py` produces NULL country/entity_type for every row. The backfill task (`backfill_assignees.py`) exists and is tested, and is scheduled in Celery beat (daily 04:00 UTC), but was never run as an initial one-shot, and lacked entity_type heuristics.
+
+**What this sprint fixed:**
+1. Entity type heuristic added to backfill SQL (corporation/university/gov classification from name patterns)
+2. Admin trigger endpoint added (`POST /api/v1/admin/trigger-assignee-backfill`)
+3. Frontend CoverageBar shows skeletons during loading and honest enrichment-pending notes when value=0
+4. Table rows show "Enrichment pending" instead of "Metadata pending"
+
+**What still needs server action (not code):**
+- Run the backfill on production (via admin trigger or manual Celery task)
+- Country detection still needs an external data source (not available from patent feeds)
+- Server security fixes from VULN-03, PRE-01 still pending (Andy action)
+
+### Accepted Lint Warning
+
+| File | Warning | Reason |
+|------|---------|--------|
+| `PatentFiguresPanel.tsx:78` | `<img>` instead of `<Image>` | Google Patents external URLs require custom `next.config.js` domain configuration. Not a drop-in fix. Documented, not suppressed. |
