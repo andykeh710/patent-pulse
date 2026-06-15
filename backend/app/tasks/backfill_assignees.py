@@ -27,12 +27,13 @@ logger = logging.getLogger(__name__)
 # Backfill SQL
 
 BACKFILL_SQL = """
-INSERT INTO assignees (id, normalized_name, display_name, aliases, patent_count, created_at, updated_at)
+INSERT INTO assignees (id, normalized_name, display_name, aliases, entity_type, patent_count, created_at, updated_at)
 SELECT
     gen_random_uuid(),
     nrm.name AS normalized_name,
     nrm.display_name,
     jsonb_build_array(nrm.display_name),
+    nrm.entity_type,
     nrm.patent_count,
     now(),
     now()
@@ -40,6 +41,20 @@ FROM (
     SELECT
         normalize_assignee(av.val) AS name,
         MIN(av.val) AS display_name,
+        -- Entity type heuristic: classify assignee based on name patterns.
+        -- Best-effort; false positives are possible (e.g. "University of
+        -- Pizza Inc" will match "university" first).  Country detection
+        -- requires an external data source (not available from patent
+        -- office feeds) and is deferred to a future enrichment pipeline.
+        CASE
+            WHEN upper(MIN(av.val)) ~ '\\y(UNIVERSITY|UNIVERSIT[A-Z]+|COLLEGE|INSTITUTE OF TECHNOLOGY|UNIV\\b|U\\.? OF)\\y'
+                THEN 'university'
+            WHEN upper(MIN(av.val)) ~ '\\y(GOVERNMENT|DEPARTMENT OF|MINISTRY OF|DEFENSE|ARMY|NAVY|AIR FORCE|NATIONAL LAB)\\y'
+                THEN 'gov'
+            WHEN upper(MIN(av.val)) ~ '\\y(INC\\b|INCORPORATED|CORP\\b|CORPORATION|LTD\\b|LIMITED|LLC\\b|GMBH|S\\.?A\\.?\\b|S\\.?P\\.?A\\.?|B\\.?V\\.?|N\\.?V\\.?|A\\.?B\\.?|O\\.?Y\\.?|A\\.?S\\.?\\b|A\\.?G\\.?\\b|S\\.?E\\.?\\b|K\\.?K\\.?|PTE|S\\.?À\\.? R\\.?L\\.?|S\\.?R\\.?L\\.?|S\\.?A\\.?S\\.?)\\y'
+                THEN 'corporation'
+            ELSE NULL
+        END AS entity_type,
         COUNT(DISTINCT p.id) AS patent_count
     FROM patent_publications p
     JOIN LATERAL jsonb_array_elements_text(p.assignees) AS av(val) ON true
@@ -48,6 +63,7 @@ FROM (
 ) nrm
 ON CONFLICT (normalized_name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
+    entity_type = EXCLUDED.entity_type,
     patent_count = EXCLUDED.patent_count,
     updated_at = now()
 """

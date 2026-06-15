@@ -5,13 +5,11 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
 import { useCliffs } from "@/hooks/useTrends";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { ExpirySummaryCards } from "@/components/expiry/ExpirySummaryCards";
 import { ExpiryRadarSection } from "@/components/expiry/ExpiryRadarSection";
 import type { ExpiryRadarCardProps } from "@/components/expiry/ExpiryRadarCard";
 import { expiryApi } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 import type {
   ExpiryItem,
   ExpiryParams,
@@ -130,7 +128,6 @@ function ExpiryContent() {
   );
 
   // ── 7 sections ──
-  const today = new Date().toISOString().split("T")[0];
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
   const fiveYearsAgo = new Date(Date.now() - 5 * 365 * 86400000).toISOString().split("T")[0];
 

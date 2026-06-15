@@ -235,7 +235,7 @@ export default async function BlogPostPage({
 
 // Simple markdown→HTML for basic formatting (headings, paragraphs, links, bold, code)
 function mdToHtml(md: string): string {
-  let html = md
+  const html = md
     // Headings
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")

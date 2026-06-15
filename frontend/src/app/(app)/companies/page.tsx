@@ -54,8 +54,8 @@ export default function CompaniesPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">Data Coverage</h2>
           <p className="text-xs text-[var(--text-muted)] mb-4">Uses normalized assignee metadata when available, with patent assignee aggregation as fallback.</p>
           <div className="space-y-4">
-            <CoverageBar label="Country Coverage" value={summary?.suppliers_with_country || 0} total={summary?.total_suppliers || 0} />
-            <CoverageBar label="Entity Type Coverage" value={summary?.suppliers_with_entity_type || 0} total={summary?.total_suppliers || 0} />
+            <CoverageBar label="Country Coverage" value={summary?.suppliers_with_country || 0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Country detection requires external data sources (not available from patent office feeds). Planned for a future data enrichment sprint." />
+            <CoverageBar label="Entity Type Coverage" value={summary?.suppliers_with_entity_type || 0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Entity type classification is computed nightly from company name patterns. If zero, the backfill has not yet run on this dataset." />
           </div>
           {(summary?.entity_types?.length ?? 0) > 0 && (
             <div className="mt-5">
@@ -219,7 +219,20 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
   );
 }
 
-function CoverageBar({ label, value, total }: { label: string; value: number; total: number }) {
+function CoverageBar({ label, value, total, isLoading, enrichmentNote }: { label: string; value: number; total: number; isLoading?: boolean; enrichmentNote?: string }) {
+  if (isLoading) {
+    return (
+      <div>
+        <div className="flex items-center justify-between text-sm mb-1">
+          <Skeleton className="h-4 w-28 rounded" />
+          <Skeleton className="h-4 w-8 rounded" />
+        </div>
+        <Skeleton className="h-2 w-full rounded-full" />
+        <Skeleton className="h-3 w-40 rounded mt-1" />
+      </div>
+    );
+  }
+
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div>
@@ -230,7 +243,12 @@ function CoverageBar({ label, value, total }: { label: string; value: number; to
       <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
         <div className="h-2 bg-bg-[var(--accent)]/70 rounded-full" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-xs text-[var(--text-muted)] mt-1">{formatNumber(value)} of {formatNumber(total)} companies</p>
+      <p className="text-xs text-[var(--text-muted)] mt-1">
+        {formatNumber(value)} of {formatNumber(total)} companies
+      </p>
+      {enrichmentNote && value === 0 && total > 0 && (
+        <p className="text-xs text-[var(--text-muted)] mt-1 italic">{enrichmentNote}</p>
+      )}
     </div>
   );
 }
@@ -303,7 +321,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
                   <div className="flex flex-wrap gap-1.5">
                     {item.country && <Badge variant="default" size="sm">{item.country}</Badge>}
                     {item.entity_type && <Badge variant="default" size="sm">{humanizeTag(item.entity_type)}</Badge>}
-                    {!item.country && !item.entity_type && <span className="text-xs text-[var(--text-muted)]">Metadata pending</span>}
+                    {!item.country && !item.entity_type && <span className="text-xs text-[var(--text-muted)]">Enrichment pending</span>}
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right">

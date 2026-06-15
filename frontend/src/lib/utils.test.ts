@@ -1,9 +1,7 @@
 import {
   formatDate,
-  formatDateRelative,
   getScoreLabel,
   getScoreColor,
-  getScoreBgClass,
   truncate,
   formatNumber,
   pluralize,

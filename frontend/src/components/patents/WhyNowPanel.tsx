@@ -26,7 +26,7 @@ interface WhyNowPanelProps {
   onGenerate: () => Promise<void>;
 }
 
-export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowPanelProps) {
+export function WhyNowPanel({ artifact, isLoading, onGenerate }: WhyNowPanelProps) {
   const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {

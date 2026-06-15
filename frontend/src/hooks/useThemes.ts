@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import { themesApi } from "@/lib/api";
-import type { Topic, PaginatedResponse, PatentListItem } from "@/lib/types";
+import type { Topic } from "@/lib/types";
 
 export function useThemes() {
   return useSWR<Topic[]>(["themes"], () => themesApi.list());

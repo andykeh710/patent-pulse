@@ -57,7 +57,7 @@ export function AccountDropdown() {
           ].map((item) => (
             <button
               key={item.label}
-              onClick={() => { setOpen(false); item.action ? item.action() : router.push(item.href); }}
+              onClick={() => { setOpen(false); if (item.action) { item.action(); } else { router.push(item.href); } }}
               className="w-full text-left px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-glass)] transition-colors"
             >
               {item.label}

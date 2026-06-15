@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { BRAND } from "@/lib/brand";
 import { StepRole } from "@/components/onboarding/StepRole";
 import { StepIndustry } from "@/components/onboarding/StepIndustry";
 import { StepInterests } from "@/components/onboarding/StepInterests";

@@ -2,7 +2,6 @@
 
 import { Suspense, useState, useCallback, useEffect, type FormEvent } from "react";
 import { useSearchParams as useNextSearchParams, useRouter, usePathname } from "next/navigation";
-import { BRAND } from "@/lib/brand";
 import { usePatentSearch } from "@/hooks/usePatents";
 import { PatentCard } from "@/components/patents/PatentCard";
 import { PatentCardSkeleton } from "@/components/ui/Skeleton";

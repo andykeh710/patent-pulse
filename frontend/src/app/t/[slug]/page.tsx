@@ -17,13 +17,6 @@ interface ThemeData {
   } | null;
 }
 
-interface PaginatedPatents {
-  items: { id: string; doc_id: string; title: string; assignees: string[]; publication_date: string }[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
 // ── data fetching ────────────────────────────────────────────────────
 
 async function getTheme(slug: string): Promise<ThemeData | null> {
@@ -102,7 +95,6 @@ export default async function PublicThemePage({
 }) {
   const { slug } = await params;
   const theme = await getTheme(slug);
-  const displayName = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   if (!theme) {
     return (

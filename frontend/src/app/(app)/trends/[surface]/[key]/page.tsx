@@ -13,7 +13,6 @@ import { trendsApi, expiryApi } from "@/lib/api";
 import type {
   TrendItem,
   PatentListItem,
-  TrendNarrativeResponse,
   TrendAssigneeItem,
   ExpiryItem,
 } from "@/lib/types";
@@ -85,7 +84,7 @@ function TrendDrilldownContent() {
   // ── narrative ──
   const {
     data: narrative,
-    isLoading: narrativeLoading,
+    isLoading: _narrativeLoading,
     mutate: mutateNarrative,
   } = useSWR(
     `trend-narrative-${surface}-${key}`,

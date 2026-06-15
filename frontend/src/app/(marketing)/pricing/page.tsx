@@ -18,24 +18,6 @@ interface FeatureRow {
   enterprise: string;
 }
 
-function Check() {
-  return (
-    <svg
-      className="w-5 h-5 text-green-500 inline-block"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M5 13l4 4L19 7"
-      />
-    </svg>
-  );
-}
-
 function Faq({ q, a }: { q: string; a: string }) {
   return (
     <details className="group border-b border-[var(--border-subtle)] pb-6">

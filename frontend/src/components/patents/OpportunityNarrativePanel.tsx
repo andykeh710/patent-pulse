@@ -48,7 +48,6 @@ const timingColors: Record<string, string> = {
 };
 
 export function OpportunityNarrativePanel({
-  patent,
   artifact,
   isLoading,
   onGenerate,

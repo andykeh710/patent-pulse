@@ -69,7 +69,7 @@ export default function WebhooksPage() {
     setSaving(true);
     setMessage("");
     try {
-      const r = await fetcher("/api/v1/account/webhook-config", {
+      await fetcher("/api/v1/account/webhook-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ webhook_url: url || null, secret_key: secret || null, enabled }),
@@ -222,7 +222,7 @@ export default function WebhooksPage() {
                   </span>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">
-                  {alert.payload.title || alert.payload.message || ""}
+                  {String(alert.payload.title || alert.payload.message || "")}
                 </p>
               </div>
               <div className="text-right shrink-0">

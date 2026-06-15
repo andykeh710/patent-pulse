@@ -424,6 +424,23 @@ async def admin_list_exports(admin: _UserModel = Depends(require_admin), db=Depe
     } for e in exports]
 
 
+@router.post("/trigger-assignee-backfill", response_model=TaskStatusResponse)
+async def trigger_assignee_backfill(
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
+    """Manually trigger assignee normalization backfill.
+
+    Runs the same idempotent upsert as the daily 04:00 UTC beat schedule.
+    Populates normalized assignee names and entity_type heuristics from
+    patent_publications.assignees. Safe to run repeatedly — the ON CONFLICT
+    clause handles existing rows.
+    """
+    from app.tasks.backfill_assignees import backfill_assignees_task
+
+    task = backfill_assignees_task.delay()
+    return TaskStatusResponse(task_id=task.id, status="enqueued")
+
+
 @router.post("/debug/sentry")
 async def trigger_sentry_test(
     admin: _UserModel = Depends(require_admin),
