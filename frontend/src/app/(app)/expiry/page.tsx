@@ -243,17 +243,43 @@ function ExpiryContent() {
       <ExpirySummaryCards data={summaryData ?? null} isLoading={summaryLoading} />
 
       {/* Legal caveat banner */}
-      <div className="mb-6 p-4 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
-        <p className="text-sm text-[var(--score-medium)]">
-          <strong>Important:</strong> All expiry indicators are heuristic estimates
-          derived from filing metadata. Verify with the issuing patent office
-          (USPTO, EPO, WIPO, etc.) before any commercial decision. We do not
-          provide legal advice.
+      <div className="mb-4 p-3 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
+        <p className="text-xs text-[var(--score-medium)]">
+          <strong>Important:</strong> Expiry dates are estimates based on available patent data.
+          Maintenance events, term adjustments, continuations, jurisdiction rules, and legal
+          status changes may affect actual enforceability. Verify with official registers.
         </p>
       </div>
 
+      {/* Horizon tabs */}
+      <div className="flex flex-wrap items-center gap-1 mb-4">
+        {[
+          { label: "Expired", days: 0 },
+          { label: "0–6 mo", days: 180 },
+          { label: "6–12 mo", days: 365 },
+          { label: "12–24 mo", days: 730 },
+          { label: "24–36 mo", days: 1095 },
+          { label: "All", days: 7300 },
+        ].map((h) => {
+          const active = (params.days_ahead ?? 1825) === h.days;
+          return (
+            <button
+              key={h.days}
+              onClick={() => setParams((p) => ({ ...p, days_ahead: h.days }))}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                active
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                  : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
+              }`}
+            >
+              {h.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* FilterBar */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <select
           value={params.days_ahead ?? 1825}
           onChange={(e) =>

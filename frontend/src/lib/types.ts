@@ -855,6 +855,59 @@ export interface TodayHighlightsResponse {
 }
 
 // -- Sprint 3: Today habit engine types --
+// -- Sprint 6: Expiry Radar opportunity types --
+
+export type ExpiryWindow = "expired" | "0-6m" | "6-12m" | "12-24m" | "24-36m" | "36m+";
+
+export interface ExpiryOpportunity {
+  id: string;
+  patent_id: string;
+  title: string | null;
+  publication_number?: string;
+  assignee?: string;
+  legal_status?: string;
+  filing_date?: string;
+  publication_date?: string;
+  grant_date?: string;
+  estimated_expiry_date?: string;
+  days_until_expiry?: number;
+  expiry_window: ExpiryWindow;
+  expiry_confidence: "high" | "medium" | "low" | "unknown";
+  expiry_basis?: string;
+  legal_caveat: string;
+  technology_tags?: string[];
+  cpc_codes?: string[];
+  summary?: string;
+  opportunity_score?: number;
+  opportunity_score_label?: "high" | "medium" | "low";
+  score_components?: {
+    expiry_proximity?: number;
+    data_completeness?: number;
+    commercial_relevance?: number;
+    assignee_signal?: number;
+    topic_signal?: number;
+  };
+  why_it_matters: string;
+  evidence: Array<{
+    label: string;
+    value: string | number;
+    href?: string;
+  }>;
+  primary_action: {
+    label: string;
+    href: string;
+  };
+  secondary_actions?: Array<{
+    label: string;
+    href?: string;
+    action?: string;
+  }>;
+  active_family_risk?: boolean;
+  usage_signal_evidence_count?: number | null;
+  usage_has_self_citation_risk?: boolean | null;
+}
+
+// -- Sprint 3: Today habit engine types --
 
 export interface TodayState {
   generated_at: string;       // ISO 8601 UTC
