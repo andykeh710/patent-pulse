@@ -6,6 +6,36 @@
 
 ---
 
+## What Actually Shipped (Sprint 6)
+
+| Deliverable | Status | Notes |
+|------------|--------|-------|
+| Expiry Radar UI layer | ✅ | why-it-matters, StatusBadge, FilterChips, EmptyState, horizon tabs |
+| whyItMatters() copy on cards | ✅ | Deterministic — no LLM, derived from score/usage/window/family fields |
+| StatusBadge integration | ✅ | Replaces inline colored spans |
+| FilterChips | ✅ | Active filters with remove + clear-all |
+| EmptyState | ✅ | Per-section via ExpiryRadarSection |
+| Watchlist save integration | ✅ | Bookmark button on cards, useWatchlist + addToWatchlist/removeFromWatchlist |
+| Save error handling | ✅ | try/catch in handleToggleSave (preflight fix) |
+| Horizon tabs | ✅ | Quick-filter: Expired, 0-6mo, 6-12mo, 12-24mo, 24-36mo, All |
+| Legal caveat rewrite | ✅ | Compact, mentions term adjustments, continuations, jurisdiction rules |
+| CSV export | ✅ | Existing — unchanged, verified working |
+| ExpiryOpportunity TS contract | ✅ | Full type with score_components, evidence, actions |
+
+## What Did NOT Ship (Deferred)
+
+| Item | Reason | Target |
+|------|--------|--------|
+| Full opportunity scoring model (backend) | Score computed at ingest by `expiry_assessments.py`, surfaced on cards. No new backend scoring infra built. | Existing |
+| Durable expiry alerts | No alert infrastructure in place. Would need new model, endpoints, UI. | Sprint 7 |
+| Opportunity detail drawer | No side-panel infrastructure. Cards link to patent detail for full view. | Future |
+| Expiry workflow product events | No analytics/event layer implemented. console.debug available for dev. | Sprint 7 |
+| Backend-backed assignee/topic filters | Backend filter params exist for CPC/assignee but no facet data API. | Future |
+| Opportunity scoring explanation in UI | Score shown numerically on cards. Component breakdown not surfaced. | Future |
+| Mobile layout verification | Responsive grids in place, not manually tested at 375px. | QA |
+
+---
+
 ## 1. ExpiryOpportunity Data Contract
 
 ```typescript

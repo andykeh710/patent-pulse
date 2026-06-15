@@ -205,13 +205,17 @@ function ExpiryContent() {
   const { data: watchlist, mutate: mutateWatchlist } = useWatchlist();
   const savedIds = new Set(watchlist?.map((item) => item.patent.id) || []);
   const handleToggleSave = async (patentId: string) => {
-    const item = watchlist?.find((w) => w.patent.id === patentId);
-    if (item) {
-      await removeFromWatchlist(item.id, patentId);
-    } else {
-      await addToWatchlist(patentId);
+    try {
+      const item = watchlist?.find((w) => w.patent.id === patentId);
+      if (item) {
+        await removeFromWatchlist(item.id, patentId);
+      } else {
+        await addToWatchlist(patentId);
+      }
+      mutateWatchlist();
+    } catch {
+      // Silent — save failures are non-blocking
     }
-    mutateWatchlist();
   };
 
   // FilterChips
