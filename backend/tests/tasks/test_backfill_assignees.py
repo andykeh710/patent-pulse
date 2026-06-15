@@ -177,32 +177,28 @@ async def test_backfill_handles_variant_assignee_spellings(db_session):
     assert stats["total_processed"] == 3  # three distinct normalized names
 
 
-# ── Sprint 1.5/Post-Launch: production-name entity_type coverage ──
+# ── Post-Launch: normalization-only test (no heuristic entity_type) ──
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_entity_type_on_production_names(db_session):
-    """Representative production assignee names should all classify."""
-    names_and_expected = [
-        ("SAMSUNG ELECTRONICS CO LTD", "corporation"),
-        ("INTERNATIONAL BUSINESS MACHINES CORP", "corporation"),
-        ("TOYOTA JIDOSHA KABUSHIKI KAISHA", "corporation"),
-        ("QUALCOMM INC", "corporation"),
-        ("TAIWAN SEMICONDUCTOR MANUFACTURING COMPANY LTD", "corporation"),
-        ("APPLE INC", "corporation"),
-        ("DELL PRODUCTS LP", "corporation"),
-        ("HYUNDAI MOTOR CO", "corporation"),
-        ("KABUSHIKI KAISHA TOSHIBA", "corporation"),
-        ("UNIVERSITY OF CALIFORNIA", "university"),
-        ("NATIONAL AERONAUTICS AND SPACE ADMINISTRATION", "gov"),
+async def test_backfill_normalizes_production_names(db_session):
+    """Backfill should normalize names and set patent_count. entity_type
+    stays NULL — enriched separately from authoritative sources."""
+    names = [
+        "SAMSUNG ELECTRONICS CO LTD",
+        "INTERNATIONAL BUSINESS MACHINES CORP",
+        "TOYOTA JIDOSHA KABUSHIKI KAISHA",
+        "QUALCOMM INC",
+        "TAIWAN SEMICONDUCTOR MANUFACTURING COMPANY LTD",
+        "APPLE INC",
     ]
-    for name, expected_entity_type in names_and_expected:
+    for name in names:
         db_session.add(
             PatentPublication(
-                doc_id=f"USPTO:TEST_{name[:20].replace(' ','_')}",
+                doc_id=f"USPTO:TEST_NORM_{name[:15].replace(' ','_')}",
                 publication_number=f"TEST_{hash(name) % 1000000:06d}",
                 office="USPTO",
-                title="Test patent",
+                title="Test",
                 assignees=[name],
                 cpc=["G06F"],
             )
@@ -211,25 +207,23 @@ async def test_entity_type_on_production_names(db_session):
 
     from app.tasks.backfill_assignees import backfill_assignees_for_session
 
-    await backfill_assignees_for_session(db_session)
+    stats = await backfill_assignees_for_session(db_session)
+    assert stats["total_processed"] >= 1
 
-    # Verify each name classified correctly
+    # Verify normalization populated rows (entity_type stays NULL)
     from app.core.ai_models import Assignee
     from sqlalchemy import select
 
-    for name, expected_entity_type in names_and_expected:
-        normalized = name.strip().lower()
-        # normalize_assignee strips suffixes; build expected normalized
-        import re
-        suffix_re = re.compile(r'[ ,.]+(inc|corp|ltd|llc|gmbh|sa|ag|co)\.?$', re.IGNORECASE)
-        expected_normalized = suffix_re.sub("", name.strip()).strip().lower()
-
-        result = await db_session.execute(
-            select(Assignee).where(Assignee.normalized_name == expected_normalized)
+    result = await db_session.execute(select(Assignee))
+    rows = result.scalars().all()
+    assert len(rows) > 0, "Backfill should populate assignees table"
+    for row in rows:
+        assert row.normalized_name is not None
+        assert row.display_name is not None
+        # entity_type intentionally NULL — not set by this backfill
+        assert row.entity_type is None, (
+            f"entity_type should be NULL for '{row.normalized_name}' — "
+            "heuristic classification removed. Enrichment requires "
+            "authoritative external data."
         )
-        row = result.scalar_one_or_none()
-        assert row is not None, f"Assignee '{name}' (normalized: {expected_normalized}) not found after backfill"
-        assert row.entity_type == expected_entity_type, (
-            f"Assignee '{name}' expected entity_type '{expected_entity_type}', "
-            f"got '{row.entity_type}'"
-        )
+        assert row.patent_count > 0

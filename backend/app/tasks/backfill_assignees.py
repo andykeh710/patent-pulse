@@ -27,46 +27,20 @@ logger = logging.getLogger(__name__)
 # Backfill SQL
 
 BACKFILL_SQL = """
-INSERT INTO assignees (id, normalized_name, display_name, aliases, entity_type, patent_count, created_at, updated_at)
+INSERT INTO assignees (id, normalized_name, display_name, aliases, patent_count, created_at, updated_at)
 SELECT
     gen_random_uuid(),
     nrm.name AS normalized_name,
     nrm.display_name,
     jsonb_build_array(nrm.display_name),
-    nrm.entity_type,
     nrm.patent_count,
     now(),
     now()
 FROM (
     SELECT
         normalize_assignee(av.val) AS name,
-        -- Pick the longest raw name as the display form — it is the
-        -- most likely to contain a legal-suffix / entity-type indicator.
+        -- Pick the longest raw name as the display form.
         (array_agg(av.val ORDER BY length(av.val) DESC))[1] AS display_name,
-        -- Entity type heuristic: classify assignee based on name patterns.
-        -- Best-effort; false positives are possible (e.g. a name containing
-        -- both 'UNIVERSITY' and 'INC' will match 'university' first).
-        -- Country detection requires an external data source (not available
-        -- from patent office feeds) and is deferred to a future pipeline.
-        CASE
-            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
-                 ~ '\y(UNIVERSITY|UNIVERSIT[A-Z]+|COLLEGE|INSTITUTE OF TECHNOLOGY|INSTITUTE\b|UNIV\b|U\.? OF|SCHOOL OF)\y'
-                 THEN 'university'
-            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
-                 ~ '\y(GOVERNMENT|DEPARTMENT OF|MINISTRY OF|DEFENSE|ARMY|NAVY|AIR FORCE|NATIONAL LAB|NASA\b)\y'
-                 THEN 'gov'
-            WHEN (array_agg(upper(av.val) ORDER BY length(av.val) DESC))[1]
-                 ~ '\y(INC\b|INCORPORATED|CORP\b|CORPORATION|LTD\b|LIMITED|LLC\b|LP\b|PLC\b|LLP\b|'
-                    'GMBH|A\.?G\b|S\.?A\.?\b|SAS\b|S\.?P\.?A\.?\b|S\.?R\.?L\.?\b|S\.?À R\.?L\.?\b|'
-                    'B\.?V\.?\b|N\.?V\.?\b|A\.?B\.?\b|O\.?Y\.?\b|A\.?S\.?\b|S\.?E\.?\b|'
-                    'K\.?K\.?|KABUSHIKI KAISHA|KAISHA\b|PTE\b|'
-                    'CO\b|CO\.? LTD\b|COMPANY\b|COMPANY LTD\b|'
-                    'TECHNOLOG(?:Y|IES)\b|ELECTRONICS?\b|SEMICONDUCTOR\b|'
-                    'MOTORS?\b|DISPLAY\b|PRODUCTS\b|'
-                    'SYSTEMS?\b|SOLUTIONS?\b|GROUP\b|HOLDINGS?\b|ENTERPRISES?\b)\y'
-                 THEN 'corporation'
-            ELSE NULL
-        END AS entity_type,
         COUNT(DISTINCT p.id) AS patent_count
     FROM patent_publications p
     JOIN LATERAL jsonb_array_elements_text(p.assignees) AS av(val) ON true
@@ -75,9 +49,13 @@ FROM (
 ) nrm
 ON CONFLICT (normalized_name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
-    entity_type = EXCLUDED.entity_type,
     patent_count = EXCLUDED.patent_count,
     updated_at = now()
+-- NOTE: entity_type and country are intentionally NOT set by this backfill.
+-- entity_type enrichment requires an external data source (USPTO PatentsView,
+-- EPO Open Patent Services, or similar) with provenance tracking.
+-- Country enrichment likewise requires authoritative source data.
+-- See docs/v3-v4-roadmap.md § V3.5 for the enrichment plan.
 """
 
 
