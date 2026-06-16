@@ -93,6 +93,16 @@ MOCK_TOOL_STREAM = [
     },
 ]
 
+EXPECTED_TOOL_ASSISTANT_CONTENT = [
+    {"type": "text", "text": "Let me search for that."},
+    {
+        "type": "tool_use",
+        "id": "toolu_001",
+        "name": "search_patents",
+        "input": {"query": "solid state batteries", "limit": 5},
+    },
+]
+
 # Tool result returned by the handler
 MOCK_TOOL_RESULT = {
     "results": [
@@ -505,9 +515,11 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
     )
 
     calls = []
+    stream_messages = []
 
     async def _stream_with_one_tool(self, **kw):
         calls.append(1)
+        stream_messages.append(kw["messages"])
         if len(calls) == 1:
             for event in MOCK_TOOL_STREAM:
                 yield event
@@ -549,6 +561,66 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
     ]
     assert len(tokens_after) >= 1
     assert any("found" in t["content"].lower() for t in tokens_after)
+
+    assert len(stream_messages) == 2
+    assistant_message = stream_messages[1][-2]
+    assert assistant_message["role"] == "assistant"
+    assert assistant_message["content"] == EXPECTED_TOOL_ASSISTANT_CONTENT
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_anthropic_response_preserves_text_before_tool_use(monkeypatch):
+    """Continuation messages include the full assistant turn before tool_result."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    store = _make_memory_mock()
+    stream_messages = []
+    calls = []
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: store,
+    )
+
+    async def _stream_with_one_tool(self, **kw):
+        calls.append(1)
+        stream_messages.append(kw["messages"])
+        if len(calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "I found matching patents."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_one_tool,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    chunks = [
+        chunk
+        async for chunk in _stream_anthropic_response(
+            "search solid state batteries",
+            None,
+            "local-user",
+            MagicMock(),
+        )
+    ]
+
+    events = _parse_events("".join(chunks))
+    assert "done" in [event["type"] for event in events]
+    assert len(stream_messages) == 2
+
+    assistant_message = stream_messages[1][-2]
+    assert assistant_message["role"] == "assistant"
+    assert assistant_message["content"] == EXPECTED_TOOL_ASSISTANT_CONTENT
 
 
 @pytest.mark.asyncio(loop_scope="function")

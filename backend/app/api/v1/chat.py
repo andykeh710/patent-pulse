@@ -192,6 +192,7 @@ async def _stream_anthropic_response(
     tool_call_count = 0
 
     while True:
+        turn_text_parts: list[str] = []
         try:
             async for event in client.stream(
                 system=system_prompt,
@@ -200,6 +201,7 @@ async def _stream_anthropic_response(
             ):
                 if event["type"] == "text":
                     full_text_parts.append(event["content"])
+                    turn_text_parts.append(event["content"])
                     yield _sse_event("token", content=event["content"])
 
                 elif event["type"] == "tool_use":
@@ -239,14 +241,23 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
+                    assistant_content: list[dict] = []
+                    turn_text = "".join(turn_text_parts)
+                    if turn_text:
+                        assistant_content.append({
+                            "type": "text",
+                            "text": turn_text,
+                        })
+                    assistant_content.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
+                    })
+
                     messages.append({
                         "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
+                        "content": assistant_content,
                     })
                     messages.append({
                         "role": "user",
