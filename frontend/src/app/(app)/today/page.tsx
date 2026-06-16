@@ -29,6 +29,8 @@ import type {
   ExpiringOpportunityCard,
   NotablePatentCard,
   CompanyMoveCard,
+  Topic,
+  WatchlistItemResponse,
 } from "@/lib/types";
 import type { OpportunityItem } from "@/lib/types";
 import type { PatentListItem } from "@/lib/types";
@@ -45,16 +47,52 @@ function buildInsights(
   } | undefined,
   stats: { total_patents: number; patents_this_week: number; summarized_count: number; top_assignees?: { assignee: string; count: number }[] } | undefined,
   watchlist: unknown[] | undefined,
+  userTopics: Topic[] | undefined,
   _topOpps: { items?: OpportunityItem[] } | undefined,
   _expiring: { items?: PatentListItem[] } | undefined,
   _companies: { items?: { name: string; patent_count: number; supplier_score: number }[] } | undefined,
-): TodayInsight[] {
-  const insights: TodayInsight[] = [];
+): { personalized: TodayInsight[]; general: TodayInsight[] } {
+  const personalized: TodayInsight[] = [];
+  const general: TodayInsight[] = [];
   const now = new Date().toISOString();
+  const savedIds = new Set((watchlist as WatchlistItemResponse[] | undefined)?.map((w) => w?.patent?.id) || []);
+  const topicNames = new Set(userTopics?.map((t) => t.name.toLowerCase()) || []);
+
+  function add(insight: TodayInsight) {
+    // Determine if personalized: watchlist items and topic-related insights
+    const hasWatchlist = insight.evidence.some((e) => e.label === "From watchlist");
+    const hasTopic = insight.evidence.some((e) => e.label === "Your topic");
+    if (hasWatchlist || hasTopic) {
+      personalized.push(insight);
+    } else {
+      general.push(insight);
+    }
+  }
+
+  // Watchlist items (personalized)
+  if (watchlist && watchlist.length > 0) {
+    const wlItems = watchlist as WatchlistItemResponse[];
+    personalized.push({
+      id: "watchlist-count",
+      type: "update",
+      title: `${wlItems.length} patent${wlItems.length !== 1 ? "s" : ""} in your watchlist`,
+      summary: wlItems.length > 3
+        ? `Top watchlisted: ${wlItems.slice(0, 3).map((w) => w.patent.title || w.patent.doc_id).join(", ")}`
+        : wlItems.map((w) => w.patent.title || w.patent.doc_id).join(" · "),
+      why_it_matters: "Patents you've saved. Monitor them for updates, related citations, and expiry changes.",
+      evidence: [
+        { label: "Saved patents", value: wlItems.length },
+        { label: "From watchlist", value: "Your personal watchlist" },
+      ],
+      confidence: "high",
+      timestamp: now,
+      primary_action: { label: "Open watchlist", href: "/watchlist" },
+    });
+  }
 
   // 1. New patents this week
   if (stats && stats.patents_this_week > 0) {
-    insights.push({
+    general.push({
       id: "new-patents-week",
       type: "update",
       title: `${stats.patents_this_week.toLocaleString()} new patents this week`,
@@ -74,7 +112,7 @@ function buildInsights(
   // 2. Filing trend
   if (highlights?.filing_trend) {
     const t = highlights.filing_trend;
-    insights.push({
+    general.push({
       id: `trend-${t.trend_surface}-${t.trend_key}`,
       type: "signal",
       title: `${t.trend_label} filing activity trending up`,
@@ -95,7 +133,7 @@ function buildInsights(
   // 3. Expiring opportunities
   if (highlights?.expiring_opportunity) {
     const e = highlights.expiring_opportunity;
-    insights.push({
+    general.push({
       id: "expiring-opportunities",
       type: "opportunity",
       title: `${e.count} high-value patents expiring within 90 days`,
@@ -115,7 +153,7 @@ function buildInsights(
   // 4. Notable patent
   if (highlights?.notable_patent) {
     const n = highlights.notable_patent;
-    insights.push({
+    general.push({
       id: `notable-${n.id}`,
       type: "signal",
       title: n.title || n.publication_number,
@@ -135,7 +173,7 @@ function buildInsights(
   // 5. Company move
   if (highlights?.company_move) {
     const c = highlights.company_move;
-    insights.push({
+    general.push({
       id: `company-${c.assignee}`,
       type: "update",
       title: `${c.assignee} filing surge: +${c.delta} vs 4-week average`,
@@ -155,7 +193,7 @@ function buildInsights(
 
   // 6. Watchlist activity
   if (watchlist && watchlist.length > 0) {
-    insights.push({
+    general.push({
       id: "watchlist-status",
       type: "update",
       title: `${watchlist.length} saved ${watchlist.length === 1 ? "patent" : "patents"} in your watchlist`,
@@ -169,7 +207,7 @@ function buildInsights(
     });
   }
 
-  return insights;
+  return { personalized, general };
 }
 
 // -- Component --
@@ -217,19 +255,20 @@ export default function TodayPage() {
     }
   }, [state, stateError]);
 
-  // Build insights from real data
-  const insights = useMemo(
+  // Build insights from real data — split into personalized + general
+  const { personalized, general } = useMemo(
     () =>
       buildInsights(
         state,
         highlights,
         stats,
         watchlist,
+        themes,
         topOpps,
         expiring,
         companies,
       ),
-    [state, highlights, stats, watchlist, topOpps, expiring, companies],
+    [state, highlights, stats, watchlist, themes, topOpps, expiring, companies],
   );
 
   const isLoading = themesLoading || watchlistLoading;
@@ -359,16 +398,44 @@ export default function TodayPage() {
       )}
 
       <div className="space-y-6">
-        {/* Top Signals — InsightCards */}
-        {insights.length > 0 && (
+        {/* For You — personalized insights */}
+        {personalized.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                Top Signals
+              <h2 className="text-sm font-semibold text-[var(--accent)] uppercase tracking-wider">
+                For You
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {insights.slice(0, 6).map((insight) => (
+              {personalized.slice(0, 6).map((insight) => (
+                <InsightCard
+                  key={insight.id}
+                  type={insight.type}
+                  title={insight.title}
+                  summary={insight.summary}
+                  whyItMatters={insight.why_it_matters}
+                  evidence={insight.evidence
+                    .map((e) => `${e.label}: ${e.value}`)
+                    .join(" · ")}
+                  confidence={insight.confidence}
+                  timestamp={insight.timestamp}
+                  primaryAction={insight.primary_action}
+                  secondaryAction={insight.secondary_action}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+        {/* More Signals — general insights */}
+        {general.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                More Signals
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {general.slice(0, 6).map((insight) => (
                 <InsightCard
                   key={insight.id}
                   type={insight.type}
