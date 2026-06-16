@@ -71,6 +71,20 @@ export default function ThemesPage() {
     }
   };
 
+  const handleFollow = async (theme: Topic) => {
+    try {
+      await topicsApi.create({
+        name: theme.name,
+        description: theme.description || undefined,
+        cpc_prefixes: theme.cpc_prefixes,
+        keywords: theme.keywords || undefined,
+      });
+      mutate();
+    } catch {
+      // silently fail — user can retry
+    }
+  };
+
   // Separate system themes (CPC sections, no user_id) from user topics
   const systemThemes = themes?.filter((t) => !t.user_id) || [];
   const userTopics = themes?.filter((t) => t.user_id) || [];
@@ -167,6 +181,7 @@ export default function ThemesPage() {
                 theme={theme}
                 isSelected={selectedTheme === theme.id}
                 isSystem
+                onFollow={() => handleFollow(theme)}
                 onClick={() => {
                   setSelectedTheme(selectedTheme === theme.id ? null : theme.id);
                   setPage(1);
@@ -312,6 +327,7 @@ function ThemeCard({
   onDelete,
   isDeleting,
   onClick,
+  onFollow,
 }: {
   theme: Topic;
   isSelected: boolean;
@@ -319,6 +335,7 @@ function ThemeCard({
   onDelete?: () => void;
   isDeleting?: boolean;
   onClick: () => void;
+  onFollow?: () => void;
 }) {
   const tagColor = theme.opportunity_tags?.length
     ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
@@ -397,6 +414,17 @@ function ThemeCard({
             className="text-xs text-[var(--expiry-lapsed-confirmed)] hover:opacity-80 disabled:opacity-50 transition-opacity"
           >
             {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        )}
+        {isSystem && onFollow && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFollow();
+            }}
+            className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
+          >
+            + Follow
           </button>
         )}
       </div>

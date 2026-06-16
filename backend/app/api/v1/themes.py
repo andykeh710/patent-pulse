@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, current_user
 from app.core.models import PatentPublication
 from app.core.schemas import PaginatedResponse, PatentListItem
 from app.core.theme_models import Theme, ThemeMatch
@@ -111,8 +111,12 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
 
 
 @router.post("", response_model=ThemeResponse)
-async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
-    """Create a new theme."""
+async def create_theme(
+    db: DbSession,
+    theme_data: ThemeCreate,
+    user_id: str = Depends(current_user),
+) -> ThemeResponse:
+    """Create a new theme. User-scoped — the authenticated user's ID is used."""
     existing = await db.execute(select(Theme).where(Theme.name == theme_data.name))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Theme with this name already exists")
@@ -126,7 +130,7 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         keywords=theme_data.keywords,
         opportunity_tags=theme_data.opportunity_tags,
         min_opportunity_score=theme_data.min_opportunity_score,
-        user_id=theme_data.user_id or "anonymous",
+        user_id=user_id,  # use authenticated user's ID
     )
     db.add(theme)
     await db.commit()
@@ -221,13 +225,19 @@ async def update_theme(
 
 
 @router.delete("/{theme_id}")
-async def delete_theme(db: DbSession, theme_id: UUID) -> dict:
-    """Delete a theme and its matches."""
+async def delete_theme(
+    db: DbSession,
+    theme_id: UUID,
+    user_id: str = Depends(current_user),
+) -> dict:
+    """Delete a theme and its matches. Only the owner can delete."""
     result = await db.execute(select(Theme).where(Theme.id == theme_id))
     theme = result.scalar_one_or_none()
 
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
+    if theme.user_id and theme.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own themes")
 
     await db.execute(delete(ThemeMatch).where(ThemeMatch.theme_id == theme_id))
     await db.delete(theme)
