@@ -5,17 +5,21 @@ Controlled manual accounts are used instead.
 
 ---
 
-## How a reviewer logs in
+## How a reviewer logs in (local dev)
 
-1. **Get a pre-provisioned sign-in link from Andy.**
-   Andy generates a magic-link URL using the admin sign-in tool and
-   sends it directly to the reviewer (email, Slack, etc.).
+1. **Request a magic link.** Go to http://localhost:3000/login, enter your email, click "Send magic link." The UI says it was sent.
 
-2. **Open the link in a browser.**
-   The link looks like: `https://inventionindex8.com/auth/magic?token=...`
+2. **Find the dev magic link in backend logs.** Since Resend email sending is not configured locally, the login page won't actually email you. Instead, the backend prints:
+   ```
+   DEV MAGIC LINK: http://localhost:3000/login/verify?token=...
+   ```
+   Run `docker compose logs backend | grep "DEV MAGIC LINK"` to find it.
+
+3. **Open the link in a browser.** The link looks like:
+   `http://localhost:3000/login/verify?token=...`
    It authenticates you and redirects to Today.
 
-3. **Complete onboarding (first-time users only).**
+4. **Complete onboarding (first-time users only).**
    - Select your role, industry, interests
    - Review suggested companies and themes (remove any you don't want)
    - Confirm → redirected to Today

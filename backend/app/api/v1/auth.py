@@ -114,6 +114,12 @@ async def request_link(
 
         magic_link = f"{settings.magic_link_base_url}/login/verify?token={raw_token}"
 
+        # Always log the magic link in dev/dry_run so Andy can QA locally
+        if settings.email_send_mode in ("dev", "dry_run"):
+            logger.info(
+                "DEV MAGIC LINK: %s", magic_link,
+            )
+
         # Send magic link via Resend
         from app.email.sender import send_email
         await send_email(
