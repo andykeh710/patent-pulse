@@ -21,18 +21,18 @@ export function MarketingNav() {
 
           {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/pricing"
+            <a
+              href="#pricing"
               className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               Pricing
-            </Link>
-            <Link
-              href="/about"
+            </a>
+            <a
+              href="#about"
               className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               About
-            </Link>
+            </a>
             <Link
               href="/login"
               className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
