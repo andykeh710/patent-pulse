@@ -82,21 +82,23 @@ async def _check_resend() -> str:
     try:
         import urllib.request
         import urllib.error
+        # Use the /emails endpoint (works with sending_access keys).
+        # /domains requires full_access which is unnecessary and would
+        # return 403 for a correctly-configured sending-access key.
         req = urllib.request.Request(
-            "https://api.resend.com/domains",
+            "https://api.resend.com/emails?limit=1",
             headers={"Authorization": f"Bearer {settings.resend_api_key}"},
         )
-        # 5s urlopen + 8s asyncio cap: TLS handshake from a container needs headroom.
         await asyncio.wait_for(
             asyncio.to_thread(urllib.request.urlopen, req, timeout=5),
             timeout=8,
         )
         return "ok"
     except urllib.error.HTTPError as e:
-        if e.code == 403:
+        if e.code in (401, 403):
             logger.warning(
-                "Health: Resend probe returned 403 — check RESEND_API_KEY is valid "
-                "and has domain permissions at https://resend.com/api-keys"
+                "Health: Resend probe returned %s — check RESEND_API_KEY "
+                "is valid at https://resend.com/api-keys", e.code,
             )
             return "unauthorized"
         logger.warning(
