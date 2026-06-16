@@ -24,7 +24,7 @@
 | 4 | User can remove topics | ✅ | Delete button on user-owned themes. DELETE /themes/{id} with owner check. |
 | 5 | Suggested topics distinct from selected | ✅ | Onboarding StepConfirm shows suggestions with ✕ remove buttons. User can remove before confirming. |
 | 6 | System does not auto-select suggestions | ✅ | Industry selection triggers topic SUGGESTIONS via POST /onboarding/complete. User must confirm. |
-| 7 | Onboarding creates real records | ⚠️ Mismatch | Confirm endpoint creates TopicSubscription rows. But themes page shows "Your Topics" via `Theme.user_id`, not `TopicSubscription`. Two different data paths. |
+| 7 | Onboarding creates real records | ✅ Fixed | `cff99ca` + `5da444a`. Confirm creates TopicSubscription rows. `GET /themes/following` returns them. |
 | 8 | Theme follow buttons persist | ✅ | Follow creates user-owned theme via POST /themes. Delete removes it. |
 | 9 | Company follow path exists or hidden | ✅ Exists | Sprint 5 follow infrastructure exists — companies can be followed from detail pages. Watchlist "Followed Companies" tab wired. |
 | 10 | Today consumes followed topics | ⚠️ Gap | Today loads themes via useThemes() which returns ALL themes. Does NOT filter by TopicSubscription or user_id for personalization. |
