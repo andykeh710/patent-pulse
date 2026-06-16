@@ -48,6 +48,7 @@ function buildInsights(
   stats: { total_patents: number; patents_this_week: number; summarized_count: number; top_assignees?: { assignee: string; count: number }[] } | undefined,
   watchlist: unknown[] | undefined,
   userTopics: Topic[] | undefined,
+  followedCompanyNames: Set<string>,
   _topOpps: { items?: OpportunityItem[] } | undefined,
   _expiring: { items?: PatentListItem[] } | undefined,
   _companies: { items?: { name: string; patent_count: number; supplier_score: number }[] } | undefined,
@@ -55,14 +56,14 @@ function buildInsights(
   const personalized: TodayInsight[] = [];
   const general: TodayInsight[] = [];
   const now = new Date().toISOString();
-  const savedIds = new Set((watchlist as WatchlistItemResponse[] | undefined)?.map((w) => w?.patent?.id) || []);
-  const topicNames = new Set(userTopics?.map((t) => t.name.toLowerCase()) || []);
+  const _savedIds = new Set((watchlist as WatchlistItemResponse[] | undefined)?.map((w) => w?.patent?.id) || []);
+  const _topicCPCs = new Set(userTopics?.flatMap((t) => t.cpc_prefixes || []) || []);
 
   function add(insight: TodayInsight) {
-    // Determine if personalized: watchlist items and topic-related insights
     const hasWatchlist = insight.evidence.some((e) => e.label === "From watchlist");
     const hasTopic = insight.evidence.some((e) => e.label === "Your topic");
-    if (hasWatchlist || hasTopic) {
+    const hasCompany = insight.evidence.some((e) => e.label === "Company you follow");
+    if (hasWatchlist || hasTopic || hasCompany) {
       personalized.push(insight);
     } else {
       general.push(insight);
@@ -173,17 +174,23 @@ function buildInsights(
   // 5. Company move
   if (highlights?.company_move) {
     const c = highlights.company_move;
-    general.push({
+    const isFollowed = followedCompanyNames.has(c.assignee.toLowerCase());
+    const why = isFollowed
+      ? `Shown because you follow ${c.assignee}. Their filing surge of +${c.delta} vs average may signal a new product cycle, strategic IP push, or competitive positioning relevant to your watch.`
+      : "A filing surge may indicate a new product cycle, strategic IP push, or competitive positioning.";
+    const evidence = [
+      { label: "This week", value: c.count_this_week },
+      { label: "4-week avg", value: c.count_4wk_avg.toFixed(1) },
+      { label: "Delta", value: `+${c.delta}` },
+    ];
+    if (isFollowed) evidence.push({ label: "Company you follow", value: c.assignee });
+    add({
       id: `company-${c.assignee}`,
       type: "update",
       title: `${c.assignee} filing surge: +${c.delta} vs 4-week average`,
       summary: `${c.count_this_week} filings this week compared to a ${c.count_4wk_avg.toFixed(1)} weekly average.`,
-      why_it_matters: "A filing surge may indicate a new product cycle, strategic IP push, or competitive positioning.",
-      evidence: [
-        { label: "This week", value: c.count_this_week },
-        { label: "4-week avg", value: c.count_4wk_avg.toFixed(1) },
-        { label: "Delta", value: `+${c.delta}` },
-      ],
+      why_it_matters: why,
+      evidence,
       confidence: "medium",
       timestamp: now,
       primary_action: { label: "View company profile", href: `/companies/${encodeURIComponent(c.assignee)}` },
@@ -256,6 +263,10 @@ export default function TodayPage() {
   }, [state, stateError]);
 
   // Build insights from real data — split into personalized + general
+  const followedCompanyNames = useMemo(
+    () => new Set((companies?.items || []).map((c) => c.name.toLowerCase())),
+    [companies],
+  );
   const { personalized, general } = useMemo(
     () =>
       buildInsights(
@@ -264,11 +275,12 @@ export default function TodayPage() {
         stats,
         watchlist,
         themes,
+        followedCompanyNames,
         topOpps,
         expiring,
         companies,
       ),
-    [state, highlights, stats, watchlist, themes, topOpps, expiring, companies],
+    [state, highlights, stats, watchlist, themes, followedCompanyNames, topOpps, expiring, companies],
   );
 
   const isLoading = themesLoading || watchlistLoading;
