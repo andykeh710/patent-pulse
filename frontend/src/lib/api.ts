@@ -378,6 +378,9 @@ export const suppliersApi = {
 
   profile: (name: string) =>
     apiFetch<CompanyProfile>(`/api/v1/suppliers/profile/${encodeURIComponent(name)}`),
+
+  follows: () =>
+    apiFetch<Array<{ company_name: string; normalized_name: string }>>(`/api/v1/suppliers/follows`),
 };
 
 // Sprint 5

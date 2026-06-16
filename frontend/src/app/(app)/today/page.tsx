@@ -20,7 +20,7 @@ import { usePriorityWatch, usePatentStats } from "@/hooks/usePatents";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useThemes } from "@/hooks/useThemes";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { todayApi } from "@/lib/api";
+import { todayApi, suppliersApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type {
   TodayState,
@@ -250,6 +250,11 @@ export default function TodayPage() {
     page_size: 5,
   });
 
+  const { data: follows } = useSWR("followed-companies", () => suppliersApi.follows(), {
+    revalidateOnFocus: false,
+    dedupingInterval: 300_000,
+  });
+
   // Mark seen after data loads — only if not recently marked (prevents
   // rapid-refresh churn that would mislabel the comparison window).
   const markSeenRef = useRef(false);
@@ -264,8 +269,8 @@ export default function TodayPage() {
 
   // Build insights from real data — split into personalized + general
   const followedCompanyNames = useMemo(
-    () => new Set((companies?.items || []).map((c) => c.name.toLowerCase())),
-    [companies],
+    () => new Set((follows || []).map((f: { company_name: string }) => f.company_name.toLowerCase())),
+    [follows],
   );
   const { personalized, general } = useMemo(
     () =>
@@ -438,6 +443,25 @@ export default function TodayPage() {
             </div>
           </section>
         )}
+
+        {/* Empty personalized state */}
+        {personalized.length === 0 && !isLoading && (
+          <section className="bg-gradient-to-r from-[var(--bg-elevated)] to-[var(--bg-surface)] rounded-lg border border-[var(--accent)]/20 p-6">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              Personalize your briefing
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Follow companies, save patents, or create topics to get personalized
+              intelligence on Today. Generic signals are shown below.
+            </p>
+            <div className="flex gap-3 mt-3">
+              <Link href="/search" className="text-sm text-[var(--accent)] hover:underline">Search patents</Link>
+              <Link href="/themes" className="text-sm text-[var(--accent)] hover:underline">Create topics</Link>
+              <Link href="/companies" className="text-sm text-[var(--accent)] hover:underline">Browse companies</Link>
+            </div>
+          </section>
+        )}
+
         {/* More Signals — general insights */}
         {general.length > 0 && (
           <section>
