@@ -246,6 +246,54 @@ async def delete_theme(
     return {"deleted": True}
 
 
+# -- Sprint Boris: themes the user is subscribed to via onboarding --
+
+
+@router.get("/following", response_model=list[ThemeResponse])
+async def list_followed_themes(
+    db: DbSession,
+    user_id: str = Depends(current_user),
+) -> list[ThemeResponse]:
+    from app.core.subscription_models import TopicSubscription
+
+    sub_result = await db.execute(
+        select(TopicSubscription.theme_id).where(
+            TopicSubscription.user_id == user_id,
+        )
+    )
+    subscribed_ids = [row[0] for row in sub_result.fetchall()]
+    if not subscribed_ids:
+        return []
+
+    result = await db.execute(
+        select(Theme).where(Theme.id.in_(subscribed_ids)).order_by(Theme.name)
+    )
+    themes = result.scalars().all()
+
+    count_query = (
+        select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt"))
+        .where(ThemeMatch.theme_id.in_(subscribed_ids))
+        .group_by(ThemeMatch.theme_id)
+    )
+    count_result = await db.execute(count_query)
+    count_map = {row.theme_id: row.cnt for row in count_result}
+
+    return [
+        ThemeResponse(
+            id=str(t.id), name=t.name, description=t.description,
+            cpc_prefixes=t.cpc_prefixes or [],
+            assignee_keywords=t.assignee_keywords or [],
+            title_keywords=t.title_keywords or [],
+            keywords=t.keywords, opportunity_tags=t.opportunity_tags,
+            min_opportunity_score=t.min_opportunity_score,
+            user_id=t.user_id, is_active=t.is_active,
+            patent_count=count_map.get(t.id, 0),
+            created_at=t.created_at.isoformat(),
+        )
+        for t in themes
+    ]
+
+
 @router.get("/{theme_id}/patents", response_model=PaginatedResponse[PatentListItem])
 async def get_theme_patents(
     db: DbSession,
