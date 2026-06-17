@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import SESSION_COOKIE_NAME, current_user, get_db
+from app.api.deps import SESSION_COOKIE_NAME, current_user, current_user_record, get_db
 from app.core.ai_models import AIRun, User
 from app.core.billing_models import BillingSubscription
 from app.core.subscription_models import EmailDelivery
@@ -117,7 +117,7 @@ class PersonaResponse(BaseModel):
 @router.put("/persona", response_model=PersonaResponse)
 async def set_persona(
     request: PersonaSetRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
     db: AsyncSession = Depends(get_db),
 ):
     if request.persona not in ("operator", "investor", "curious"):
@@ -139,7 +139,7 @@ class EmailPreferencesUpdate(BaseModel):
 
 @router.get("/email-preferences", response_model=EmailPreferencesResponse)
 async def get_email_preferences(
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
 ) -> EmailPreferencesResponse:
     prefs = user.preferences or {}
     return EmailPreferencesResponse(
@@ -151,7 +151,7 @@ async def get_email_preferences(
 @router.put("/email-preferences", response_model=EmailPreferencesResponse)
 async def update_email_preferences(
     body: EmailPreferencesUpdate,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
     db: AsyncSession = Depends(get_db),
 ) -> EmailPreferencesResponse:
     prefs = dict(user.preferences or {})
@@ -182,7 +182,7 @@ class CompanyFollowResponse(BaseModel):
 @router.post("/companies", status_code=201, response_model=CompanyFollowResponse)
 async def follow_company(
     request: CompanyFollowRequest,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
     db: AsyncSession = Depends(get_db),
 ):
     follow = await add_follow(db, user.id, request.company_name)
@@ -195,7 +195,7 @@ async def follow_company(
 @router.delete("/companies/{normalized_name}", status_code=204)
 async def unfollow_company(
     normalized_name: str,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
     db: AsyncSession = Depends(get_db),
 ):
     deleted = await remove_follow(db, user.id, normalized_name)
@@ -205,7 +205,7 @@ async def unfollow_company(
 
 @router.get("/companies", response_model=list[CompanyFollowResponse])
 async def get_company_follows(
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_record),
     db: AsyncSession = Depends(get_db),
 ):
     follows = await list_follows(db, user.id)

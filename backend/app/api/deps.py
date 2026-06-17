@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
+from app.core.ai_models import User
 from app.database import get_session
 
 
@@ -41,8 +42,6 @@ async def current_user(
     from fastapi import HTTPException
     from sqlalchemy import select
 
-    from app.core.ai_models import User
-
     if not auth_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -64,6 +63,18 @@ async def current_user(
     return user.id
 
 
+async def current_user_record(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Return the authenticated User row for handlers that mutate user state."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
 async def current_user_optional(
     auth_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     db: AsyncSession = Depends(get_db),
@@ -80,7 +91,6 @@ async def current_user_optional(
     except Exception:
         return None
 
-    from app.core.ai_models import User
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     return user.id if user else None
 
