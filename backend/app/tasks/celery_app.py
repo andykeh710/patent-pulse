@@ -275,32 +275,32 @@ celery_app.conf.beat_schedule = {
     },
     # PatentsView abstract/claims backfill — 4x/day
     "patentsview-backfill-midnight": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=0, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-morning": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=6, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-noon": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=12, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-evening": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=18, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     # BigQuery high-priority abstract backfill — daily 04:30 UTC
     "bigquery-high-priority-backfill": {
-        "task": "app.tasks.bigquery_backfill.backfill_high_priority_bigquery",
+        "task": "app.tasks.enrich_abstracts.backfill_high_priority_bigquery",
         "schedule": crontab(hour=4, minute=30),
         "kwargs": {"limit": 500},
         "options": {"queue": "maintenance"},

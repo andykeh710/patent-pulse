@@ -2,6 +2,18 @@
 
 import { useFreshness } from "@/hooks/useFreshness";
 
+// Patent/trend data older than this is flagged loudly so the product never
+// silently implies live intelligence. The free Google Patents BigQuery dataset
+// lags real-time, so stale windows are expected and must be disclosed.
+const STALE_AFTER_DAYS = 7;
+
+function daysSince(isoString: string | null): number | null {
+  if (!isoString) return null;
+  const ms = Date.now() - new Date(isoString).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
 function formatRelative(isoString: string | null): string {
   if (!isoString) return "Unknown";
   const date = new Date(isoString);
@@ -62,18 +74,45 @@ export function FreshnessBanner({
     });
   }
 
-  if (items.length === 0) return null;
+  // Loud stale-data disclosure. Based on ingestion recency (created_at) and
+  // trend recompute time. Only shown for sources the caller asked about.
+  const patentAgeDays = show.includes("patents") ? daysSince(data.latest_patent_created_at) : null;
+  const trendAgeDays = show.includes("trends") ? daysSince(data.latest_trend_snapshot_at) : null;
+  const patentsStale = patentAgeDays !== null && patentAgeDays > STALE_AFTER_DAYS;
+  const trendsStale = trendAgeDays !== null && trendAgeDays > STALE_AFTER_DAYS;
+
+  if (items.length === 0 && !patentsStale && !trendsStale) return null;
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] ${className}`}
-    >
-      {items.map((item, i) => (
-        <span key={i}>
-          <span className="text-[var(--text-secondary)]">{item.label}:</span>{" "}
-          {item.value}
-        </span>
-      ))}
+    <div className={className}>
+      {(patentsStale || trendsStale) && (
+        <div
+          role="status"
+          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
+          <div>
+            <span className="font-semibold">Data is not live.</span>{" "}
+            {patentsStale && (
+              <>Patent ingestion last ran {patentAgeDays}d ago{data.latest_patent_publication_date ? ` (latest publication ${formatRelative(data.latest_patent_publication_date)})` : ""}. </>
+            )}
+            {trendsStale && <>Trends were last computed {trendAgeDays}d ago. </>}
+            Recent filings may be missing — this reflects the current data source&apos;s
+            refresh lag, not live intelligence. Verify against official patent
+            registers before acting.
+          </div>
+        </div>
+      )}
+      {items.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
+          {items.map((item, i) => (
+            <span key={i}>
+              <span className="text-[var(--text-secondary)]">{item.label}:</span>{" "}
+              {item.value}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

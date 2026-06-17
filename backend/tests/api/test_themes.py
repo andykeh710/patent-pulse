@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.core.models import PatentPublication
 from app.core.theme_models import Theme, ThemeMatch
-from app.tasks.theme_matcher import _match_single_theme
+from app.tasks.theme_matcher import _calculate_match_score, _match_single_theme
 
 
 def _cookie(user_id: str = "local-user") -> dict:
@@ -162,7 +162,7 @@ async def test_update_topic_partial(client, db_session):
     # Patch description only
     response = await client.patch(f"/api/v1/themes/{topic_id}", json={
         "description": "Updated desc",
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "Orig Name"
@@ -182,9 +182,76 @@ async def test_update_topic_keywords_replaces_list(client, db_session):
 
     response = await client.patch(f"/api/v1/themes/{topic_id}", json={
         "keywords": ["x", "y"],
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     assert response.json()["keywords"] == ["x", "y"]
+
+
+@pytest.mark.asyncio
+async def test_update_topic_requires_auth(client, db_session):
+    """PATCH without a session cookie returns 401, not 500/200."""
+    response = await client.post(
+        "/api/v1/themes", json={"name": "Auth Patch Topic"}, cookies=_cookie()
+    )
+    topic_id = response.json()["id"]
+
+    response = await client.patch(
+        f"/api/v1/themes/{topic_id}", json={"description": "no auth"}
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_other_users_topic_forbidden(client, db_session):
+    """A user cannot edit a topic owned by someone else."""
+    response = await client.post(
+        "/api/v1/themes", json={"name": "Owned By One"}, cookies=_cookie("local-user")
+    )
+    topic_id = response.json()["id"]
+
+    response = await client.patch(
+        f"/api/v1/themes/{topic_id}",
+        json={"description": "hijack"},
+        cookies=_cookie("local-user-2"),
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_update_system_theme_forbidden_for_normal_user(client, db_session):
+    """System themes (user_id IS NULL) cannot be edited by a normal user."""
+    sys_theme = Theme(name="System Editable Test", cpc_prefixes=["G06F"], user_id=None)
+    db_session.add(sys_theme)
+    await db_session.commit()
+
+    response = await client.patch(
+        f"/api/v1/themes/{sys_theme.id}",
+        json={"description": "tamper"},
+        cookies=_cookie("local-user"),  # seeded user is non-admin by default
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_update_system_theme_allowed_for_admin(client, db_session):
+    """An admin may edit system themes (admin edit path)."""
+    from app.core.ai_models import User
+
+    admin = (
+        await db_session.execute(select(User).where(User.id == "local-user"))
+    ).scalar_one()
+    admin.is_admin = True
+    sys_theme = Theme(name="System Admin Editable", cpc_prefixes=["G06F"], user_id=None)
+    db_session.add(sys_theme)
+    await db_session.commit()
+
+    response = await client.patch(
+        f"/api/v1/themes/{sys_theme.id}",
+        json={"description": "official update"},
+        cookies=_cookie("local-user"),
+    )
+    assert response.status_code == 200
+    assert response.json()["description"] == "official update"
 
 
 # ---------------------------------------------------------------------------
@@ -262,3 +329,57 @@ async def test_theme_matcher_uses_keywords(client, db_session):
     assert match.match_score > 0
     assert any("quantum" in reason.lower() for reason in match.match_reasons), \
         f"Expected keyword reason in {match.match_reasons}"
+
+
+# ---------------------------------------------------------------------------
+# Theme matcher — false-positive prevention (whole-word matching)
+# ---------------------------------------------------------------------------
+
+def _patent(**kw) -> PatentPublication:
+    base = dict(
+        doc_id="USPTO:FP001", office="USPTO", publication_number="FP001",
+        assignees=[], cpc=[], title="", abstract="", legal_status="GRANTED",
+    )
+    base.update(kw)
+    return PatentPublication(**base)
+
+
+def test_short_keyword_does_not_substring_match_assignee():
+    """'AI' must NOT match the substring inside 'HYUNDAI' (the original bug)."""
+    patent = _patent(
+        assignees=["HYUNDAI MOTOR CO"],
+        title="Automotive hot gas heat pump system",
+        cpc=["F25B30/00"],
+    )
+    theme = Theme(name="AI", assignee_keywords=["AI"], title_keywords=[],
+                  keywords=[], cpc_prefixes=[])
+    score, reasons = _calculate_match_score(patent, theme)
+    assert score == 0.0, f"AI should not match Hyundai; got {reasons}"
+
+
+def test_short_keyword_does_not_substring_match_title():
+    """A 'die' keyword must not match 'studied' / 'diesel' in a title."""
+    patent = _patent(title="A diesel engine studied under load", cpc=[])
+    theme = Theme(name="Chip", keywords=["die"], cpc_prefixes=[],
+                  assignee_keywords=[], title_keywords=[])
+    score, _ = _calculate_match_score(patent, theme)
+    assert score == 0.0
+
+
+def test_whole_word_keyword_still_matches():
+    """Whole-word keywords still match legitimately."""
+    patent = _patent(
+        assignees=["AI Research Labs"],
+        title="Neural network training for deep learning",
+        cpc=["G06N3/08"],
+    )
+    theme = Theme(
+        name="AI / Machine Learning", cpc_prefixes=["G06N"],
+        assignee_keywords=["AI"], title_keywords=["neural network"],
+        keywords=["deep learning"],
+    )
+    score, reasons = _calculate_match_score(patent, theme)
+    assert score > 0
+    assert any("CPC" in r for r in reasons)
+    assert any("neural network" in r.lower() for r in reasons)
+    assert any("AI" in r for r in reasons)

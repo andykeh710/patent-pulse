@@ -75,18 +75,36 @@ def _set_session_cookie(
     )
 
 
+def _admin_email_set() -> set[str]:
+    """Lowercased allowlist of admin emails from settings.admin_emails."""
+    raw = settings.admin_emails or ""
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
 async def _get_or_create_user(session, email: str) -> User:
-    """Find or create a user by email, returning the User row."""
-    result = await session.execute(
-        select(User).where(User.email == email.strip().lower())
-    )
+    """Find or create a user by email, returning the User row.
+
+    Users are non-admin by default. Admin is granted only to addresses in the
+    ADMIN_EMAILS allowlist — on creation and, self-healing, on subsequent
+    sign-ins if the allowlist changed.
+    """
+    normalized = email.strip().lower()
+    is_allowlisted_admin = normalized in _admin_email_set()
+
+    result = await session.execute(select(User).where(User.email == normalized))
     user = result.scalar_one_or_none()
     if not user:
         user = User(
-            email=email.strip().lower(),
+            email=normalized,
+            is_admin=is_allowlisted_admin,
             # User.id is auto-generated (VARCHAR from the users table).
         )
         session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    elif is_allowlisted_admin and not user.is_admin:
+        # Promote a known admin whose account predates the allowlist entry.
+        user.is_admin = True
         await session.commit()
         await session.refresh(user)
     return user

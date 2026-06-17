@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
 from app.api.deps import DbSession, current_user
+from app.core.ai_models import User
 from app.core.models import PatentPublication
 from app.core.schemas import PaginatedResponse, PatentListItem
 from app.core.theme_models import Theme, ThemeMatch
@@ -234,14 +235,36 @@ async def get_theme(db: DbSession, theme_id: UUID) -> ThemeResponse:
 
 @router.patch("/{theme_id}", response_model=ThemeResponse)
 async def update_theme(
-    db: DbSession, theme_id: UUID, theme_data: ThemeUpdate
+    db: DbSession,
+    theme_id: UUID,
+    theme_data: ThemeUpdate,
+    user_id: str = Depends(current_user),
 ) -> ThemeResponse:
-    """Update a theme."""
+    """Update a theme.
+
+    Auth + ownership rules:
+      - custom (user) themes: only the owner may edit.
+      - system themes (user_id IS NULL): admin-only.
+    """
     result = await db.execute(select(Theme).where(Theme.id == theme_id))
     theme = result.scalar_one_or_none()
 
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
+
+    if theme.user_id is None:
+        # System theme — admin-only edit path.
+        user = (
+            await db.execute(select(User).where(User.id == user_id))
+        ).scalar_one_or_none()
+        if user is None or not user.is_admin:
+            raise HTTPException(
+                status_code=403, detail="System themes can only be edited by an admin"
+            )
+    elif theme.user_id != user_id:
+        raise HTTPException(
+            status_code=403, detail="You can only edit your own themes"
+        )
 
     update_data = theme_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():

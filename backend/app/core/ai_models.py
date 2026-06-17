@@ -50,7 +50,10 @@ class User(Base):
     display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     email: Mapped[str | None] = mapped_column(String(256))
     tier: Mapped[str] = mapped_column(String(16), default="free", index=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Security: users are NON-admin by default. Admin is granted only to
+    # explicitly-known accounts (the DEFAULT_USER_ID scaffold and the
+    # ADMIN_EMAILS allowlist). See migration 0035.
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     preferences: Mapped[dict | None] = mapped_column(JSONB)
     persona: Mapped[str | None] = mapped_column(String(16), nullable=True)
     industry_focus: Mapped[str | None] = mapped_column(String(64), nullable=True)

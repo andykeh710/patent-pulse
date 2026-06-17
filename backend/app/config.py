@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     magic_link_ttl_minutes: int = 15
     magic_link_base_url: str = "http://localhost:3000"
 
+    # Security: comma-separated allowlist of email addresses that are granted
+    # admin. Used by migration 0035 to preserve known admins when flipping the
+    # is_admin default to false, and by the auth flow to (re)grant admin to
+    # these accounts on sign-in. Everyone else is a normal (non-admin) user.
+    admin_emails: str = ""
+
     # Sprint 6: email
     resend_api_key: str = ""
     email_from_address: str = ""
