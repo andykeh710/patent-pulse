@@ -9,6 +9,7 @@ from app.auth.magic_link import (
     generate_token,
     verify_token,
 )
+from app.api.v1.auth import _get_or_create_user
 
 
 def test_generate_token_produces_raw_and_hash():
@@ -65,3 +66,11 @@ async def test_verify_expired_token_fails(db_session):
 async def test_verify_unknown_token_fails(db_session):
     row = await verify_token(db_session, "nonexistent-token")
     assert row is None
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_magic_link_created_user_is_not_admin(db_session):
+    user = await _get_or_create_user(db_session, "NewUser@example.com")
+
+    assert user.email == "newuser@example.com"
+    assert user.is_admin is False
