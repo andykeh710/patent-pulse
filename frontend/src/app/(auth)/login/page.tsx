@@ -10,6 +10,9 @@ export default function LoginPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // null = unknown; true = real email delivery active; false = dev/preview
+  // mode (no email actually sent — magic link is in the backend logs).
+  const [emailDeliveryActive, setEmailDeliveryActive] = useState<boolean | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -17,6 +20,16 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await authApi.requestLink({ email });
+      // Detect whether this environment actually delivers email via Resend.
+      // In dev/preview mode (or when Resend is unauthorized/disabled), no
+      // email is sent — we must not claim one was.
+      try {
+        const res = await fetch("/health");
+        const health = await res.json();
+        setEmailDeliveryActive(health?.resend === "ok");
+      } catch {
+        setEmailDeliveryActive(null);
+      }
       setSubmitted(true);
     } catch {
       setError("Something went wrong. Try again.");
@@ -26,16 +39,36 @@ export default function LoginPage() {
   };
 
   if (submitted) {
+    const realEmailSent = emailDeliveryActive === true;
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
         <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border-subtle)] p-8 max-w-md w-full text-center space-y-4">
-            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Check your email</h1>
-            <p className="text-[var(--text-secondary)]">
-              We sent a magic link to <strong>{email}</strong>. Click the link
-              to sign in. It expires in 15 minutes.
-            </p>
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+              {realEmailSent ? "Check your email" : "Dev mode — check the backend logs"}
+            </h1>
+            {realEmailSent ? (
+              <p className="text-[var(--text-secondary)]">
+                We sent a magic link to <strong>{email}</strong>. Click the link
+                to sign in. It expires in 15 minutes.
+              </p>
+            ) : (
+              <div className="text-[var(--text-secondary)] space-y-2 text-sm">
+                <p>
+                  This environment does <strong>not</strong> send real emails. A
+                  sign-in link for <strong>{email}</strong> was printed to the
+                  backend logs.
+                </p>
+                <p className="text-[var(--text-muted)]">
+                  Look for a line beginning with{" "}
+                  <code className="px-1 py-0.5 rounded bg-[var(--bg-glass)] text-[var(--text-primary)]">
+                    DEV MAGIC LINK:
+                  </code>{" "}
+                  and open that URL to sign in. It expires in 15 minutes.
+                </p>
+              </div>
+            )}
             <p className="text-xs text-[var(--text-muted)]">
-              Didn&apos;t get it? Check spam or{" "}
+              Wrong address?{" "}
               <button
                 onClick={() => setSubmitted(false)}
                 className="text-[var(--accent)] hover:underline"

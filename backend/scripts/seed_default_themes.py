@@ -21,8 +21,12 @@ DEFAULT_THEMES = [
         "name": "AI / Machine Learning",
         "description": "Patents related to artificial intelligence, neural networks, and ML systems",
         "cpc_prefixes": ["G06N"],
-        "assignee_keywords": ["AI", "machine learning"],
-        "title_keywords": ["neural", "transformer", "LLM"],
+        # No assignee keywords: "AI" is a 2-letter substring that matched
+        # company names like "HyundAI" via ILIKE/`in`, producing false-positive
+        # theme matches. The honest signal for this theme is CPC G06N plus the
+        # title/abstract keywords below.
+        "assignee_keywords": [],
+        "title_keywords": ["neural network", "transformer", "LLM", "deep learning"],
         "keywords": ["artificial intelligence", "deep learning", "model training"],
         "is_active": True,
     },

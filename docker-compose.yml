@@ -78,6 +78,15 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.tasks.celery_app worker --loglevel=info -Q ingestion,summarization,maintenance
+    # Worker runs Celery, not an HTTP server — the image's default
+    # HEALTHCHECK (curl :8000/health) always fails here and reported a false
+    # "unhealthy". Probe the worker via Celery's own ping instead.
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping -d celery@$${HOSTNAME} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -121,6 +130,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.tasks.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    # Beat is a scheduler with no HTTP server and no inspectable worker state,
+    # so the image's default curl-based HEALTHCHECK reported a false
+    # "unhealthy". Disable it rather than emit a misleading status.
+    healthcheck:
+      disable: true
     volumes:
       - ./backend:/app
     environment:

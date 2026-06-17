@@ -84,6 +84,7 @@ coverage/
 
 # Build
 *.egg-info/
+*.tsbuildinfo
 
 # Celery
 backend/celerybeat-schedule

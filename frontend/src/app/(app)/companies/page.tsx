@@ -144,7 +144,14 @@ function SummaryCard({ label, value, isLoading, highlight, decimals }: { label: 
 }
 
 function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[]; isLoading: boolean }) {
-  const max = Math.max(...items.map((item) => item.patent_count), 1);
+  // Only entries with a real, known country count as geography. The map
+  // endpoint returns a single "Unknown" bucket while assignee-country
+  // enrichment is pending (currently 0% coverage); rendering it as a country
+  // bubble would present non-geography as if it were map-ready intelligence.
+  const knownItems = items.filter(
+    (item) => item.country && item.country.toLowerCase() !== "unknown",
+  );
+  const max = Math.max(...knownItems.map((item) => item.patent_count), 1);
 
   return (
     <div className="xl:col-span-2 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
@@ -153,18 +160,19 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Company Geography</h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Country-level company distribution from patent assignee metadata.</p>
         </div>
-        <Badge variant="default" size="sm">Map-ready data</Badge>
+        {knownItems.length > 0 && <Badge variant="default" size="sm">Map-ready data</Badge>}
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full rounded-lg" />
-      ) : items.length === 0 ? (
-        <div className="h-64 rounded-lg bg-[var(--bg-base)] flex items-center justify-center text-sm text-[var(--text-muted)]">
-          No country metadata available yet
+      ) : knownItems.length === 0 ? (
+        <div className="h-64 rounded-lg bg-[var(--bg-base)] flex items-center justify-center text-center text-sm text-[var(--text-muted)] px-6">
+          Country-level geography isn&apos;t available yet — assignee country
+          enrichment is pending, so this distribution can&apos;t be shown.
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           <div className="h-64 rounded-lg bg-gradient-to-br from-bg-[var(--bg-elevated)] to-[var(--bg-surface)] border border-bg-[var(--accent-muted)] p-4 relative overflow-hidden">
-            {items.slice(0, 8).map((item, idx) => {
+            {knownItems.slice(0, 8).map((item, idx) => {
               const size = 36 + Math.round((item.patent_count / max) * 54);
               return (
                 <div
@@ -184,7 +192,7 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
             })}
           </div>
           <div className="space-y-3">
-            {items.slice(0, 6).map((item, i) => (
+            {knownItems.slice(0, 6).map((item, i) => (
               <div key={`country-bar-${item.country}-${i}`}>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium text-[var(--text-secondary)]">{item.country}</span>

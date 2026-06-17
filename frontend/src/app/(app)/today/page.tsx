@@ -345,74 +345,9 @@ export default function TodayPage() {
         freshnessSources={["patents"]}
       />
 
-      {/* At-a-glance metrics */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <MetricTile label="Total patents" value={stats.total_patents.toLocaleString()} />
-          <MetricTile
-            label="New this week"
-            value={stats.patents_this_week.toLocaleString()}
-            highlight
-          />
-          <MetricTile
-            label="AI summarized"
-            value={stats.summarized_count.toLocaleString()}
-          />
-          <MetricTile
-            label="Top assignee"
-            value={stats.top_assignees?.[0]?.assignee || "—"}
-          />
-        </div>
-      )}
-
-      {/* Daily Brief — synthesized from highlights */}
-      {highlights && (
-        <section className="mb-6">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
-            This Week&apos;s Highlights
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {highlights.filing_trend && (
-              <HighlightInsight
-                type="signal"
-                title={highlights.filing_trend.trend_label}
-                summary={`${highlights.filing_trend.count_4w} patents (4wk) · z-score ${highlights.filing_trend.z_score.toFixed(1)}`}
-                detail={
-                  highlights.filing_trend.top_assignees.length > 0
-                    ? `Top: ${highlights.filing_trend.top_assignees.join(", ")}`
-                    : undefined
-                }
-                href={`/trends/${highlights.filing_trend.trend_surface}/${highlights.filing_trend.trend_key}`}
-              />
-            )}
-            {highlights.expiring_opportunity && (
-              <HighlightInsight
-                type="opportunity"
-                title={`${highlights.expiring_opportunity.count} high-value patents expiring soon`}
-                summary="Within 90-day window with strong opportunity scores."
-                href="/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70"
-              />
-            )}
-            {highlights.notable_patent && (
-              <HighlightInsight
-                type="signal"
-                title={highlights.notable_patent.title || highlights.notable_patent.publication_number}
-                summary={`${highlights.notable_patent.assignee} · Opportunity score ${highlights.notable_patent.opportunity_score.toFixed(1)}`}
-                detail={highlights.notable_patent.summary_first_sentence}
-                href={`/patents/${highlights.notable_patent.id}`}
-              />
-            )}
-            {highlights.company_move && (
-              <HighlightInsight
-                type="update"
-                title={`${highlights.company_move.assignee}: +${highlights.company_move.delta} filing surge`}
-                summary={`${highlights.company_move.count_this_week} this week vs ${highlights.company_move.count_4wk_avg.toFixed(1)} avg`}
-                href={`/companies/${encodeURIComponent(highlights.company_move.assignee)}`}
-              />
-            )}
-          </div>
-        </section>
-      )}
+      {/* Generic platform stats (Total patents, This Week's Highlights, etc.)
+          are rendered lower under "Platform Overview" so the user's own
+          For You briefing leads the page. */}
 
       <div className="space-y-6">
         {/* For You — personalized insights */}
@@ -635,6 +570,76 @@ export default function TodayPage() {
             </div>
           )}
         </section>
+
+        {/* Platform Overview — generic, non-personalized corpus stats. Kept
+            below the personalized sections so Today leads with For You. */}
+        {(stats || highlights) && (
+          <section>
+            <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+              Platform Overview
+            </h2>
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <MetricTile label="Total patents" value={stats.total_patents.toLocaleString()} />
+                <MetricTile
+                  label="New this week"
+                  value={stats.patents_this_week.toLocaleString()}
+                  highlight
+                />
+                <MetricTile
+                  label="AI summarized"
+                  value={stats.summarized_count.toLocaleString()}
+                />
+                <MetricTile
+                  label="Top assignee"
+                  value={stats.top_assignees?.[0]?.assignee || "—"}
+                />
+              </div>
+            )}
+            {highlights && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {highlights.filing_trend && (
+                  <HighlightInsight
+                    type="signal"
+                    title={highlights.filing_trend.trend_label}
+                    summary={`${highlights.filing_trend.count_4w} patents (4wk) · z-score ${highlights.filing_trend.z_score.toFixed(1)}`}
+                    detail={
+                      highlights.filing_trend.top_assignees.length > 0
+                        ? `Top: ${highlights.filing_trend.top_assignees.join(", ")}`
+                        : undefined
+                    }
+                    href={`/trends/${highlights.filing_trend.trend_surface}/${highlights.filing_trend.trend_key}`}
+                  />
+                )}
+                {highlights.expiring_opportunity && (
+                  <HighlightInsight
+                    type="opportunity"
+                    title={`${highlights.expiring_opportunity.count} high-value patents expiring soon`}
+                    summary="Within 90-day window with strong opportunity scores."
+                    href="/expiry?expiry_status=expiring_soon&min_expiry_opportunity_score=70"
+                  />
+                )}
+                {highlights.notable_patent && (
+                  <HighlightInsight
+                    type="signal"
+                    title={highlights.notable_patent.title || highlights.notable_patent.publication_number}
+                    summary={`${highlights.notable_patent.assignee} · Opportunity score ${highlights.notable_patent.opportunity_score.toFixed(1)}`}
+                    detail={highlights.notable_patent.summary_first_sentence}
+                    href={`/patents/${highlights.notable_patent.id}`}
+                  />
+                )}
+                {highlights.company_move && (
+                  <HighlightInsight
+                    type="update"
+                    title={`${highlights.company_move.assignee}: +${highlights.company_move.delta} filing surge`}
+                    summary={`${highlights.company_move.count_this_week} this week vs ${highlights.company_move.count_4wk_avg.toFixed(1)} avg`}
+                    href={`/companies/${encodeURIComponent(highlights.company_move.assignee)}`}
+                  />
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Recommended Actions */}
         <section className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
