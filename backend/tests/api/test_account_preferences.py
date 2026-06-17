@@ -72,6 +72,32 @@ async def test_update_email_preferences_updates_authenticated_user(
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_get_email_preferences_reads_authenticated_user(
+    client: AsyncClient,
+    db_session,
+) -> None:
+    user = (
+        await db_session.execute(select(User).where(User.id == "local-user"))
+    ).scalar_one()
+    user.preferences = {
+        "weekly_briefing_enabled": False,
+        "instant_alerts_enabled": True,
+    }
+    await db_session.commit()
+
+    response = await client.get(
+        "/api/v1/account/email-preferences",
+        cookies=_cookie(),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "weekly_briefing_enabled": False,
+        "instant_alerts_enabled": True,
+    }
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_company_follow_routes_use_authenticated_user(
     client: AsyncClient,
     db_session,
