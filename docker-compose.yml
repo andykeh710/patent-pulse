@@ -63,6 +63,7 @@ services:
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
       INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
       EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
@@ -108,6 +109,7 @@ services:
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
     depends_on:
       db:
         condition: service_healthy
@@ -127,6 +129,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
       ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
     depends_on:
       db:
         condition: service_healthy

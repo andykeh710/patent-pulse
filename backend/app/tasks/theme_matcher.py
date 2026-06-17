@@ -10,7 +10,8 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_, text, bindparam
+from sqlalchemy import Text as TextType
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
@@ -112,14 +113,18 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
 
     if theme.cpc_prefixes:
         for prefix in theme.cpc_prefixes:
+            # cpc is JSONB, not PostgreSQL ARRAY. Use jsonb_array_elements_text + LIKE.
             conditions.append(
-                PatentPublication.cpc.op("@>")(func.array([prefix]))
+                text(
+                    "EXISTS (SELECT 1 FROM jsonb_array_elements_text(patent_publications.cpc) AS elem WHERE elem LIKE :pat)"
+                ).bindparams(bindparam("pat", value=f"{prefix}%"))
             )
 
     if theme.assignee_keywords:
         for keyword in theme.assignee_keywords:
+            # assignees is JSONB, cast to text for ILIKE search
             conditions.append(
-                func.array_to_string(PatentPublication.assignees, " ").ilike(
+                func.cast(PatentPublication.assignees, TextType).ilike(
                     f"%{keyword}%"
                 )
             )
@@ -137,8 +142,6 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
 
     if not conditions:
         return stats
-
-    from sqlalchemy import or_
 
     query = (
         select(PatentPublication)

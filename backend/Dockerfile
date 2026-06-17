@@ -34,6 +34,12 @@ COPY --from=builder /build/deps/bin /usr/local/bin
 COPY . .
 
 RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+# Fix patent_client for pydantic-settings v2 (SETTINGS.DEFAULT removed)
+RUN sed -i 's/SETTINGS\.DEFAULT\.BASE_DIR = str(BASE_DIR)/# patched for pydantic-settings v2/' /usr/local/lib/python3.12/site-packages/patent_client/__init__.py
+# Pre-create patent_client cache dirs (avoids PermissionError in non-root containers)
+RUN mkdir -p /home/appuser/.patent_client && chown -R appuser:appuser /home/appuser
+RUN mkdir -p /usr/local/lib/python3.12/_build && chown appuser:appuser /usr/local/lib/python3.12/_build
+ENV PATENT_CLIENT_BASE_DIR=/home/appuser/.patent_client
 USER appuser
 
 EXPOSE 8000
