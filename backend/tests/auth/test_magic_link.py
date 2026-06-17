@@ -3,13 +3,13 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.api.v1.auth import _get_or_create_user
 from app.auth.magic_link import (
     _compute_token_hash,
     create_token_for_email,
     generate_token,
     verify_token,
 )
-from app.api.v1.auth import _get_or_create_user
 
 
 def test_generate_token_produces_raw_and_hash():
