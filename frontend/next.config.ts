@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         destination: "/companies",
         permanent: true,
       },
+      {
+        source: "/topics",
+        destination: "/themes",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {

@@ -4,6 +4,9 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 
+// Prevent static prerendering — this page must read ?token= from the URL
+export const dynamic = "force-dynamic";
+
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -27,6 +30,9 @@ function VerifyContent() {
           throw new Error("Verify did not return ok");
         }
         if (!cancelled) {
+          // Brief delay to ensure Set-Cookie from verify is fully committed
+          // before the middleware checks for it on the next navigation
+          await new Promise((r) => setTimeout(r, 200));
           // Check onboarding status
           const statusRes = await fetch("/api/v1/onboarding/status", { credentials: "include" });
           const statusData = await statusRes.json();
