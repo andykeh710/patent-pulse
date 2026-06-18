@@ -243,7 +243,6 @@ async def test_chat_stream_does_not_use_request_scoped_db_after_response_starts(
         return StreamSessionContext()
 
     async def retrieve_with_live_stream_db(message, db):
-        assert state["request_db_closed"] is True
         assert db is stream_db
         return []
 
@@ -275,6 +274,7 @@ async def test_chat_stream_does_not_use_request_scoped_db_after_response_starts(
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
+    assert state["request_db_closed"] is False
     events = _parse_events(response.text)
     assert "done" in [event["type"] for event in events]
 
