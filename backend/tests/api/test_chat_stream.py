@@ -329,10 +329,15 @@ async def test_chat_stream_releases_retrieval_db_before_llm_stream(
 
     from app.api.v1.chat import _stream_anthropic_response
 
-    events = [
+    stream = _stream_anthropic_response("hello", None, "local-user")
+    first_chunk = await anext(stream)
+    assert state["active"] is False
+
+    events = [json.loads(first_chunk[len("data: "):])]
+    events.extend([
         json.loads(chunk[len("data: "):])
-        async for chunk in _stream_anthropic_response("hello", None, "local-user")
-    ]
+        async for chunk in stream
+    ])
 
     assert state["entered"] == 1
     assert state["exited"] == 1
