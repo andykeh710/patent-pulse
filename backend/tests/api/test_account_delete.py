@@ -184,3 +184,77 @@ async def test_subscriptions_cascaded_after_delete(client: AsyncClient, db_sessi
         select(TopicSubscription).where(TopicSubscription.id == sub_id)
     )).scalar_one_or_none()
     assert gone is None, "subscriptions should cascade-delete"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_email_preferences_are_loaded_for_authenticated_user(
+    client: AsyncClient,
+    db_session,
+):
+    from app.core.ai_models import User
+
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    user.preferences = {
+        "weekly_briefing_enabled": False,
+        "instant_alerts_enabled": True,
+    }
+    await db_session.commit()
+
+    response = await client.get(
+        "/api/v1/account/email-preferences",
+        cookies=_cookie(),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "weekly_briefing_enabled": False,
+        "instant_alerts_enabled": True,
+    }
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_email_preferences_update_persists_for_authenticated_user(
+    client: AsyncClient,
+    db_session,
+):
+    from app.core.ai_models import User
+
+    response = await client.put(
+        "/api/v1/account/email-preferences",
+        json={"weekly_briefing_enabled": False},
+        cookies=_cookie(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["weekly_briefing_enabled"] is False
+
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    assert user.preferences["weekly_briefing_enabled"] is False
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_company_follow_uses_authenticated_user_id(
+    client: AsyncClient,
+    db_session,
+):
+    from app.core.ai_models import UserCompanyFollow
+
+    response = await client.post(
+        "/api/v1/account/companies",
+        json={"company_name": "Acme Corp"},
+        cookies=_cookie(),
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["company_normalized_name"] == "acme"
+
+    follow = (
+        await db_session.execute(
+            select(UserCompanyFollow).where(
+                UserCompanyFollow.user_id == "local-user",
+                UserCompanyFollow.company_normalized_name == "acme",
+            )
+        )
+    ).scalar_one_or_none()
+    assert follow is not None

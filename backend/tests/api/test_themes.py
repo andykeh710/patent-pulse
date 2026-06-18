@@ -7,12 +7,30 @@ user_id fields, and keyword-based matching.
 
 from uuid import uuid4
 
+import jwt
 import pytest
 from sqlalchemy import select
 
+from app.config import settings
 from app.core.models import PatentPublication
 from app.core.theme_models import Theme, ThemeMatch
 from app.tasks.theme_matcher import _match_single_theme
+
+
+def _cookie(user_id: str = "local-user") -> dict[str, str]:
+    from datetime import datetime, timedelta, timezone
+
+    return {
+        "auth_session": jwt.encode(
+            {
+                "sub": user_id,
+                "iat": datetime.now(timezone.utc),
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            },
+            settings.auth_secret_key,
+            algorithm="HS256",
+        )
+    }
 
 # ---------------------------------------------------------------------------
 # List / get
@@ -46,7 +64,7 @@ async def test_get_topic_by_id(client, db_session):
         "name": "Roundtrip Topic",
         "cpc_prefixes": ["G06N"],
         "keywords": ["neural", "transformer"],
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     created = response.json()
 
@@ -81,7 +99,7 @@ async def test_create_topic_with_keywords(client, db_session):
         "keywords": ["alignment", "safety", "RLHF"],
         "opportunity_tags": ["startup", "enterprise"],
         "min_opportunity_score": 35,
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "AI Safety"
@@ -90,27 +108,34 @@ async def test_create_topic_with_keywords(client, db_session):
     assert body["keywords"] == ["alignment", "safety", "RLHF"]
     assert body["opportunity_tags"] == ["startup", "enterprise"]
     assert body["min_opportunity_score"] == 35
-    assert body["user_id"] == "anonymous"
+    assert body["user_id"] == "local-user"
 
 
 @pytest.mark.asyncio
-async def test_create_topic_with_explicit_user_id(client, db_session):
-    """Passing user_id='alice' is preserved."""
+async def test_create_topic_ignores_spoofed_user_id(client, db_session):
+    """The authenticated user owns created topics, regardless of request body."""
     response = await client.post("/api/v1/themes", json={
         "name": "Alice's Topic",
         "user_id": "alice",
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
-    assert response.json()["user_id"] == "alice"
+    assert response.json()["user_id"] == "local-user"
 
 
 @pytest.mark.asyncio
 async def test_create_topic_duplicate_name_fails(client, db_session):
     """Second create with same name returns 400."""
-    await client.post("/api/v1/themes", json={"name": "Duplicate"})
-    response = await client.post("/api/v1/themes", json={"name": "Duplicate"})
+    await client.post("/api/v1/themes", json={"name": "Duplicate"}, cookies=_cookie())
+    response = await client.post("/api/v1/themes", json={"name": "Duplicate"}, cookies=_cookie())
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_topic_requires_auth(client, db_session):
+    """Anonymous clients cannot create shared topics."""
+    response = await client.post("/api/v1/themes", json={"name": "Anonymous Topic"})
+    assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------
@@ -126,13 +151,13 @@ async def test_update_topic_partial(client, db_session):
         "description": "Orig desc",
         "cpc_prefixes": ["A61K"],
         "keywords": ["crispr"],
-    })
+    }, cookies=_cookie())
     topic_id = response.json()["id"]
 
     # Patch description only
     response = await client.patch(f"/api/v1/themes/{topic_id}", json={
         "description": "Updated desc",
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "Orig Name"
@@ -147,14 +172,36 @@ async def test_update_topic_keywords_replaces_list(client, db_session):
     response = await client.post("/api/v1/themes", json={
         "name": "Keyword Topic",
         "keywords": ["a", "b", "c"],
-    })
+    }, cookies=_cookie())
     topic_id = response.json()["id"]
 
     response = await client.patch(f"/api/v1/themes/{topic_id}", json={
         "keywords": ["x", "y"],
-    })
+    }, cookies=_cookie())
     assert response.status_code == 200
     assert response.json()["keywords"] == ["x", "y"]
+
+
+@pytest.mark.asyncio
+async def test_update_topic_requires_owner(client, db_session):
+    """Users cannot update system themes or topics owned by another user."""
+    theme = Theme(name="Protected System Topic", user_id=None, cpc_prefixes=["G06F"])
+    db_session.add(theme)
+    await db_session.commit()
+    await db_session.refresh(theme)
+
+    response = await client.patch(
+        f"/api/v1/themes/{theme.id}",
+        json={"name": "Compromised"},
+        cookies=_cookie(),
+    )
+
+    assert response.status_code == 404
+
+    refreshed = (
+        await db_session.execute(select(Theme).where(Theme.id == theme.id))
+    ).scalar_one()
+    assert refreshed.name == "Protected System Topic"
 
 
 # ---------------------------------------------------------------------------
@@ -164,10 +211,10 @@ async def test_update_topic_keywords_replaces_list(client, db_session):
 @pytest.mark.asyncio
 async def test_delete_topic(client, db_session):
     """DELETE returns success; GET afterward returns 404."""
-    response = await client.post("/api/v1/themes", json={"name": "ToDelete"})
+    response = await client.post("/api/v1/themes", json={"name": "ToDelete"}, cookies=_cookie())
     topic_id = response.json()["id"]
 
-    response = await client.delete(f"/api/v1/themes/{topic_id}")
+    response = await client.delete(f"/api/v1/themes/{topic_id}", cookies=_cookie())
     assert response.status_code == 200
     assert response.json()["deleted"] is True
 
@@ -179,8 +226,37 @@ async def test_delete_topic(client, db_session):
 async def test_delete_nonexistent_topic_404(client, db_session):
     """DELETE unknown UUID returns 404."""
     fake_id = str(uuid4())
-    response = await client.delete(f"/api/v1/themes/{fake_id}")
+    response = await client.delete(f"/api/v1/themes/{fake_id}", cookies=_cookie())
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_topic_requires_auth(client, db_session):
+    """Anonymous clients cannot delete topics."""
+    theme = Theme(name="Anonymous Delete Target", user_id="local-user", cpc_prefixes=["G06F"])
+    db_session.add(theme)
+    await db_session.commit()
+    await db_session.refresh(theme)
+
+    response = await client.delete(f"/api/v1/themes/{theme.id}")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_topic_requires_owner(client, db_session):
+    """Users cannot delete system themes or another user's topics."""
+    theme = Theme(name="Protected Delete Target", user_id=None, cpc_prefixes=["G06F"])
+    db_session.add(theme)
+    await db_session.commit()
+    await db_session.refresh(theme)
+
+    response = await client.delete(f"/api/v1/themes/{theme.id}", cookies=_cookie())
+
+    assert response.status_code == 404
+    assert (
+        await db_session.execute(select(Theme).where(Theme.id == theme.id))
+    ).scalar_one_or_none() is not None
 
 
 # ---------------------------------------------------------------------------
