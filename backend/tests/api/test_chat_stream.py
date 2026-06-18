@@ -4,7 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 
 def _cookie(user_id: str = "local-user") -> dict[str, str]:
@@ -209,6 +209,74 @@ async def test_chat_stream_invalid_cookie_returns_401(client: AsyncClient):
         cookies={"auth_session": "not.a.valid.jwt"},
     )
     assert r.status_code == 401
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_does_not_use_request_scoped_db_after_response_starts(
+    monkeypatch,
+):
+    """Streaming work must not use a DB dependency finalized before body iteration."""
+    from app.api.deps import current_user, get_db
+    from app.main import app
+
+    state = {"request_db_closed": False}
+    request_db = object()
+    stream_db = object()
+
+    async def override_get_db():
+        try:
+            yield request_db
+        finally:
+            state["request_db_closed"] = True
+
+    async def override_current_user():
+        return "local-user"
+
+    class StreamSessionContext:
+        async def __aenter__(self):
+            return stream_db
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    def stream_session_factory():
+        return StreamSessionContext()
+
+    async def retrieve_with_live_stream_db(message, db):
+        assert state["request_db_closed"] is True
+        assert db is stream_db
+        return []
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        retrieve_with_live_stream_db,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock([{"type": "text", "content": "ok"}]),
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        stream_session_factory,
+        raising=False,
+    )
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[current_user] = override_current_user
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post("/api/v1/chat/stream", json={"message": "hello"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    events = _parse_events(response.text)
+    assert "done" in [event["type"] for event in events]
 
 
 # ── SSE format tests ──────────────────────────────────────────────────
