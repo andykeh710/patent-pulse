@@ -2,23 +2,20 @@
 Watchlist API.
 
 Allows users to save patents for tracking.
-Note: user_id is hardcoded as "anonymous" until Phase 4 auth.
 """
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, current_user
 from app.core.models import PatentPublication
 from app.core.schemas import PatentListItem
 from app.core.theme_models import WatchlistItem
 
 router = APIRouter()
-
-DEFAULT_USER_ID = "anonymous"
 
 
 class WatchlistAdd(BaseModel):
@@ -43,13 +40,14 @@ class WatchlistItemResponse(BaseModel):
 @router.get("", response_model=list[WatchlistItemResponse])
 async def get_watchlist(
     db: DbSession,
+    user_id: str = Depends(current_user),
     tag: str | None = None,
 ) -> list[WatchlistItemResponse]:
     """Get all items in the watchlist."""
     query = (
         select(WatchlistItem, PatentPublication)
         .join(PatentPublication, PatentPublication.id == WatchlistItem.patent_id)
-        .where(WatchlistItem.user_id == DEFAULT_USER_ID)
+        .where(WatchlistItem.user_id == user_id)
     )
 
     if tag:
@@ -73,7 +71,11 @@ async def get_watchlist(
 
 
 @router.post("", response_model=WatchlistItemResponse)
-async def add_to_watchlist(db: DbSession, data: WatchlistAdd) -> WatchlistItemResponse:
+async def add_to_watchlist(
+    db: DbSession,
+    data: WatchlistAdd,
+    user_id: str = Depends(current_user),
+) -> WatchlistItemResponse:
     """Add a patent to the watchlist."""
     patent_id = data.patent_id
 
@@ -87,7 +89,7 @@ async def add_to_watchlist(db: DbSession, data: WatchlistAdd) -> WatchlistItemRe
 
     existing = await db.execute(
         select(WatchlistItem).where(
-            WatchlistItem.user_id == DEFAULT_USER_ID,
+            WatchlistItem.user_id == user_id,
             WatchlistItem.patent_id == patent_id,
         )
     )
@@ -95,7 +97,7 @@ async def add_to_watchlist(db: DbSession, data: WatchlistAdd) -> WatchlistItemRe
         raise HTTPException(status_code=400, detail="Patent already in watchlist")
 
     item = WatchlistItem(
-        user_id=DEFAULT_USER_ID,
+        user_id=user_id,
         patent_id=patent_id,
         note=data.note,
         tags=data.tags,
@@ -115,14 +117,17 @@ async def add_to_watchlist(db: DbSession, data: WatchlistAdd) -> WatchlistItemRe
 
 @router.patch("/{item_id}", response_model=WatchlistItemResponse)
 async def update_watchlist_item(
-    db: DbSession, item_id: UUID, data: WatchlistUpdate
+    db: DbSession,
+    item_id: UUID,
+    data: WatchlistUpdate,
+    user_id: str = Depends(current_user),
 ) -> WatchlistItemResponse:
     """Update a watchlist item's note or tags."""
     result = await db.execute(
         select(WatchlistItem, PatentPublication)
         .join(PatentPublication, PatentPublication.id == WatchlistItem.patent_id)
         .where(WatchlistItem.id == item_id)
-        .where(WatchlistItem.user_id == DEFAULT_USER_ID)
+        .where(WatchlistItem.user_id == user_id)
     )
     row = result.first()
 
@@ -149,12 +154,16 @@ async def update_watchlist_item(
 
 
 @router.delete("/{item_id}")
-async def remove_from_watchlist(db: DbSession, item_id: UUID) -> dict:
+async def remove_from_watchlist(
+    db: DbSession,
+    item_id: UUID,
+    user_id: str = Depends(current_user),
+) -> dict:
     """Remove an item from the watchlist."""
     result = await db.execute(
         select(WatchlistItem)
         .where(WatchlistItem.id == item_id)
-        .where(WatchlistItem.user_id == DEFAULT_USER_ID)
+        .where(WatchlistItem.user_id == user_id)
     )
     item = result.scalar_one_or_none()
 
@@ -168,11 +177,15 @@ async def remove_from_watchlist(db: DbSession, item_id: UUID) -> dict:
 
 
 @router.get("/check/{patent_id}")
-async def check_in_watchlist(db: DbSession, patent_id: UUID) -> dict:
+async def check_in_watchlist(
+    db: DbSession,
+    patent_id: UUID,
+    user_id: str = Depends(current_user),
+) -> dict:
     """Check if a patent is in the watchlist."""
     result = await db.execute(
         select(WatchlistItem.id).where(
-            WatchlistItem.user_id == DEFAULT_USER_ID,
+            WatchlistItem.user_id == user_id,
             WatchlistItem.patent_id == patent_id,
         )
     )
@@ -185,11 +198,14 @@ async def check_in_watchlist(db: DbSession, patent_id: UUID) -> dict:
 
 
 @router.get("/tags")
-async def get_watchlist_tags(db: DbSession) -> list[str]:
+async def get_watchlist_tags(
+    db: DbSession,
+    user_id: str = Depends(current_user),
+) -> list[str]:
     """Get all unique tags used in the watchlist."""
     result = await db.execute(
         select(WatchlistItem.tags)
-        .where(WatchlistItem.user_id == DEFAULT_USER_ID)
+        .where(WatchlistItem.user_id == user_id)
         .where(WatchlistItem.tags.isnot(None))
     )
     rows = result.scalars().all()

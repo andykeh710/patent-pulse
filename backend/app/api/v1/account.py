@@ -34,6 +34,14 @@ class DeleteAccountBody(BaseModel):
     confirm_email: str
 
 
+async def _get_user_or_404(db: AsyncSession, user_id: str) -> User:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 @router.delete("/me", status_code=204)
 async def delete_account(
     body: DeleteAccountBody,
@@ -117,11 +125,12 @@ class PersonaResponse(BaseModel):
 @router.put("/persona", response_model=PersonaResponse)
 async def set_persona(
     request: PersonaSetRequest,
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if request.persona not in ("operator", "investor", "curious"):
         raise HTTPException(422, "persona must be operator, investor, or curious")
+    user = await _get_user_or_404(db, user_id)
     user.persona = request.persona
     await db.commit()
     return PersonaResponse(persona=user.persona)
@@ -139,8 +148,10 @@ class EmailPreferencesUpdate(BaseModel):
 
 @router.get("/email-preferences", response_model=EmailPreferencesResponse)
 async def get_email_preferences(
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> EmailPreferencesResponse:
+    user = await _get_user_or_404(db, user_id)
     prefs = user.preferences or {}
     return EmailPreferencesResponse(
         weekly_briefing_enabled=prefs.get("weekly_briefing_enabled", True),
@@ -151,9 +162,10 @@ async def get_email_preferences(
 @router.put("/email-preferences", response_model=EmailPreferencesResponse)
 async def update_email_preferences(
     body: EmailPreferencesUpdate,
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ) -> EmailPreferencesResponse:
+    user = await _get_user_or_404(db, user_id)
     prefs = dict(user.preferences or {})
     if body.weekly_briefing_enabled is not None:
         prefs["weekly_briefing_enabled"] = body.weekly_briefing_enabled
@@ -182,10 +194,11 @@ class CompanyFollowResponse(BaseModel):
 @router.post("/companies", status_code=201, response_model=CompanyFollowResponse)
 async def follow_company(
     request: CompanyFollowRequest,
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    follow = await add_follow(db, user.id, request.company_name)
+    await _get_user_or_404(db, user_id)
+    follow = await add_follow(db, user_id, request.company_name)
     return CompanyFollowResponse(
         company_normalized_name=follow.company_normalized_name,
         display_name=follow.display_name,
@@ -195,20 +208,22 @@ async def follow_company(
 @router.delete("/companies/{normalized_name}", status_code=204)
 async def unfollow_company(
     normalized_name: str,
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    deleted = await remove_follow(db, user.id, normalized_name)
+    await _get_user_or_404(db, user_id)
+    deleted = await remove_follow(db, user_id, normalized_name)
     if not deleted:
         raise HTTPException(404, "Company not found in your follows")
 
 
 @router.get("/companies", response_model=list[CompanyFollowResponse])
 async def get_company_follows(
-    user: User = Depends(current_user),
+    user_id: str = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    follows = await list_follows(db, user.id)
+    await _get_user_or_404(db, user_id)
+    follows = await list_follows(db, user_id)
     return [
         CompanyFollowResponse(
             company_normalized_name=f.company_normalized_name,

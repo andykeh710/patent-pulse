@@ -6,11 +6,11 @@ Themes are tracked technology areas defined by CPC prefixes and keywords.
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, current_user
 from app.core.models import PatentPublication
 from app.core.schemas import PaginatedResponse, PatentListItem
 from app.core.theme_models import Theme, ThemeMatch
@@ -111,7 +111,11 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
 
 
 @router.post("", response_model=ThemeResponse)
-async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
+async def create_theme(
+    db: DbSession,
+    theme_data: ThemeCreate,
+    user_id: str = Depends(current_user),
+) -> ThemeResponse:
     """Create a new theme."""
     existing = await db.execute(select(Theme).where(Theme.name == theme_data.name))
     if existing.scalar_one_or_none():
@@ -126,7 +130,7 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         keywords=theme_data.keywords,
         opportunity_tags=theme_data.opportunity_tags,
         min_opportunity_score=theme_data.min_opportunity_score,
-        user_id=theme_data.user_id or "anonymous",
+        user_id=user_id,
     )
     db.add(theme)
     await db.commit()
@@ -182,10 +186,15 @@ async def get_theme(db: DbSession, theme_id: UUID) -> ThemeResponse:
 
 @router.patch("/{theme_id}", response_model=ThemeResponse)
 async def update_theme(
-    db: DbSession, theme_id: UUID, theme_data: ThemeUpdate
+    db: DbSession,
+    theme_id: UUID,
+    theme_data: ThemeUpdate,
+    user_id: str = Depends(current_user),
 ) -> ThemeResponse:
     """Update a theme."""
-    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    result = await db.execute(
+        select(Theme).where(Theme.id == theme_id, Theme.user_id == user_id)
+    )
     theme = result.scalar_one_or_none()
 
     if not theme:
@@ -221,9 +230,15 @@ async def update_theme(
 
 
 @router.delete("/{theme_id}")
-async def delete_theme(db: DbSession, theme_id: UUID) -> dict:
+async def delete_theme(
+    db: DbSession,
+    theme_id: UUID,
+    user_id: str = Depends(current_user),
+) -> dict:
     """Delete a theme and its matches."""
-    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    result = await db.execute(
+        select(Theme).where(Theme.id == theme_id, Theme.user_id == user_id)
+    )
     theme = result.scalar_one_or_none()
 
     if not theme:

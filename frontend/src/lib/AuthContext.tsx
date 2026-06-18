@@ -20,6 +20,7 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -29,22 +30,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUser = useCallback(async () => {
+    const u = await authApi.me();
+    setUser({ id: u.id, email: u.email, displayName: u.display_name });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const u = await authApi.me();
-        if (!cancelled) setUser({ id: u.id, email: u.email, displayName: u.display_name });
-      } catch {
-        // Not authenticated — that's fine.
-      } finally {
+    refreshUser()
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
         if (!cancelled) setIsLoading(false);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshUser]);
 
   const logout = useCallback(async () => {
     try {
@@ -57,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, logout }}
+      value={{ user, isLoading, isAuthenticated: !!user, refreshUser, logout }}
     >
       {children}
     </AuthContext.Provider>

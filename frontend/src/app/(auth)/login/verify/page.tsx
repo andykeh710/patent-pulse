@@ -3,10 +3,12 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"verifying" | "error">("verifying");
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,6 +32,7 @@ function VerifyContent() {
           // Check onboarding status
           const statusRes = await fetch("/api/v1/onboarding/status", { credentials: "include" });
           const statusData = await statusRes.json();
+          await refreshUser();
           router.push(statusData.onboarded ? "/today" : "/onboarding");
         }
       } catch {
@@ -45,7 +48,7 @@ function VerifyContent() {
     return () => {
       cancelled = true;
     };
-  }, [token, router]);
+  }, [token, router, refreshUser]);
 
   if (status === "verifying") {
     return (
