@@ -46,11 +46,29 @@ export function FreshnessBanner({
 
   const items: { label: string; value: string }[] = [];
 
-  if (show.includes("patents") && data.latest_patent_created_at) {
-    items.push({
-      label: "Patents updated",
-      value: formatRelative(data.latest_patent_created_at),
-    });
+  // Show ingestion status clearly
+  if (show.includes("patents")) {
+    if (data.last_ingestion_status === "success") {
+      const newCount = data.last_ingestion_new_records ?? 0;
+      const when = formatRelative(data.last_ingestion_finished_at);
+      items.push({
+        label: "Ingestion",
+        value: `Last ran ${when}${newCount > 0 ? ` (${newCount} new)` : " (no new records)"}`,
+      });
+    } else if (data.last_ingestion_status === "failed") {
+      items.push({
+        label: "Ingestion",
+        value: `Failed — ${data.last_ingestion_error || "unknown error"}`,
+      });
+    } else {
+      // never_run or null — use legacy created_at as fallback
+      if (data.latest_patent_created_at) {
+        items.push({
+          label: "Patents updated",
+          value: formatRelative(data.latest_patent_created_at),
+        });
+      }
+    }
   }
 
   if (show.includes("summaries") && data.total_summarized > 0) {
@@ -67,42 +85,74 @@ export function FreshnessBanner({
     });
   }
 
-  if (show.includes("ai_runs") && data.latest_ai_run_at) {
-    items.push({
-      label: "Last AI run",
-      value: formatRelative(data.latest_ai_run_at),
-    });
-  }
-
-  // Loud stale-data disclosure. Based on ingestion recency (created_at) and
-  // trend recompute time. Only shown for sources the caller asked about.
-  const patentAgeDays = show.includes("patents") ? daysSince(data.latest_patent_created_at) : null;
+  // Stale-data disclosure: separate ingestion staleness from source lag
+  const ingestionAgeDays =
+    show.includes("patents") && data.last_ingestion_finished_at
+      ? daysSince(data.last_ingestion_finished_at)
+      : data.latest_patent_created_at
+        ? daysSince(data.latest_patent_created_at)
+        : null;
   const trendAgeDays = show.includes("trends") ? daysSince(data.latest_trend_snapshot_at) : null;
-  const patentsStale = patentAgeDays !== null && patentAgeDays > STALE_AFTER_DAYS;
+  const ingestionStale = ingestionAgeDays !== null && ingestionAgeDays > STALE_AFTER_DAYS;
   const trendsStale = trendAgeDays !== null && trendAgeDays > STALE_AFTER_DAYS;
 
-  if (items.length === 0 && !patentsStale && !trendsStale) return null;
+  // Source lag: publication date vs today
+  const pubDate = data.latest_patent_publication_date
+    ? new Date(data.latest_patent_publication_date)
+    : null;
+  const pubAgeDays = pubDate ? Math.floor((Date.now() - pubDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+  // USPTO publishes weekly; anything > 10 days from today is source lag
+  const sourceLag = pubAgeDays !== null && pubAgeDays > 10;
+
+  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag) return null;
 
   return (
     <div className={className}>
-      {(patentsStale || trendsStale) && (
+      {/* Strong warning: ingestion has not run successfully */}
+      {ingestionStale && (
+        <div
+          role="status"
+          className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+        >
+          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
+          <div>
+            <span className="font-semibold">Ingestion pipeline is stale.</span>{" "}
+            Last successful ingestion was {ingestionAgeDays}d ago
+            {data.last_ingestion_status === "failed" && ` (last attempt failed: ${data.last_ingestion_error || "unknown"})`}.
+            {" "}Patent data may be out of date. Verify against official patent registers.
+          </div>
+        </div>
+      )}
+
+      {/* Softer notice: ingestion ran but source data has inherent lag */}
+      {!ingestionStale && sourceLag && (
+        <div
+          role="status"
+          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <span aria-hidden className="mt-0.5 font-bold">ℹ</span>
+          <div>
+            <span className="font-semibold">Source data lag.</span>{" "}
+            Ingestion ran successfully{data.last_ingestion_finished_at ? ` ${formatRelative(data.last_ingestion_finished_at)}` : ""}
+            , but the latest patent publication in our database is from {pubDate?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {" "}({pubAgeDays}d ago). USPTO publishes new patents weekly on Tuesdays and Thursdays.
+          </div>
+        </div>
+      )}
+
+      {trendsStale && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
         >
           <span aria-hidden className="mt-0.5 font-bold">⚠</span>
           <div>
-            <span className="font-semibold">Data is not live.</span>{" "}
-            {patentsStale && (
-              <>Patent ingestion last ran {patentAgeDays}d ago{data.latest_patent_publication_date ? ` (latest publication ${formatRelative(data.latest_patent_publication_date)})` : ""}. </>
-            )}
-            {trendsStale && <>Trends were last computed {trendAgeDays}d ago. </>}
-            Recent filings may be missing — this reflects the current data source&apos;s
-            refresh lag, not live intelligence. Verify against official patent
-            registers before acting.
+            <span className="font-semibold">Trends are stale.</span>{" "}
+            Trends were last computed {trendAgeDays}d ago.
           </div>
         </div>
       )}
+
       {items.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
           {items.map((item, i) => (
