@@ -225,6 +225,24 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     )
     latest_ai_run_at = latest_run.scalar()
 
+    # Latest ingestion run metadata
+    ingestion_result = await db.execute(
+        text("""
+            SELECT status, started_at, finished_at,
+                   grants_created + apps_created AS new_records,
+                   error_message
+            FROM ingestion_runs
+            ORDER BY started_at DESC
+            LIMIT 1
+        """)
+    )
+    ing_row = ingestion_result.first()
+    last_ingestion_status = ing_row.status if ing_row else None
+    last_ingestion_started_at = ing_row.started_at.isoformat() if ing_row and ing_row.started_at else None
+    last_ingestion_finished_at = ing_row.finished_at.isoformat() if ing_row and ing_row.finished_at else None
+    last_ingestion_new_records = ing_row.new_records if ing_row else None
+    last_ingestion_error = ing_row.error_message if ing_row else None
+
     return FreshnessResponse(
         latest_patent_created_at=latest_patent_created_at,
         latest_patent_publication_date=str(latest_pub_date) if latest_pub_date else None,
@@ -234,6 +252,11 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
         total_patents=total_patents,
         total_summarized=total_summarized,
         total_trend_snapshots=total_trend_snapshots,
+        last_ingestion_status=last_ingestion_status,
+        last_ingestion_started_at=last_ingestion_started_at,
+        last_ingestion_finished_at=last_ingestion_finished_at,
+        last_ingestion_new_records=last_ingestion_new_records,
+        last_ingestion_error=last_ingestion_error,
     )
 
 

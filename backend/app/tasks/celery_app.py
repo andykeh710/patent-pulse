@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.tasks.ingest_epo",
         "app.tasks.ingest_wipo",
         "app.tasks.ingest_wipo_bigquery",
+        "app.tasks.ingest_daily",
         "app.tasks.summarize",
         "app.tasks.embeddings",
         "app.tasks.enrich_abstracts",
@@ -56,6 +57,7 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.ingest_grants.*": {"queue": "ingestion"},
         "app.tasks.ingest_applications.*": {"queue": "ingestion"},
+        "app.tasks.ingest_daily.*": {"queue": "ingestion"},
         "app.tasks.summarize.*": {"queue": "summarization"},
         "app.tasks.enrich_abstracts.*": {"queue": "ingestion"},
         "app.tasks.expiry_watch.*": {"queue": "maintenance"},
@@ -85,7 +87,13 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
-    # USPTO - Tuesday grants, Thursday applications
+    # USPTO - daily incremental catch-up (safe, idempotent upsert)
+    "ingest-daily": {
+        "task": "app.tasks.ingest_daily.run_daily_ingestion",
+        "schedule": crontab(hour=2, minute=0),
+        "options": {"queue": "ingestion"},
+    },
+    # USPTO - Tuesday grants, Thursday applications (full-week fidelity)
     "ingest-weekly-grants": {
         "task": "app.tasks.ingest_grants.ingest_weekly_grants",
         "schedule": crontab(hour=10, minute=0, day_of_week=2),
