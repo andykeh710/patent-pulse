@@ -181,6 +181,12 @@ export interface Freshness {
   total_patents: number;
   total_summarized: number;
   total_trend_snapshots: number;
+  // Ingestion pipeline health (V3.0)
+  last_ingestion_status: string | null;
+  last_ingestion_started_at: string | null;
+  last_ingestion_finished_at: string | null;
+  last_ingestion_new_records: number | null;
+  last_ingestion_error: string | null;
 }
 
 export interface PatentListParams {
