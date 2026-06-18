@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const logout = useCallback(async () => {
+    refreshSeq.current += 1;
     try {
       await authApi.logout();
     } catch {
