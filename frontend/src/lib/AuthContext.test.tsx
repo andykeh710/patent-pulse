@@ -63,4 +63,47 @@ describe("AuthProvider", () => {
 
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
+
+  it("does not restore the user when a pending refresh resolves after logout", async () => {
+    const pendingRefresh = deferred<{
+      id: string;
+      email: string;
+      display_name: string;
+    }>();
+    (authApi.me as jest.Mock).mockReturnValueOnce(pendingRefresh.promise);
+    (authApi.logout as jest.Mock).mockResolvedValue({ ok: true });
+
+    function LogoutProbe() {
+      const { user, logout } = useAuth();
+      return (
+        <div>
+          <span>{user?.email ?? "signed-out"}</span>
+          <button type="button" onClick={() => void logout()}>
+            logout
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <AuthProvider>
+        <LogoutProbe />
+      </AuthProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "logout" }));
+
+    await waitFor(() => expect(authApi.logout).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      pendingRefresh.resolve({
+        id: "local-user",
+        email: "test@example.com",
+        display_name: "Test User",
+      });
+      await pendingRefresh.promise;
+    });
+
+    expect(screen.getByText("signed-out")).toBeInTheDocument();
+  });
 });
