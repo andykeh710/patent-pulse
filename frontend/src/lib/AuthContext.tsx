@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { authApi } from "@/lib/api";
@@ -29,18 +30,28 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshSeq = useRef(0);
 
   const refreshUser = useCallback(async () => {
-    const u = await authApi.me();
-    setUser({ id: u.id, email: u.email, displayName: u.display_name });
+    const seq = refreshSeq.current + 1;
+    refreshSeq.current = seq;
+    try {
+      const u = await authApi.me();
+      if (seq === refreshSeq.current) {
+        setUser({ id: u.id, email: u.email, displayName: u.display_name });
+      }
+    } catch (error) {
+      if (seq === refreshSeq.current) {
+        setUser(null);
+      }
+      throw error;
+    }
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     refreshUser()
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
