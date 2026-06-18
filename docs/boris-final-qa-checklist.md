@@ -1,144 +1,128 @@
-# Boris P0 — Final QA Checklist
+# V3.0 Stabilization — Final QA Report
 
 **Branch:** sprint-boris-stabilization
-**Head:** pending (will be next commit)
+**Head:** 447f445 (stray file removal) + 1 uncommitted (verify page fix)
 **Diff from:** release/revamp-launch-validation (fe3ebcb)
+**Commits:** 24
 
 ---
 
-## Commits Since Release
+## All Commits (oldest → newest)
 
-1. `9e2bbd0` — Theme label, nav scroll, landing sections, plan doc
+1. `9e2bbd0` — Theme label, nav scroll, landing sections
 2. `cff99ca` — Topic follow/create/delete with auth
 3. `ceff343` — Today For You vs More Signals
 4. `5da444a` — GET /themes/following endpoint
-5. `e90aa41` — QA plan doc updated
-6. `501f85a` — User-context labels on company insights, login docs
-7. `3fb8449` — Resend health /emails endpoint fix
+5. `e90aa41` — QA plan doc
+6. `501f85a` — User-context labels, login docs, CPC groundwork
+7. `3fb8449` — Resend health /emails endpoint
 8. `41dba00` — Real followed companies, empty personalized state
+9. `94ea684` — Boris P0 QA checklist
+10. `4d8585a` — Missing Depends import in themes.py
+11. `a01e7b6` — Topics page: unfollow, plain-English creation, dark mode
+12. `0a3c334` — CSP font-src fix
+13. `5d600c9` — Revert CSP headers
+14. `02ed528` — Auth gating, dev magic link logging, login docs
+15. `afcdf41` — Move middleware.ts to project root
+16. `6e7ad26` — Layout-level auth gating
+17. `0253afe` — Dockerfile + theme_matcher + docker-compose fixes
+18. `e196439` — P0 release-readiness: auth, health, worker/beat, honesty
+19. `c3e6a93` — Theme matching whole-word, admin defaults, beat schedule
+20. `ea6d315` — Force-dynamic auth verify flow + topics redirect
+21. `36286e7` — Daily incremental ingestion pipeline
+22. `ed8c80f` — Separate ingestion freshness from source lag
+23. `447f445` — Remove accidentally committed empty stray files
+24. *(uncommitted)* — Verify page: window.location.href redirect
 
-## Files Changed (13)
+---
 
-```
-backend/app/api/v1/health.py
-backend/app/api/v1/themes.py
-docs/boris-feedback-plan.md
-docs/boris-feedback-qa-plan.md
-docs/controlled-login-guide.md
-frontend/src/app/(app)/themes/page.tsx
-frontend/src/app/(app)/today/page.tsx
-frontend/src/app/(marketing)/MarketingNav.tsx
-frontend/src/app/(marketing)/page.tsx
-frontend/src/lib/ThemeProvider.tsx
-frontend/src/lib/api.ts
-```
+## V3.0 Stabilization — All Items
 
-## P0 Status — FINAL
+### API & Auth
 
-| # | Requirement | Status | Evidence |
-|---|-----------|--------|----------|
-| 1 | Today personalization real | ✅ | Watchlist items + followed-company insights in For You. Empty state with guidance. |
-| 2 | Opportunity relevance user-specific | ✅ | Company follow: "Shown because you follow [X]" + evidence tag. Watchlist: "From watchlist." |
-| 3 | Topic editing/tracking works | ✅ | Follow/Create/Delete with auth. /following endpoint. Onboarding persists TopicSubscriptions. |
-| 4 | Company-first workflow | ✅ | suppliersApi.follows() wired. Followed companies prioritized in For You. |
-| 5 | Resend health fix | ✅ | /emails endpoint (sending_access compatible). 401/403 both → "unauthorized". |
-| 6 | Controlled login docs | ✅ | docs/controlled-login-guide.md: steps, limitations, troubleshooting. |
-| 7 | UX polish | ✅ | System/Light/Dark, anchor nav, no debug labels. | 
-| 8 | Placeholder audit | ✅ | See below. No debug labels, no incomplete features presented as finished. |
+| # | Check | Result |
+|---|-------|--------|
+| 1 | All 11 API endpoints return 200/401, no 500s | PASS |
+| 2 | Auth-gating: logged-out /today → login | PASS |
+| 3 | Middleware in src/middleware.ts (Next 15) | PASS |
+| 4 | Dev mode login notice ("check backend logs") | PASS |
+| 5 | /health overall=ok, resend=dev_preview | PASS |
+| 6 | Magic-link verify → cookie → onboarding | PASS |
 
-## Placeholder Audit Results
+### Today
 
-| Surface | Status | Action |
-|---------|--------|--------|
-| Today | ✅ | For You + More Signals sections. Empty personalized state with guidance. |
-| Themes | ✅ | System themes with Follow. User topics with Delete. Create form. |
-| Companies | ✅ | Honest enrichment-pending labels. No fake badges. |
-| Patents/Search | ✅ | Filters, sort, saved searches. Functional. |
-| Opportunities (Expiry) | ✅ | Horizon tabs, save/unsave, why-it-matters per card. |
-| Onboarding | ✅ | Role/industry/interests → suggestions → confirm. Remove buttons on suggestions. |
-| Account/Preferences | ⚠️ FYI | Account page exists (deletion, exports). Preferences limited. Acceptable for controlled launch. |
-| Landing page | ✅ | Pricing/About scroll sections. Theme toggle. |
-| Nav | ✅ | No dead-end pages. Logo returns home. |
-| Theme toggle | ✅ | System/Light/Dark. No "Auto" or debug labels. |
+| # | Check | Result |
+|---|-------|--------|
+| 7 | Platform Overview moved below fold | PASS |
+| 8 | More Signals with Why/Evidence blocks | PASS |
+| 9 | Personalize your briefing empty state | PASS |
+| 10 | Your Topics shows real counts (435/465/367) | PASS |
+| 11 | FreshnessBanner: 3-tier (stale/source-lag/normal) | PASS |
+| 12 | "Since earlier today" freshness indicator | PASS |
 
-No debug/internal labels found. No incomplete placeholder sections presented as finished.
+### Themes / Topics
 
-## Today Personalization Examples
+| # | Check | Result |
+|---|-------|--------|
+| 13 | System themes DB-seeded, not hardcoded | PASS |
+| 14 | Theme matching: whole-word, 435/465/367 | PASS |
+| 15 | /themes/following route works | PASS |
+| 16 | Follow/unfollow via subscriptions | PASS |
+| 17 | Custom topic create/delete | PASS |
+| 18 | /topics → /themes redirect | PASS |
 
-**With followed company (Qualcomm):**
-```
-For You
-┌─────────────────────────────────┐
-│ Qualcomm filing surge: +12 vs   │
-│ 4-week average                  │
-│                                 │
-│ Shown because you follow        │
-│ Qualcomm. Their filing surge of │
-│ +12 vs average may signal a new │
-│ product cycle, strategic IP     │
-│ push, or competitive positioning│
-│ relevant to your watch.         │
-│                                 │
-│ [Company you follow: Qualcomm]  │
-│ [This week: 18] [4-week avg: 6] │
-│ [Delta: +12]                    │
-│                                 │
-│ [View company profile]          │
-└─────────────────────────────────┘
-```
+### Companies
 
-**With watchlist items:**
-```
-For You
-┌─────────────────────────────────┐
-│ 3 patents in your watchlist     │
-│                                 │
-│ Top watchlisted: Battery thermal│
-│ management system, Solid-state  │
-│ electrolyte composition,        │
-│ Fast-charging anode material    │
-│                                 │
-│ [Saved patents: 3]              │
-│ [From watchlist: Your personal  │
-│  watchlist]                     │
-│                                 │
-│ [Open watchlist]                │
-└─────────────────────────────────┘
-```
+| # | Check | Result |
+|---|-------|--------|
+| 19 | No "Map-ready data" badge when empty | PASS |
+| 20 | Honest "enrichment pending" | PASS |
+| 21 | Real company rankings with scores | PASS |
 
-**New user (no personalization):**
-```
-Personalize your briefing
-Follow companies, save patents, or create topics to get
-personalized intelligence on Today. Generic signals are shown below.
+### Pipeline
 
-[Search patents] [Create topics] [Browse companies]
-```
+| # | Check | Result |
+|---|-------|--------|
+| 22 | Worker/beat running (6/6 services) | PASS |
+| 23 | Nightly ingestion (2am daily) | PASS |
+| 24 | Dynamic catch-up (30-day lookback) | PASS |
+| 25 | ingestion_runs tracking table | PASS |
+| 26 | Freshness API: ingestion vs source fields | PASS |
+| 27 | Redis lock prevents overlapping runs | PASS |
+| 28 | Downstream chain: enrich → match → score → trends | PASS |
 
-## Manual QA Checklist
+### Housekeeping
+
+| # | Check | Result |
+|---|-------|--------|
+| 29 | tsconfig.tsbuildinfo gitignored | PASS |
+| 30 | Stray files 0035/401 removed | PASS |
+| 31 | docker-compose.prod.yml inherits env var | PASS |
+| 32 | patent_client pydantic-settings v2 fix | PASS |
+| 33 | Admin defaults verified | PASS |
+
+---
+
+## Manual QA Checklist for Andy
 
 ### Landing Page
 - [ ] Pricing scrolls to #pricing section
 - [ ] About scrolls to #about section
 - [ ] Theme toggle: System → Dark → Light → System
-- [ ] No "Auto" label
 
 ### Login
-- [ ] Controlled login works with magic link
-- [ ] docs/controlled-login-guide.md is accurate
-
-### Onboarding
-- [ ] Role → Industry → Interests → Confirm
-- [ ] Suggestions appear with remove buttons
-- [ ] Confirm redirects to Today
+- [ ] Dev mode notice appears ("check backend logs")
+- [ ] Magic link in backend logs
+- [ ] Open verify link → lands on onboarding
+- [ ] Onboarding → complete → lands on Today
 
 ### Today
 - [ ] "Personalize your briefing" shown for new user
-- [ ] After saving patents: watchlist insight in For You
-- [ ] After following company: company insight in For You
-- [ ] More Signals section below For You
-- [ ] Your Topics section shows followed topics
-- [ ] Expiring Opportunities section loads
+- [ ] Your Topics shows real counts
+- [ ] More Signals section with Why/Evidence
+- [ ] Platform Overview at bottom
+- [ ] Freshness: "Ingestion: Last ran X (no new records)" or similar
+- [ ] No red "Data is not live" banner when pipeline is healthy
 
 ### Themes
 - [ ] System themes have Follow buttons
@@ -147,28 +131,37 @@ personalized intelligence on Today. Generic signals are shown below.
 - [ ] Create Topic form works
 
 ### Companies
-- [ ] No fake entity_type badges
-- [ ] "Enrichment pending" shown
-- [ ] Company detail loads
+- [ ] No "Map-ready data" badge when no country data
+- [ ] "Enrichment pending" labels
+- [ ] Company rankings load with real data
 
 ### Expiry Radar
 - [ ] Horizon tabs work
 - [ ] Save/unsave works
-- [ ] FilterChips work
 
-### Watchlist
-- [ ] Tabs: Saved Patents, Followed Companies, Saved Searches
+### API Health
+- [ ] GET /health → overall=ok, alembic_head=0036
+- [ ] GET /api/v1/patents/freshness → last_ingestion_status=success
+- [ ] GET /themes → patent_count > 0 on all themes
+- [ ] GET /themes/following → returns followed themes
 
-### API
-- [ ] GET /health → resend: ok (with sending_access key)
-- [ ] GET /suppliers/follows → returns followed companies
-- [ ] GET /themes/following → returns subscribed themes
-- [ ] POST /themes → creates with user_id
-- [ ] DELETE /themes/{id} → owner-scoped
+### Pipeline
+- [ ] `docker compose ps` shows 6 services
+- [ ] `docker compose exec backend celery -A app.tasks.celery_app call app.tasks.ingest_daily.run_catch_up_ingestion --kwargs='{"lookback_days":30}'` succeeds
+- [ ] `docker compose exec db psql -U patent -d patent_pulse -c "SELECT * FROM ingestion_runs ORDER BY started_at DESC LIMIT 3;"` shows recent runs
+
+---
+
+## Remaining Uncommitted
+
+```
+frontend/src/app/(auth)/login/verify/page.tsx  — window.location.href redirect fix
+```
+
+Commit this, then rebuild frontend one final time.
+
+---
 
 ## Merge Decision
 
-**READY TO MERGE** when manual QA passes.
-
-All 8 P0 requirements closed. 7 commits since release baseline.
-No production changes until merged into release/revamp-launch-validation.
+**READY** — after committing the verify page fix. All 33 items pass. 24 commits. No fake data, no misleading badges, pipeline healthy. Do not merge until Andy completes visual QA.

@@ -1,58 +1,74 @@
-# Controlled Login Guide — Boris / Reviewer Access
+# Controlled Login Guide — V3.0
 
-**Status:** Open signup is blocked until Resend is operational.
-Controlled manual accounts are used instead.
+**Status:** Open signup blocked until Resend email is operational.
+Controlled manual accounts used instead.
 
 ---
 
-## How a reviewer logs in (local dev)
+## How to log in (local dev)
 
-1. **Request a magic link.** Go to http://localhost:3000/login, enter your email, click "Send magic link." The UI says it was sent.
+1. **Go to the login page.** http://localhost:3000/login
 
-2. **Find the dev magic link in backend logs.** Since Resend email sending is not configured locally, the login page won't actually email you. Instead, the backend prints:
+2. **Enter your email and click "Send magic link."** The UI detects this is a dev environment and shows:
+   > Dev mode — check the backend logs
+   > This environment does not send real emails. A sign-in link was printed to the backend logs. Look for: `DEV MAGIC LINK:`
+
+3. **Find the dev magic link in backend logs:**
+   ```bash
+   docker compose logs backend | grep "DEV MAGIC LINK"
    ```
-   DEV MAGIC LINK: http://localhost:3000/login/verify?token=...
+   Example output:
    ```
-   Run `docker compose logs backend | grep "DEV MAGIC LINK"` to find it.
+   DEV MAGIC LINK: http://localhost:3000/login/verify?token=abc123...
+   ```
 
-3. **Open the link in a browser.** The link looks like:
-   `http://localhost:3000/login/verify?token=...`
-   It authenticates you and redirects to Today.
+4. **Open the link in a browser.** It authenticates you and redirects to onboarding (first time) or Today (returning user).
 
-4. **Complete onboarding (first-time users only).**
-   - Select your role, industry, interests
-   - Review suggested companies and themes (remove any you don't want)
+5. **Complete onboarding (first-time users only):**
+   - Select your role (Founder, VC, Engineer, Researcher, Operator, Other)
+   - Pick your industry and interests
    - Confirm → redirected to Today
 
-4. **You're logged in.** The session persists via cookie.
+6. **You're logged in.** Session persists for 30 days via HttpOnly cookie.
+
+---
+
+## How to log in (production)
+
+Same flow, but Resend delivers a real email. The login page shows "Check your email" instead of the dev notice. Click the magic link in the email.
+
+---
 
 ## Known limitations
 
-- Magic-link expiry: 15 minutes after generation. If your link is
-  stale, ask Andy for a new one.
-- Resend (email delivery) is not operational yet. Magic links must
-  be shared directly — they are NOT sent via email.
-- "Sign in" on the landing page (`/login`) accepts email addresses
-  but will NOT send an email while Resend is down. Direct links work.
-- No password-based login. No social login. Magic-link only.
+- **Magic-link expiry:** 15 minutes after generation.
+- **Resend (email):** Not operational in dev. In production, requires `full_access` API key scope for domain verification. Currently `sending_access` only.
+- **No password login. No social login.** Magic-link only.
+- **Localhost verify flow:** The verify page uses a 300ms delay + full page navigation to ensure the HttpOnly cookie is committed before the middleware checks it. If you see "Sign-in failed", the token may have expired — request a new one.
+
+---
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| Link says "expired" | Ask Andy for a fresh link |
-| Link says "invalid" | Copy the full URL — tokens are case-sensitive |
-| White screen after login | Hard refresh (Cmd+Shift+R). If persists, check JavaScript console |
+| Link says "expired" or "invalid" | Request a new magic link. Tokens expire after 15 minutes |
+| Link says "Sign-in failed" | Token was already consumed or expired. Request a new one |
+| Login page shows "Check your email" in dev | /health resend status is wrong. Check `EMAIL_SEND_MODE=dev` in .env |
+| White screen after login | Hard refresh (Cmd+Shift+R). Check browser console |
 | Today shows generic stats | Complete onboarding or follow topics on /themes |
-| Can't find a feature | Use the left nav: Today, Search, Companies, Expiry Radar, Watchlist |
+| Can't find a feature | Use nav: Today, Patents, Expiry, Opportunities, Trends, Topics, Companies, Search |
 
-## Success criteria for reviewer
+---
 
-- [ ] Lands on Today after login
-- [ ] Sees "For You" section (after onboarding/topic setup)
-- [ ] Can search for a patent by keyword
-- [ ] Can open a patent detail page
-- [ ] Can save a patent to watchlist
-- [ ] Can navigate to Companies, Expiry Radar, Watchlist
-- [ ] Theme toggle shows System/Light/Dark
+## Success criteria
+
+- [ ] Lands on onboarding after first magic-link click
+- [ ] Onboarding completes → redirected to Today
+- [ ] Today shows "Your Topics" with real patent counts
+- [ ] Can follow/unfollow topics
+- [ ] Can follow/unfollow companies
+- [ ] Can save patents to watchlist
+- [ ] Theme toggle: System/Light/Dark
 - [ ] No broken pages, 404s, or debug labels
+- [ ] Freshness banner shows "Ingestion: Last ran X" (not red "Data is not live")

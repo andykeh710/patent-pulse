@@ -77,7 +77,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app worker --loglevel=info -Q ingestion,summarization,maintenance
+    command: celery -A app.tasks.celery_app worker --loglevel=info -Q celery,ingestion,summarization,maintenance
     # Worker runs Celery, not an HTTP server — the image's default
     # HEALTHCHECK (curl :8000/health) always fails here and reported a false
     # "unhealthy". Probe the worker via Celery's own ping instead.
