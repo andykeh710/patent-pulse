@@ -279,6 +279,66 @@ async def test_chat_stream_does_not_use_request_scoped_db_after_response_starts(
     assert "done" in [event["type"] for event in events]
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_releases_retrieval_db_before_llm_stream(
+    monkeypatch,
+):
+    """The retrieval DB session should not stay pinned during token streaming."""
+    state = {"active": False, "entered": 0, "exited": 0}
+    stream_db = object()
+
+    class StreamSessionContext:
+        async def __aenter__(self):
+            state["active"] = True
+            state["entered"] += 1
+            return stream_db
+
+        async def __aexit__(self, exc_type, exc, tb):
+            state["active"] = False
+            state["exited"] += 1
+            return False
+
+    def stream_session_factory():
+        return StreamSessionContext()
+
+    async def retrieve_with_active_db(message, db):
+        assert state["active"] is True
+        assert db is stream_db
+        return []
+
+    async def stream_after_db_release(self, **kw):
+        assert state["active"] is False
+        yield {"type": "text", "content": "ok"}
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        retrieve_with_active_db,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        stream_after_db_release,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        stream_session_factory,
+    )
+
+    from app.api.v1.chat import _stream_anthropic_response
+
+    events = [
+        json.loads(chunk[len("data: "):])
+        async for chunk in _stream_anthropic_response("hello", None, "local-user")
+    ]
+
+    assert state["entered"] == 1
+    assert state["exited"] == 1
+    assert "done" in [event["type"] for event in events]
+
+
 # ── SSE format tests ──────────────────────────────────────────────────
 
 
