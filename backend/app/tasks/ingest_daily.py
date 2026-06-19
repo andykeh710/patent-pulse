@@ -276,11 +276,17 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
         apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
 
         if not bq_error and not bq_stats.get("error"):
-            total_new = bq_stats.get("created", 0)
-            total_updated = bq_stats.get("updated", 0)
-            total_failed = bq_stats.get("failed", 0)
-            total_processed = bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)
-            status = "success"
+            total_new = bq_stats.get("created", 0) + odp_stats.get("created", 0)
+            total_updated = bq_stats.get("updated", 0) + odp_stats.get("updated", 0)
+            total_failed = bq_stats.get("failed", 0) + odp_stats.get("failed", 0)
+            total_processed = (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (odp_stats.get("fetched", 0) or 0)
+
+            if total_new > 0 or total_updated > 0:
+                status = "success"
+            elif odp_stats.get("source_status") == "source_unavailable" and bq_stats.get("fetched", 0) == 0:
+                status = "degraded"
+            else:
+                status = "success"  # ran successfully, just no new data
             error_msg = None
         else:
             total_new = 0
