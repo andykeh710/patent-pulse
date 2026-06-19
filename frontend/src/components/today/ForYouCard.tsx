@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { preferencesApi } from "@/lib/api";
 
 export interface FeedItemType {
@@ -159,13 +160,13 @@ export function ForYouCard({ item, onHide, onFeedback }: Props) {
           />
         )}
         {item.related_topics?.map((t) => (
-          <a
+          <Link
             key={t}
-            href={`/themes`}
+            href="/themes"
             className="text-[11px] text-[var(--accent)] hover:underline"
           >
             {t}
-          </a>
+          </Link>
         ))}
         {item.related_companies?.map((c) => (
           <CardAction

@@ -398,6 +398,9 @@ export default function TodayPage() {
           </section>
         )}
 
+        {/* V3.2 — Personalized feed with why-shown, deterministic ranking */}
+        <ForYouFeedSection />
+
         {/* More Signals — general insights */}
         {general.length > 0 && (
           <section>

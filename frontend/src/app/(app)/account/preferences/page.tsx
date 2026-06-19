@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { preferencesApi } from "@/lib/api";
 import type { UserPreferences } from "@/lib/types";
@@ -188,9 +189,9 @@ export default function PreferencesPage() {
         <p className="text-xs text-[var(--text-muted)] mb-2">
           {form.followed_topic_count ?? 0} topic{form.followed_topic_count !== 1 ? "s" : ""} followed.
         </p>
-        <a href="/themes" className="text-sm text-[var(--accent)] hover:underline">
+        <Link href="/themes" className="text-sm text-[var(--accent)] hover:underline">
           Manage topics →
-        </a>
+        </Link>
       </Section>
 
       {/* 7. Followed Companies */}
@@ -198,9 +199,9 @@ export default function PreferencesPage() {
         <p className="text-xs text-[var(--text-muted)] mb-2">
           {form.followed_company_count ?? 0} compan{form.followed_company_count !== 1 ? "ies" : "y"} followed.
         </p>
-        <a href="/companies" className="text-sm text-[var(--accent)] hover:underline">
+        <Link href="/companies" className="text-sm text-[var(--accent)] hover:underline">
           Browse companies →
-        </a>
+        </Link>
       </Section>
 
       {/* 8. Saved Patents / Searches */}
@@ -209,12 +210,12 @@ export default function PreferencesPage() {
           <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
             <div className="text-2xl font-semibold text-[var(--text-primary)]">{form.saved_patent_count ?? 0}</div>
             <div className="text-[var(--text-muted)] text-xs mt-1">Saved patents</div>
-            <a href="/watchlist" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">Open watchlist →</a>
+            <Link href="/watchlist" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">Open watchlist →</Link>
           </div>
           <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
             <div className="text-2xl font-semibold text-[var(--text-primary)]">{form.saved_search_count ?? 0}</div>
             <div className="text-[var(--text-muted)] text-xs mt-1">Saved searches</div>
-            <a href="/search" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">Open search →</a>
+            <Link href="/search" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">Open search →</Link>
           </div>
         </div>
       </Section>

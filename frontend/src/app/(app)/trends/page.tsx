@@ -276,7 +276,7 @@ function TrendList({
         <Link
           key={`${item.surface}-${item.key}-${idx}`}
           href={`/trends/${item.surface}/${item.key}`}
-          className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 transition-colors cursor-pointer block"
+          className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors cursor-pointer block"
         >
           <div className="text-lg font-bold text-[var(--text-muted)] w-8 text-right">{idx + 1}</div>
           <div className="flex-1 min-w-0">
@@ -440,7 +440,7 @@ function CliffList({
           <Link
             key={item.id}
             href={`/trends/${item.key_type}/${item.key_value}`}
-            className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 transition-colors cursor-pointer"
+            className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors cursor-pointer"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
