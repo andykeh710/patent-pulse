@@ -217,11 +217,11 @@ async def _gather_candidates(
             title=row[1] or "Untitled patent",
             summary=f"Expiring patent from {_first_assignee(row[2])}",
             evidence={
-                "opportunity_score": row[3],
-                "estimated_expiry_date": str(row[4]) if row[4] else None,
-                "legal_status_confidence": row[5],
+                "opportunity_score": row[4],
+                "estimated_expiry_date": str(row[5]) if row[5] else None,
+                "legal_status_confidence": row[6],
             },
-            source_date=str(row[4]) if row[4] else None,
+            source_date=str(row[5]) if row[5] else None,
             created_at=now,
         ))
 
@@ -245,10 +245,10 @@ async def _gather_candidates(
             title=row[1] or "Untitled patent",
             summary=f"High-opportunity patent from {_first_assignee(row[2])}",
             evidence={
-                "opportunity_score": row[3],
-                "publication_date": str(row[4]) if row[4] else None,
+                "opportunity_score": row[4],
+                "publication_date": str(row[3]) if row[3] else None,
             },
-            source_date=str(row[4]) if row[4] else None,
+            source_date=str(row[3]) if row[3] else None,
             created_at=now,
         ))
 
