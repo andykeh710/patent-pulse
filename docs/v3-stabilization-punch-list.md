@@ -1,50 +1,62 @@
 # V3 Stabilization Punch List
 
 **Date:** 2026-06-19
-**Release head:** `d36340c` (merged V3.2)
-**Deployment:** Pushed to `release/revamp-launch-validation`, local validation passed
+**Release head:** `b4ccea1`
+**Validation:** HEALTH=ok, ALEMBIC=0037, FRESHNESS=degraded, PATENTS=64231
 
-## Merged & Deployed
+## A. Must-Fix Before Production Launch
 
-| PR | Title | Status |
-|----|-------|--------|
-| V3.0 | Boris stabilization | Merged |
-| V3.1 | Preference Center + personalization model | Merged |
-| V3.2 | Personalized Today + honest USPTO source degradation | Merged |
+| # | Issue | Severity | Fix |
+|---|-------|----------|-----|
+| A1 | USPTO ingestion blocked — DB frozen at 2026-05-28 | CRITICAL | Wait for USPTO bulkdata/ODP recovery, then run `catch_up_weeks` |
+| A2 | Resend email in production | HIGH | Configure production Resend API key with `full_access` scope |
+| A3 | Auth/login must work without backend log extraction | HIGH | Resend email delivery required in production |
 
-## Known Data Limitations
+## B. Should-Fix Soon
 
-| Issue | Status |
-|-------|--------|
-| DB latest pub = 2026-05-28 | External blocker — USPTO sources (bulkdata DNS, ODP 503) unavailable |
-| BigQuery stale since 2026-04-21 | Not suitable as primary source |
-| `source_fetches` records source failures honestly | Working — 12+ unavailable rows |
-| Freshness API reports `degraded` | Working |
+| # | Issue | Severity | Fix |
+|---|-------|----------|-----|
+| B1 | "Personalize your briefing" empty state shows below ForYouFeed | MEDIUM | Guard: show only when BOTH legacy + V3.2 feed sections are empty |
+| B2 | Company Geography shows "Unknown" + map placeholder with 0% coverage | MEDIUM | Hide section when country coverage is 0% |
+| B3 | HTML double-escaping in company names (`KALTENBACH &AMP;AMP; VOIGT`) | LOW | Unescape or fix data source encoding |
+| B4 | CSS class typos (`bg-bg-[var(...)]`) in 8+ files | LOW | Find-and-replace sweep |
+| B5 | ForYouCard action buttons small on mobile | LOW | Increase touch target size |
+| B6 | Trends page duplicate CPC/top-patent entries | LOW | Add dedup logic |
 
-## Known Bugs (V3)
+## C. Known External Blockers
 
-| # | Bug | Severity | Status |
-|---|-----|----------|--------|
-| 1 | USPTO ingestion blocked — 0 new records since May 28 | HIGH | External blocker |
-| 2 | HTML double-escaping in company names (`KALTENBACH &AMP;AMP; VOIGT`) | LOW | Not fixed |
-| 3 | CSS class typos (`bg-bg-[var(...)]` in multiple files) | LOW | Partially fixed |
-| 4 | Trends page duplicate entries in some CPC lists | LOW | Not investigated |
-| 5 | `patent_client` library broken (USPTO Public Search 404) | DORMANT | Replaced by BigQuery + ODP architecture |
-| 6 | `Assignee entity_type` enrichment — 0% coverage | MEDIUM | Requires source-backed enrichment (PatentsView or similar) |
+| # | Issue | Status |
+|---|-------|--------|
+| C1 | USPTO bulkdata DNS failure — `bulkdata.uspto.gov` unresolvable globally | Awaiting recovery |
+| C2 | USPTO ODP/IBD API HTTP 503 — all endpoints down | Awaiting recovery |
+| C3 | BigQuery `patents-public-data` stale since 2026-04-21 | Not suitable as primary |
+| C4 | PatentsView API blocked by Cloudflare (HTML instead of JSON) | No known workaround |
 
-## Remaining UX Issues
+**When any source recovers**, run the USPTO Source Recovery Playbook (below).
 
-| Issue | Status |
-|-------|--------|
-| "Personalize your briefing" empty state shows below ForYouFeed | Redundant — should show only when BOTH old+new personalized sections are empty |
-| Company Geography section shows "Unknown" / map placeholder | Honest but visually misleading — hide until real data exists |
-| Resend email — `dev_preview` mode locally | Expected — needs production Resend key |
-| Digest/alert email delivery not yet implemented | V3.3+ scope |
-| ForYouCard action buttons small on mobile | Cosmetic |
+## D. Deferred to V3.5 / V4
+
+| # | Issue | Rationale |
+|---|-------|-----------|
+| D1 | Assignee `entity_type` enrichment (0% coverage) | Requires PatentsView or similar external data source |
+| D2 | Deeper company intelligence (filing velocity, competitor comparison) | V3.3 Watchlist scope |
+| D3 | Source health dashboard (admin view of all source_fetches) | V3.5 admin tools |
+| D4 | Ingestion admin console (manual trigger, backfill UI) | V3.5 admin tools |
+| D5 | Major UX/UI overhaul | Separate design sprint |
+| D6 | `patent_client` library — permanently replaced by BigQuery + ODP | No action needed |
+
+## Bug Count by Severity
+
+| Severity | Count | Items |
+|----------|-------|-------|
+| CRITICAL | 1 | A1 (USPTO ingestion) |
+| HIGH | 2 | A2, A3 (email auth in prod) |
+| MEDIUM | 2 | B1, B2 |
+| LOW | 4 | B3, B4, B5, B6 |
+| EXTERNAL | 4 | C1-C4 |
+| DEFERRED | 6 | D1-D6 |
 
 ## USPTO Source Recovery Playbook
-
-When any USPTO source recovers:
 
 ```bash
 # 1. Test single week
@@ -66,16 +78,6 @@ docker compose exec db psql -U patent -d patent_pulse -c \
   "SELECT COUNT(*), MAX(publication_date) FROM patent_publications;"
 ```
 
-## What Must Be Fixed Before V3 is "Complete"
+## Production Safe?
 
-| Item | Priority |
-|------|----------|
-| USPTO ingestion recovery (once sources available) | CRITICAL |
-| Assignee entity_type enrichment | V3.5 or V4 — requires external data source |
-| Double-escaped company names | LOW — cosmetic |
-| CSS class typos cleanup | LOW — cosmetic |
-| Trends deduplication | LOW |
-
-## Ready for V4.0 Planning
-
-YES — V3 code is stable, honest, and deployable. Data staleness is a known external blocker, not a code bug.
+**Yes** — code is stable, honest, deployable. Data staleness is an external blocker (USPTO sources unavailable), not a code bug. The product correctly reports `degraded` status instead of false `success`.
