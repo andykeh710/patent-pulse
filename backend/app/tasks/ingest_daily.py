@@ -19,6 +19,7 @@ from app.config import settings
 from app.core.exceptions import TransientIngestionError
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
+from app.tasks.ingest_bigquery import ingest_from_bigquery_range
 from app.tasks.ingest_applications import ingest_applications_range
 from app.tasks.ingest_grants import ingest_grants_range
 
@@ -197,52 +198,43 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         logger.info(f"Daily ingestion: {start_date} → {end_date} (lookback={lookback_days}d)")
 
-        # Phase 1: Fetch grants (inline — no Celery sub-task to avoid .get() deadlock)
-        grants_stats = {}
-        grants_error = None
+        # Phase 1: Fetch from BigQuery (primary source — patent_client USPTO API is broken)
+        bq_stats = {}
+        bq_error = None
         try:
-            grants_stats = ingest_grants_range(start_date.isoformat(), end_date.isoformat())
-            logger.info(f"Grants: {grants_stats}")
+            bq_stats = ingest_from_bigquery_range(start_date, end_date)
+            logger.info(f"BigQuery: {bq_stats}")
         except Exception as e:
-            logger.error(f"Grant ingestion failed: {e}", exc_info=True)
-            grants_error = str(e)[:500]
-            grants_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
+            logger.error(f"BigQuery ingestion failed: {e}", exc_info=True)
+            bq_error = str(e)[:500]
+            bq_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1, "fetched": 0}
 
-        # Phase 2: Fetch applications (inline)
-        apps_stats = {}
-        apps_error = None
-        try:
-            apps_stats = ingest_applications_range(start_date.isoformat(), end_date.isoformat())
-            logger.info(f"Applications: {apps_stats}")
-        except Exception as e:
-            logger.error(f"Application ingestion failed: {e}", exc_info=True)
-            apps_error = str(e)[:500]
-            apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
+        # Merge BigQuery stats (all records from one source now)
+        grants_stats = {
+            "processed": bq_stats.get("fetched", 0) or bq_stats.get("processed", 0),
+            "created": bq_stats.get("created", 0),
+            "updated": bq_stats.get("updated", 0),
+            "failed": 0 if not bq_error and not bq_stats.get("error") else 1,
+        }
+        apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
 
-        total_new = grants_stats.get("created", 0) + apps_stats.get("created", 0)
-        total_updated = grants_stats.get("updated", 0) + apps_stats.get("updated", 0)
-        total_failed = grants_stats.get("failed", 0) + apps_stats.get("failed", 0)
-        total_processed = grants_stats.get("processed", 0) + apps_stats.get("processed", 0)
-
-        # Determine honest status
-        grants_ok = grants_stats.get("failed", 0) == 0
-        apps_ok = apps_stats.get("failed", 0) == 0
-        has_new = total_new > 0 or total_updated > 0
-
-        if grants_ok and apps_ok:
+        if not bq_error and not bq_stats.get("error"):
+            total_new = bq_stats.get("created", 0)
+            total_updated = bq_stats.get("updated", 0)
+            total_failed = bq_stats.get("failed", 0)
+            total_processed = bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)
             status = "success"
-        elif has_new:
-            status = "partial_success"
+            error_msg = None
         else:
+            total_new = 0
+            total_updated = 0
+            total_failed = 1
+            total_processed = 0
             status = "failed"
-
-        # Build error summary
-        errors = []
-        if grants_error:
-            errors.append(f"grants: {grants_error}")
-        if apps_error:
-            errors.append(f"apps: {apps_error}")
-        error_msg = "; ".join(errors) if errors else None
+            errors = []
+            if bq_error or bq_stats.get("error"):
+                errors.append(f"BigQuery: {bq_error or bq_stats.get('error')}")
+            error_msg = "; ".join(errors) if errors else None
 
         asyncio.run(
             _record_ingestion_run(
