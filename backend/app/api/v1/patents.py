@@ -243,6 +243,23 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     last_ingestion_new_records = ing_row.new_records if ing_row else None
     last_ingestion_error = ing_row.error_message if ing_row else None
 
+    # If ingestion says "success" but all recent USPTO sources are unavailable,
+    # override to "degraded" so the UI shows honest source status.
+    if last_ingestion_status == "success":
+        source_result = await db.execute(
+            text("""
+                SELECT COUNT(*) AS total,
+                       COUNT(*) FILTER (WHERE status = 'unavailable') AS down
+                FROM source_fetches
+                WHERE office = 'USPTO'
+                  AND started_at >= now() - INTERVAL '24 hours'
+            """)
+        )
+        sf_row = source_result.first()
+        if sf_row and sf_row.total > 0 and sf_row.down == sf_row.total:
+            last_ingestion_status = "degraded"
+            last_ingestion_error = "All USPTO data sources are currently unavailable."
+
     return FreshnessResponse(
         latest_patent_created_at=latest_patent_created_at,
         latest_patent_publication_date=str(latest_pub_date) if latest_pub_date else None,

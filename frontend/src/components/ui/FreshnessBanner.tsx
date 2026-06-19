@@ -104,12 +104,19 @@ export function FreshnessBanner({
   // USPTO publishes weekly; anything > 10 days from today is source lag
   const sourceLag = pubAgeDays !== null && pubAgeDays > 10;
 
-  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag && data.last_ingestion_status !== "failed") return null;
+  // Pre-compute status booleans to avoid TS narrowing conflicts
+  const isDegraded = data.last_ingestion_status === "degraded";
+  const isFailed = data.last_ingestion_status === "failed";
+  const isPartial = data.last_ingestion_status === "partial_success";
+  const isSuccessNoData = data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0;
+  const showDegraded = isDegraded || isFailed || isPartial;
+
+  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag && !showDegraded) return null;
 
   return (
     <div className={className}>
-      {/* Failed/degraded ingestion — always show regardless of staleness */}
-      {(data.last_ingestion_status === "failed" || data.last_ingestion_status === "partial_success" || data.last_ingestion_status === "degraded") && (
+      {/* Failed/degraded ingestion */}
+      {showDegraded && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
@@ -117,7 +124,7 @@ export function FreshnessBanner({
           <span aria-hidden className="mt-0.5 font-bold">⚠</span>
           <div>
             <span className="font-semibold">
-              {data.last_ingestion_status === "partial_success"
+              {isPartial
                 ? "Ingestion partially failed."
                 : "Ingestion sources unavailable."}
             </span>{" "}
@@ -128,7 +135,7 @@ export function FreshnessBanner({
       )}
 
       {/* Source lag: last successful run but no new data */}
-      {data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0 && (
+      {isSuccessNoData && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
@@ -143,7 +150,7 @@ export function FreshnessBanner({
       )}
 
       {/* Strong warning: ingestion stale */}
-      {ingestionStale && data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0 && (
+      {ingestionStale && isSuccessNoData && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
@@ -151,8 +158,7 @@ export function FreshnessBanner({
           <span aria-hidden className="mt-0.5 font-bold">⚠</span>
           <div>
             <span className="font-semibold">Ingestion pipeline has been unable to fetch new data for {ingestionAgeDays}d.</span>{" "}
-            Last successful ingestion was {ingestionAgeDays}d ago
-            {data.last_ingestion_status === "failed" && ` (last attempt failed: ${data.last_ingestion_error || "unknown"})`}.
+            Last successful ingestion was {ingestionAgeDays}d ago.
             {" "}Verify patent data against official registers.
           </div>
         </div>
