@@ -283,7 +283,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
             if total_new > 0 or total_updated > 0:
                 status = "success"
-            elif odp_stats.get("source_status") == "source_unavailable" and bq_stats.get("fetched", 0) == 0:
+            elif odp_stats.get("source_status") == "unavailable" and bq_stats.get("fetched", 0) == 0:
                 status = "degraded"
             else:
                 status = "success"  # ran successfully, just no new data

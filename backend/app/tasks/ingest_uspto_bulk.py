@@ -98,14 +98,14 @@ def _ingest_week(kind: str, target_date: date) -> dict:
     # Determine status
     any_success = any(s["status"] == "success" for s in sources.values())
     any_fetched = any(s.get("records_found", 0) > 0 for s in sources.values())
-    all_failed = all(s["status"] in ("failed", "source_unavailable") for s in sources.values())
+    all_down = all(s["status"] in ("failed", "unavailable") for s in sources.values())
 
     if any_fetched:
         stats["source_status"] = "success" if not any(
-            s["status"] == "source_unavailable" for s in sources.values()
+            s["status"] == "unavailable" for s in sources.values()
         ) else "partial_success"
-    elif all_failed:
-        stats["source_status"] = "source_unavailable"
+    elif all_down:
+        stats["source_status"] = "unavailable"
     else:
         stats["source_status"] = "empty"
 
@@ -171,7 +171,7 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
     bulk_result = {
         "provider": "uspto_bulkdata",
         "source_url": bulk_url,
-        "status": "source_unavailable",
+        "status": "unavailable",
         "http_status": None,
         "records_found": 0,
         "error_message": None,
@@ -185,10 +185,10 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
             bulk_result["status"] = "success" if content_len > 100 else "empty"
             bulk_result["records_found"] = content_len
         else:
-            bulk_result["status"] = "source_unavailable"
+            bulk_result["status"] = "unavailable"
             bulk_result["error_message"] = f"HTTP {r.status_code}"
     except Exception as e:
-        bulk_result["status"] = "source_unavailable"
+        bulk_result["status"] = "unavailable"
         bulk_result["error_message"] = f"DNS/network failure: {e}"
     results["uspto_bulkdata"] = bulk_result
 
@@ -197,7 +197,7 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
     odp_result = {
         "provider": "uspto_odp",
         "source_url": odp_url,
-        "status": "source_unavailable",
+        "status": "unavailable",
         "http_status": None,
         "records_found": 0,
         "error_message": None,
@@ -214,7 +214,7 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
             odp_result["status"] = "success" if content_len > 100 else "empty"
             odp_result["records_found"] = content_len
         else:
-            odp_result["status"] = "source_unavailable"
+            odp_result["status"] = "unavailable"
             odp_result["error_message"] = f"HTTP {r.status_code}: {r.text[:200]}"
     except Exception as e:
         odp_result["status"] = "source_unavailable"
@@ -279,9 +279,7 @@ def _overall_status(total: dict) -> str:
     """Determine overall catch-up status."""
     if total["created"] > 0 or total["updated"] > 0:
         return "success" if total["failed"] == 0 else "partial_success"
-    # Check sources
-    # (simplified: if no records, return empty_with_sources_unavailable)
-    return "source_unavailable"
+    return "unavailable"
 
 
 def _weekdays_in_range(start: date, end: date, weekday: int) -> list[date]:
