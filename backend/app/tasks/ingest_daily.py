@@ -20,6 +20,7 @@ from app.core.exceptions import TransientIngestionError
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 from app.tasks.ingest_bigquery import ingest_from_bigquery_range
+from app.tasks.ingest_uspto_bulk import catch_up_weeks
 from app.tasks.ingest_applications import ingest_applications_range
 from app.tasks.ingest_grants import ingest_grants_range
 
@@ -245,12 +246,32 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             f"{start_date.isoformat()}:{end_date.isoformat()}",
             bq_stats, bq_error))
 
-        # For now: merge BigQuery stats. When USPTO APIs recover, add IBD/bulk XML phases here.
+        # Phase 2: USPTO ODP bulk (official weekly XML — when available)
+        odp_stats = {}
+        odp_error = None
+        try:
+            odp_stats = catch_up_weeks(
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
+            )
+            logger.info(f"ODP bulk: {odp_stats}")
+        except Exception as e:
+            logger.error(f"ODP bulk ingestion failed: {e}", exc_info=True)
+            odp_error = str(e)[:500]
+            odp_stats = {"created": 0, "updated": 0, "failed": 1}
+
+        asyncio.run(_record_source_fetch("uspto_odp", "US", "bulk_weekly",
+            f"{start_date.isoformat()}:{end_date.isoformat()}",
+            odp_stats, odp_error))
+
+        # Merge stats: BigQuery + ODP
         grants_stats = {
-            "processed": bq_stats.get("fetched", 0) or bq_stats.get("processed", 0),
-            "created": bq_stats.get("created", 0),
-            "updated": bq_stats.get("updated", 0),
-            "failed": 0 if not bq_error and not bq_stats.get("error") else 1,
+            "processed": (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0))
+                       + (odp_stats.get("fetched", 0) or 0),
+            "created": bq_stats.get("created", 0) + odp_stats.get("created", 0),
+            "updated": bq_stats.get("updated", 0) + odp_stats.get("updated", 0),
+            "failed": (1 if (bq_error or bq_stats.get("error")) else 0)
+                    + (1 if (odp_error or odp_stats.get("error")) else 0),
         }
         apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
 

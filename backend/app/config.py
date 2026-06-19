@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     uspto_api_key: str = ""
+    uspto_odp_api_key: str = ""
+    uspto_odp_base_url: str = "https://developer.uspto.gov/ibd-api/v1"
     google_cloud_project: str | None = None
 
     # Sprint 6: magic-link auth

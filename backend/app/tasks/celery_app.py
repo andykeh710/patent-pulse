@@ -58,6 +58,8 @@ celery_app.conf.update(
         "app.tasks.ingest_grants.*": {"queue": "ingestion"},
         "app.tasks.ingest_applications.*": {"queue": "ingestion"},
         "app.tasks.ingest_daily.*": {"queue": "ingestion"},
+        "app.tasks.ingest_uspto_bulk.*": {"queue": "ingestion"},
+        "app.tasks.ingest_bigquery.*": {"queue": "ingestion"},
         "app.tasks.summarize.*": {"queue": "summarization"},
         "app.tasks.enrich_abstracts.*": {"queue": "ingestion"},
         "app.tasks.expiry_watch.*": {"queue": "maintenance"},
