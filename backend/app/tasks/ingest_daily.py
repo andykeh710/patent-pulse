@@ -197,28 +197,22 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         logger.info(f"Daily ingestion: {start_date} → {end_date} (lookback={lookback_days}d)")
 
-        # Phase 1: Fetch grants
+        # Phase 1: Fetch grants (inline — no Celery sub-task to avoid .get() deadlock)
         grants_stats = {}
         grants_error = None
         try:
-            grants_task = ingest_grants_range.delay(
-                start_date.isoformat(), end_date.isoformat()
-            )
-            grants_stats = grants_task.get(timeout=1800)  # 30 min timeout
+            grants_stats = ingest_grants_range(start_date.isoformat(), end_date.isoformat())
             logger.info(f"Grants: {grants_stats}")
         except Exception as e:
             logger.error(f"Grant ingestion failed: {e}", exc_info=True)
             grants_error = str(e)[:500]
             grants_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
 
-        # Phase 2: Fetch applications
+        # Phase 2: Fetch applications (inline)
         apps_stats = {}
         apps_error = None
         try:
-            apps_task = ingest_applications_range.delay(
-                start_date.isoformat(), end_date.isoformat()
-            )
-            apps_stats = apps_task.get(timeout=1800)
+            apps_stats = ingest_applications_range(start_date.isoformat(), end_date.isoformat())
             logger.info(f"Applications: {apps_stats}")
         except Exception as e:
             logger.error(f"Application ingestion failed: {e}", exc_info=True)
