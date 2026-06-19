@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
+import { useAuth } from "@/lib/AuthContext";
 import { preferencesApi } from "@/lib/api";
 import type { UserPreferences } from "@/lib/types";
 
@@ -33,6 +34,7 @@ const DIGEST_OPTIONS = [
 ];
 
 export default function PreferencesPage() {
+  const { user } = useAuth();
   const { data, error, isLoading, mutate } = useSWR("preferences", preferencesApi.get);
   const [form, setForm] = useState<Partial<UserPreferences>>({});
   const [saving, setSaving] = useState(false);
@@ -112,6 +114,7 @@ export default function PreferencesPage() {
       {/* 1. Profile */}
       <Section title="Profile">
         <p className="text-xs text-[var(--text-muted)]">
+          Signed in as <strong>{user?.email || "Unknown"}</strong>.
           Your preferences personalize what appears in Today, Watchlist, and future digests.
         </p>
       </Section>

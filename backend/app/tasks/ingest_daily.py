@@ -161,13 +161,7 @@ def run_catch_up_ingestion(self, lookback_days: int = 30) -> dict:
     Args:
         lookback_days: How many days back to fetch (default 30)
     """
-    # Temporarily override the lookback for this run
-    original = settings.ingest_lookback_days
-    settings.ingest_lookback_days = lookback_days
-    try:
-        return run_daily_ingestion()
-    finally:
-        settings.ingest_lookback_days = original
+    return run_daily_ingestion(override_lookback_days=lookback_days)
 
 
 @celery_app.task(
@@ -176,7 +170,7 @@ def run_catch_up_ingestion(self, lookback_days: int = 30) -> dict:
     max_retries=1,
     default_retry_delay=600,
 )
-def run_daily_ingestion(self) -> dict:
+def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict:
     """
     Daily incremental USPTO ingestion with automatic gap detection.
 
@@ -198,7 +192,7 @@ def run_daily_ingestion(self) -> dict:
 
     try:
         end_date = date.today()
-        lookback_days = asyncio.run(_compute_lookback_days())
+        lookback_days = override_lookback_days or asyncio.run(_compute_lookback_days())
         start_date = end_date - timedelta(days=lookback_days)
 
         logger.info(f"Daily ingestion: {start_date} → {end_date} (lookback={lookback_days}d)")
