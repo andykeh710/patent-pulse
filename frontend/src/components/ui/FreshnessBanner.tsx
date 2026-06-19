@@ -109,7 +109,7 @@ export function FreshnessBanner({
   return (
     <div className={className}>
       {/* Failed/degraded ingestion — always show regardless of staleness */}
-      {(data.last_ingestion_status === "failed" || data.last_ingestion_status === "partial_success") && (
+      {(data.last_ingestion_status === "failed" || data.last_ingestion_status === "partial_success" || data.last_ingestion_status === "degraded") && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"

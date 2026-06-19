@@ -106,6 +106,37 @@ async def _get_latest_publication_date() -> date | None:
         return result.scalar()
 
 
+async def _record_source_fetch(
+    provider: str, office: str, target_type: str,
+    target_id: str, stats: dict, error: str | None,
+) -> None:
+    """Record a per-source fetch attempt in source_fetches."""
+    from sqlalchemy import text
+
+    async with async_session_maker() as session:
+        await session.execute(text("""
+            INSERT INTO source_fetches (
+                provider, office, target_type, target_id,
+                status, records_found, error_message,
+                started_at, completed_at, duration_ms
+            ) VALUES (
+                :provider, :office, :target_type, :target_id,
+                :status, :found, :error,
+                now(), now(), :ms
+            )
+        """), {
+            "provider": provider,
+            "office": office,
+            "target_type": target_type,
+            "target_id": target_id,
+            "status": "success" if not error else "failed",
+            "found": stats.get("fetched", 0) or stats.get("processed", 0),
+            "error": error[:500] if error else None,
+            "ms": 0,
+        })
+        await session.commit()
+
+
 async def _compute_lookback_days() -> int:
     """
     Compute how many days back to look for new patents.
@@ -198,18 +229,23 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         logger.info(f"Daily ingestion: {start_date} → {end_date} (lookback={lookback_days}d)")
 
-        # Phase 1: Fetch from BigQuery (primary source — patent_client USPTO API is broken)
+        # Phase 1: Check BigQuery (supplemental — not authoritative for freshness)
         bq_stats = {}
         bq_error = None
         try:
             bq_stats = ingest_from_bigquery_range(start_date, end_date)
-            logger.info(f"BigQuery: {bq_stats}")
+            logger.info(f"BigQuery (supplemental): {bq_stats}")
         except Exception as e:
-            logger.error(f"BigQuery ingestion failed: {e}", exc_info=True)
+            logger.error(f"BigQuery check failed: {e}", exc_info=True)
             bq_error = str(e)[:500]
             bq_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1, "fetched": 0}
 
-        # Merge BigQuery stats (all records from one source now)
+        # Record source fetch for BigQuery
+        asyncio.run(_record_source_fetch("bigquery", "US", "grants_range",
+            f"{start_date.isoformat()}:{end_date.isoformat()}",
+            bq_stats, bq_error))
+
+        # For now: merge BigQuery stats. When USPTO APIs recover, add IBD/bulk XML phases here.
         grants_stats = {
             "processed": bq_stats.get("fetched", 0) or bq_stats.get("processed", 0),
             "created": bq_stats.get("created", 0),
@@ -230,7 +266,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             total_updated = 0
             total_failed = 1
             total_processed = 0
-            status = "failed"
+            status = "degraded"
             errors = []
             if bq_error or bq_stats.get("error"):
                 errors.append(f"BigQuery: {bq_error or bq_stats.get('error')}")
@@ -270,10 +306,10 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
         logger.error(f"Daily ingestion failed: {e}", exc_info=True)
         asyncio.run(
             _record_ingestion_run(
-                status="failed", error=str(e), started_at=started_at
+                status="degraded", error=str(e), started_at=started_at
             )
         )
-        stats["status"] = "failed"
+        stats["status"] = "degraded"
         stats["error"] = str(e)
 
     finally:

@@ -1,15 +1,13 @@
 """
-BigQuery-based daily USPTO ingestion.
+BigQuery supplemental USPTO data source.
 
-Uses Google Patents public dataset as the authoritative source for daily
-patent ingestion. Replaces the broken patent_client Public Search API.
+Used as a supplemental/fallback source for patent data. The Google Patents
+public dataset (patents-public-data.patents.publications) is NOT suitable as
+the primary daily freshness source — it lags USPTO publication by 1-2 months.
 
-The BigQuery public dataset (patents-public-data.patents.publications)
-is updated within 24-48 hours of USPTO publication and contains:
-- Full bibliographic data (title, abstract, assignees, inventors, citations)
-- CPC/IPC classification codes
-- Publication dates as YYYYMMDD integers
-- Country code for US-only filtering
+Primary daily USPTO ingestion should use the USPTO IBD API or weekly bulk XML
+files when available. This module provides BigQuery access for backfill and
+supplemental queries.
 """
 
 import asyncio
