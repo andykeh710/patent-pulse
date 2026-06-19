@@ -3,6 +3,7 @@ import type {
   CliffListResponse,
   ConvergenceItem,
   CreateRunRequest,
+  UserPreferences,
   EstimateRequest,
   EstimateResponse,
   ExpiryItem,
