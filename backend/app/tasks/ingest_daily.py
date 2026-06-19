@@ -130,7 +130,7 @@ async def _record_source_fetch(
             "office": office,
             "target_type": target_type,
             "target_id": target_id,
-            "status": "success" if not error else "failed",
+            "status": "success" if (not error and stats.get("fetched", 0) > 0) else ("failed" if error else "empty"),
             "found": stats.get("fetched", 0) or stats.get("processed", 0),
             "error": error[:500] if error else None,
             "ms": 0,
