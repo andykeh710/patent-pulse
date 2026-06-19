@@ -15,6 +15,7 @@ import { StarterTopics } from "@/components/ui/StarterTopics";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import { FeedbackWidget } from "@/components/ui/FeedbackWidget";
 import { Tour } from "@/components/tour/Tour";
+import { ForYouCard, type FeedItemType } from "@/components/today/ForYouCard";
 import { useOpportunityList } from "@/hooks/useOpportunity";
 import { usePriorityWatch, usePatentStats } from "@/hooks/usePatents";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -396,6 +397,9 @@ export default function TodayPage() {
             </div>
           </section>
         )}
+
+        {/* V3.2 — Personalized feed with why-shown, deterministic ranking */}
+        <ForYouFeedSection />
 
         {/* More Signals — general insights */}
         {general.length > 0 && (
@@ -828,5 +832,45 @@ function ActionSuggestion({
         Go →
       </span>
     </Link>
+  );
+}
+
+// ── V3.2 For You Feed ──────────────────────────────────────────────────
+
+function ForYouFeedSection() {
+  const { data, error } = useSWR("today-feed", () =>
+    fetch("/api/v1/today/feed", { credentials: "include" }).then((r) => r.json())
+  );
+
+  if (error) return null;
+  if (!data) {
+    return (
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold text-[var(--accent)] uppercase tracking-wider mb-3">For You</h2>
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-center">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 w-3/4 mx-auto bg-[var(--bg-glass)] rounded" />
+            <div className="h-3 w-1/2 mx-auto bg-[var(--bg-glass)] rounded" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const items: FeedItemType[] = data?.feed_items || [];
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-[var(--accent)] uppercase tracking-wider">For You</h2>
+        <span className="text-[11px] text-[var(--text-muted)]">{items.length} signal{items.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.map((item) => (
+          <ForYouCard key={item.id} item={item} />
+        ))}
+      </div>
+    </section>
   );
 }

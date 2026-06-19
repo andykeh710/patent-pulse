@@ -19,6 +19,8 @@ from app.config import settings
 from app.core.exceptions import TransientIngestionError
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
+from app.tasks.ingest_bigquery import ingest_from_bigquery_range
+from app.tasks.ingest_uspto_bulk import catch_up_weeks
 from app.tasks.ingest_applications import ingest_applications_range
 from app.tasks.ingest_grants import ingest_grants_range
 
@@ -103,6 +105,37 @@ async def _get_latest_publication_date() -> date | None:
             select(func.max(PatentPublication.publication_date))
         )
         return result.scalar()
+
+
+async def _record_source_fetch(
+    provider: str, office: str, target_type: str,
+    target_id: str, stats: dict, error: str | None,
+) -> None:
+    """Record a per-source fetch attempt in source_fetches."""
+    from sqlalchemy import text
+
+    async with async_session_maker() as session:
+        await session.execute(text("""
+            INSERT INTO source_fetches (
+                provider, office, target_type, target_id,
+                status, records_found, error_message,
+                started_at, completed_at, duration_ms
+            ) VALUES (
+                :provider, :office, :target_type, :target_id,
+                :status, :found, :error,
+                now(), now(), :ms
+            )
+        """), {
+            "provider": provider,
+            "office": office,
+            "target_type": target_type,
+            "target_id": target_id,
+            "status": "success" if (not error and stats.get("fetched", 0) > 0) else ("failed" if error else "empty"),
+            "found": stats.get("fetched", 0) or stats.get("processed", 0),
+            "error": error[:500] if error else None,
+            "ms": 0,
+        })
+        await session.commit()
 
 
 async def _compute_lookback_days() -> int:
@@ -197,40 +230,82 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         logger.info(f"Daily ingestion: {start_date} → {end_date} (lookback={lookback_days}d)")
 
-        # Phase 1: Fetch grants
-        grants_stats = {}
+        # Phase 1: Check BigQuery (supplemental — not authoritative for freshness)
+        bq_stats = {}
+        bq_error = None
         try:
-            grants_task = ingest_grants_range.delay(
-                start_date.isoformat(), end_date.isoformat()
-            )
-            grants_stats = grants_task.get(timeout=1800)  # 30 min timeout
-            logger.info(f"Grants: {grants_stats}")
+            bq_stats = ingest_from_bigquery_range(start_date, end_date)
+            logger.info(f"BigQuery (supplemental): {bq_stats}")
         except Exception as e:
-            logger.error(f"Grant ingestion failed: {e}")
-            grants_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
+            logger.error(f"BigQuery check failed: {e}", exc_info=True)
+            bq_error = str(e)[:500]
+            bq_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1, "fetched": 0}
 
-        # Phase 2: Fetch applications
-        apps_stats = {}
+        # Record source fetch for BigQuery
+        asyncio.run(_record_source_fetch("bigquery", "US", "grants_range",
+            f"{start_date.isoformat()}:{end_date.isoformat()}",
+            bq_stats, bq_error))
+
+        # Phase 2: USPTO ODP bulk (official weekly XML — when available)
+        odp_stats = {}
+        odp_error = None
         try:
-            apps_task = ingest_applications_range.delay(
-                start_date.isoformat(), end_date.isoformat()
+            odp_stats = catch_up_weeks(
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
             )
-            apps_stats = apps_task.get(timeout=1800)
-            logger.info(f"Applications: {apps_stats}")
+            logger.info(f"ODP bulk: {odp_stats}")
         except Exception as e:
-            logger.error(f"Application ingestion failed: {e}")
-            apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
+            logger.error(f"ODP bulk ingestion failed: {e}", exc_info=True)
+            odp_error = str(e)[:500]
+            odp_stats = {"created": 0, "updated": 0, "failed": 1}
 
-        total_new = grants_stats.get("created", 0) + apps_stats.get("created", 0)
-        total_updated = grants_stats.get("updated", 0) + apps_stats.get("updated", 0)
-        total_failed = grants_stats.get("failed", 0) + apps_stats.get("failed", 0)
+        asyncio.run(_record_source_fetch("uspto_odp", "US", "bulk_weekly",
+            f"{start_date.isoformat()}:{end_date.isoformat()}",
+            odp_stats, odp_error))
+
+        # Merge stats: BigQuery + ODP
+        grants_stats = {
+            "processed": (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0))
+                       + (odp_stats.get("fetched", 0) or 0),
+            "created": bq_stats.get("created", 0) + odp_stats.get("created", 0),
+            "updated": bq_stats.get("updated", 0) + odp_stats.get("updated", 0),
+            "failed": (1 if (bq_error or bq_stats.get("error")) else 0)
+                    + (1 if (odp_error or odp_stats.get("error")) else 0),
+        }
+        apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
+
+        if not bq_error and not bq_stats.get("error"):
+            total_new = bq_stats.get("created", 0) + odp_stats.get("created", 0)
+            total_updated = bq_stats.get("updated", 0) + odp_stats.get("updated", 0)
+            total_failed = bq_stats.get("failed", 0) + odp_stats.get("failed", 0)
+            total_processed = (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (odp_stats.get("fetched", 0) or 0)
+
+            if total_new > 0 or total_updated > 0:
+                status = "success"
+            elif odp_stats.get("source_status") == "unavailable" and bq_stats.get("fetched", 0) == 0:
+                status = "degraded"
+            else:
+                status = "success"  # ran successfully, just no new data
+            error_msg = None
+        else:
+            total_new = 0
+            total_updated = 0
+            total_failed = 1
+            total_processed = 0
+            status = "degraded"
+            errors = []
+            if bq_error or bq_stats.get("error"):
+                errors.append(f"BigQuery: {bq_error or bq_stats.get('error')}")
+            error_msg = "; ".join(errors) if errors else None
 
         asyncio.run(
             _record_ingestion_run(
-                status="success",
+                status=status,
                 grants_stats=grants_stats,
                 apps_stats=apps_stats,
                 started_at=started_at,
+                error=error_msg,
             )
         )
 
@@ -240,7 +315,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         stats.update(
             {
-                "status": "success",
+                "status": status,
                 "grants": grants_stats,
                 "applications": apps_stats,
                 "total_new": total_new,
@@ -258,10 +333,10 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
         logger.error(f"Daily ingestion failed: {e}", exc_info=True)
         asyncio.run(
             _record_ingestion_run(
-                status="failed", error=str(e), started_at=started_at
+                status="degraded", error=str(e), started_at=started_at
             )
         )
-        stats["status"] = "failed"
+        stats["status"] = "degraded"
         stats["error"] = str(e)
 
     finally:
