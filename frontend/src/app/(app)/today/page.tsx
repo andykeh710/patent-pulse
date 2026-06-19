@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
+
+// Prevent static prerendering — this page uses dynamic data per user
+export const dynamic = "force-dynamic";
+
 import { PageHeader } from "@/components/ui/PageHeader";
 import { InsightCard } from "@/components/ui/InsightCard";
 import { LoadingState } from "@/components/ui/LoadingState";
