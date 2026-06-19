@@ -306,3 +306,53 @@ class FreshnessResponse(BaseModel):
     last_ingestion_finished_at: str | None = None    # ISO 8601
     last_ingestion_new_records: int | None = None    # grants_created + apps_created
     last_ingestion_error: str | None = None
+
+
+# ── V3.1 Preference Center ───────────────────────────────────────────
+
+
+class UserPreferencesResponse(BaseModel):
+    """Full user preference state returned by GET /me/preferences."""
+    persona: str | None = None
+    use_case: str | None = None
+    industry_focus: str | None = None
+    interests_freetext: str | None = None
+    digest_frequency: str = "weekly"
+    digest_topics_only: bool = False
+    digest_min_opp_score: float = 0.0
+    followed_topic_count: int = 0
+    followed_company_count: int = 0
+    saved_patent_count: int = 0
+    saved_search_count: int = 0
+
+
+class UserPreferencesUpdate(BaseModel):
+    """Fields accepted by PATCH /me/preferences. All optional."""
+    persona: str | None = None
+    use_case: str | None = None
+    industry_focus: str | None = None
+    interests_freetext: str | None = None
+    digest_frequency: str | None = None
+    digest_topics_only: bool | None = None
+    digest_min_opp_score: float | None = None
+
+
+class FeedInteractionRequest(BaseModel):
+    """Create a feed interaction event."""
+    object_type: str
+    object_id: str
+    interaction_type: str
+    metadata: dict | None = None
+
+
+class HideFeedItemRequest(BaseModel):
+    """Hide a feed item."""
+    object_type: str
+    object_id: str
+
+
+class FeedFeedbackRequest(BaseModel):
+    """Submit useful/not_useful feedback on a feed item."""
+    object_type: str
+    object_id: str
+    feedback_type: str  # "useful" | "not_useful"
