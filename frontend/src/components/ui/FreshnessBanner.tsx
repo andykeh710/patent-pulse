@@ -109,14 +109,18 @@ export function FreshnessBanner({
   return (
     <div className={className}>
       {/* Failed ingestion — always show regardless of staleness */}
-      {data.last_ingestion_status === "failed" && (
+      {(data.last_ingestion_status === "failed" || data.last_ingestion_status === "partial_success") && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
         >
           <span aria-hidden className="mt-0.5 font-bold">⚠</span>
           <div>
-            <span className="font-semibold">Ingestion failed.</span>{" "}
+            <span className="font-semibold">
+              {data.last_ingestion_status === "partial_success"
+                ? "Ingestion partially failed."
+                : "Ingestion failed."}
+            </span>{" "}
             {data.last_ingestion_error || "Unknown error"}.
             {" "}Patent data may be out of date. Verify against official patent registers.
           </div>

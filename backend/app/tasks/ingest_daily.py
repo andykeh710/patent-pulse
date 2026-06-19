@@ -199,6 +199,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         # Phase 1: Fetch grants
         grants_stats = {}
+        grants_error = None
         try:
             grants_task = ingest_grants_range.delay(
                 start_date.isoformat(), end_date.isoformat()
@@ -206,11 +207,13 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             grants_stats = grants_task.get(timeout=1800)  # 30 min timeout
             logger.info(f"Grants: {grants_stats}")
         except Exception as e:
-            logger.error(f"Grant ingestion failed: {e}")
+            logger.error(f"Grant ingestion failed: {e}", exc_info=True)
+            grants_error = str(e)[:500]
             grants_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
 
         # Phase 2: Fetch applications
         apps_stats = {}
+        apps_error = None
         try:
             apps_task = ingest_applications_range.delay(
                 start_date.isoformat(), end_date.isoformat()
@@ -218,19 +221,42 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             apps_stats = apps_task.get(timeout=1800)
             logger.info(f"Applications: {apps_stats}")
         except Exception as e:
-            logger.error(f"Application ingestion failed: {e}")
+            logger.error(f"Application ingestion failed: {e}", exc_info=True)
+            apps_error = str(e)[:500]
             apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1}
 
         total_new = grants_stats.get("created", 0) + apps_stats.get("created", 0)
         total_updated = grants_stats.get("updated", 0) + apps_stats.get("updated", 0)
         total_failed = grants_stats.get("failed", 0) + apps_stats.get("failed", 0)
+        total_processed = grants_stats.get("processed", 0) + apps_stats.get("processed", 0)
+
+        # Determine honest status
+        grants_ok = grants_stats.get("failed", 0) == 0
+        apps_ok = apps_stats.get("failed", 0) == 0
+        has_new = total_new > 0 or total_updated > 0
+
+        if grants_ok and apps_ok:
+            status = "success"
+        elif has_new:
+            status = "partial_success"
+        else:
+            status = "failed"
+
+        # Build error summary
+        errors = []
+        if grants_error:
+            errors.append(f"grants: {grants_error}")
+        if apps_error:
+            errors.append(f"apps: {apps_error}")
+        error_msg = "; ".join(errors) if errors else None
 
         asyncio.run(
             _record_ingestion_run(
-                status="success",
+                status=status,
                 grants_stats=grants_stats,
                 apps_stats=apps_stats,
                 started_at=started_at,
+                error=error_msg,
             )
         )
 
@@ -240,7 +266,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
         stats.update(
             {
-                "status": "success",
+                "status": status,
                 "grants": grants_stats,
                 "applications": apps_stats,
                 "total_new": total_new,
