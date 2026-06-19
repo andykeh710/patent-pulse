@@ -189,6 +189,22 @@ export interface Freshness {
   last_ingestion_error: string | null;
 }
 
+// ── V3.1 ──
+
+export interface UserPreferences {
+  persona: string | null;
+  use_case: string | null;
+  industry_focus: string | null;
+  interests_freetext: string | null;
+  digest_frequency: string;
+  digest_topics_only: boolean;
+  digest_min_opp_score: number;
+  followed_topic_count: number;
+  followed_company_count: number;
+  saved_patent_count: number;
+  saved_search_count: number;
+}
+
 export interface PatentListParams {
   office?: string;
   kind_code?: string;

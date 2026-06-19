@@ -27,6 +27,7 @@ class OnboardingCompleteRequest(BaseModel):
     persona: str
     industry_focus: str
     interests_freetext: str = ""
+    use_case: str | None = None
 
 
 class SuggestedCompany(BaseModel):
@@ -84,6 +85,8 @@ async def onboarding_complete(
     user.industry_focus = body.industry_focus
     if body.interests_freetext:
         user.interests_freetext = body.interests_freetext
+    if body.use_case is not None:
+        user.use_case = body.use_case
     await db.commit()
 
     # Get CPC prefixes for this industry
