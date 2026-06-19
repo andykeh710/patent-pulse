@@ -3,9 +3,9 @@ from fastapi import APIRouter
 from app.api.v1 import (
     account, admin, ai_runs, api_keys, auth, billing, blog, chat,
     content, expiry, exports, families, onboarding, opportunity,
-    patents, reports, retention, saved_searches, search, semantic_search, share,
-    subscriptions, suppliers, themes, today, trends, usage_signals,
-    watchlist, webhooks,
+    patents, preferences, reports, retention, saved_searches, search,
+    semantic_search, share, subscriptions, suppliers, themes, today,
+    trends, usage_signals, watchlist, webhooks,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -27,6 +27,7 @@ v1_router.include_router(content.router, prefix="/content", tags=["content"])
 v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["usage-signals"])
 v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 v1_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
+v1_router.include_router(preferences.router, tags=["preferences"])
 v1_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])
 v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])

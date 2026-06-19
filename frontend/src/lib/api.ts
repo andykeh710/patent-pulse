@@ -468,3 +468,17 @@ export const authApi = {
 
   logout: () => apiFetch<{ ok: boolean }>("/api/v1/auth/logout", { method: "POST" }),
 };
+
+export const preferencesApi = {
+  get: () => apiFetch<UserPreferences>("/api/v1/me/preferences"),
+  update: (body: Partial<UserPreferences>) =>
+    apiFetch<UserPreferences>("/api/v1/me/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  hideItem: (objectType: string, objectId: string) =>
+    apiFetch<{ ok: boolean }>("/api/v1/me/feed/hide", {
+      method: "POST",
+      body: JSON.stringify({ object_type: objectType, object_id: objectId }),
+    }),
+};

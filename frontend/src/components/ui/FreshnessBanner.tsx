@@ -104,12 +104,27 @@ export function FreshnessBanner({
   // USPTO publishes weekly; anything > 10 days from today is source lag
   const sourceLag = pubAgeDays !== null && pubAgeDays > 10;
 
-  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag) return null;
+  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag && data.last_ingestion_status !== "failed") return null;
 
   return (
     <div className={className}>
+      {/* Failed ingestion — always show regardless of staleness */}
+      {data.last_ingestion_status === "failed" && (
+        <div
+          role="status"
+          className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+        >
+          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
+          <div>
+            <span className="font-semibold">Ingestion failed.</span>{" "}
+            {data.last_ingestion_error || "Unknown error"}.
+            {" "}Patent data may be out of date. Verify against official patent registers.
+          </div>
+        </div>
+      )}
+
       {/* Strong warning: ingestion has not run successfully */}
-      {ingestionStale && (
+      {ingestionStale && data.last_ingestion_status !== "failed" && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"

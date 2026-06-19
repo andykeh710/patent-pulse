@@ -50,6 +50,7 @@ export function AccountDropdown() {
             <p className="text-xs text-[var(--text-primary)] truncate">{user?.email}</p>
           </div>
           {[
+            { label: "Preferences", href: "/account/preferences" },
             { label: "Watchlist", href: "/watchlist" },
             { label: "Account", href: "/account" },
             { label: "Billing", href: "/account/billing" },
