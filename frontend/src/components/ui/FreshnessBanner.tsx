@@ -108,7 +108,7 @@ export function FreshnessBanner({
 
   return (
     <div className={className}>
-      {/* Failed ingestion — always show regardless of staleness */}
+      {/* Failed/degraded ingestion — always show regardless of staleness */}
       {(data.last_ingestion_status === "failed" || data.last_ingestion_status === "partial_success") && (
         <div
           role="status"
@@ -119,26 +119,41 @@ export function FreshnessBanner({
             <span className="font-semibold">
               {data.last_ingestion_status === "partial_success"
                 ? "Ingestion partially failed."
-                : "Ingestion failed."}
+                : "Ingestion sources unavailable."}
             </span>{" "}
-            {data.last_ingestion_error || "Unknown error"}.
+            {data.last_ingestion_error || "USPTO data APIs are currently unreachable."}
             {" "}Patent data may be out of date. Verify against official patent registers.
           </div>
         </div>
       )}
 
-      {/* Strong warning: ingestion has not run successfully */}
-      {ingestionStale && data.last_ingestion_status !== "failed" && (
+      {/* Source lag: last successful run but no new data */}
+      {data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0 && (
+        <div
+          role="status"
+          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <span aria-hidden className="mt-0.5 font-bold">ⓘ</span>
+          <div>
+            <span className="font-semibold">No new patent data available.</span>{" "}
+            Ingestion ran but USPTO data sources did not return newer records.
+            Latest patent in database is from {data.latest_patent_publication_date || "unknown"}.
+          </div>
+        </div>
+      )}
+
+      {/* Strong warning: ingestion stale */}
+      {ingestionStale && data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0 && (
         <div
           role="status"
           className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
         >
           <span aria-hidden className="mt-0.5 font-bold">⚠</span>
           <div>
-            <span className="font-semibold">Ingestion pipeline is stale.</span>{" "}
+            <span className="font-semibold">Ingestion pipeline has been unable to fetch new data for {ingestionAgeDays}d.</span>{" "}
             Last successful ingestion was {ingestionAgeDays}d ago
             {data.last_ingestion_status === "failed" && ` (last attempt failed: ${data.last_ingestion_error || "unknown"})`}.
-            {" "}Patent data may be out of date. Verify against official patent registers.
+            {" "}Verify patent data against official registers.
           </div>
         </div>
       )}
