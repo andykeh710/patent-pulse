@@ -499,3 +499,30 @@ async def mark_today_seen(
     await db.commit()
 
     return {"status": "ok", "marked_at": now.isoformat()}
+
+
+# ── V3.2 Personalized Feed ────────────────────────────────────────────
+
+
+@router.get("/feed")
+async def get_personalized_feed(
+    db: DbSession,
+    user_id: str = Depends(current_user),
+) -> dict:
+    """
+    Return a personalized Today feed with deterministic ranking.
+
+    Each item includes:
+    - why_this, why_now, why_for_user explanations
+    - evidence backed by database facts
+    - object_type + object_id for feed_interactions compatibility
+    """
+    from app.services.feed_ranking import build_personalized_feed
+
+    feed_items = await build_personalized_feed(db, user_id, limit=12)
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "feed_items": feed_items,
+        "item_count": len(feed_items),
+    }
