@@ -40,6 +40,12 @@ interface InsightCardProps {
   secondaryAction?: InsightAction;
   /** Optional: source IDs or attribution */
   sourceIds?: string[];
+  /** Optional: personalization context (why this was shown to THIS user) */
+  personalization?: {
+    whyShown: string;
+    rank?: number;
+    signals?: string[];
+  };
   /** Optional: extra content at the bottom */
   children?: ReactNode;
   className?: string;
@@ -49,7 +55,7 @@ interface InsightCardProps {
 
 const TYPE_STYLES: Record<InsightType, { badge: string; border: string; bg: string }> = {
   signal: {
-    badge: "bg-[var(--accent-muted)] text-[var(--accent)]",
+    badge: "bg-[var(--accent-muted)] text-[var(--type-trend)]",
     border: "border-l-[var(--accent)]",
     bg: "bg-[var(--bg-glass)]",
   },
@@ -69,7 +75,7 @@ const TYPE_STYLES: Record<InsightType, { badge: string; border: string; bg: stri
     bg: "bg-[var(--bg-glass)]",
   },
   recommendation: {
-    badge: "bg-[var(--accent-muted)] text-[var(--accent)]",
+    badge: "bg-[var(--accent-muted)] text-[var(--text-2)]",
     border: "border-l-[var(--accent)]",
     bg: "bg-[var(--bg-elevated)]",
   },
@@ -121,6 +127,7 @@ export function InsightCard({
   primaryAction,
   secondaryAction,
   sourceIds,
+  personalization,
   children,
   className = "",
 }: InsightCardProps) {
@@ -162,6 +169,27 @@ export function InsightCard({
         <p className="text-xs text-[var(--text-muted)] mb-2">
           Why it matters: {whyItMatters}
         </p>
+      )}
+
+      {/* Personalization — why shown for this user */}
+      {personalization && (
+        <div className="mb-2 rounded-[var(--radius-sm)] bg-[var(--bg-glass-strong)] px-3 py-2">
+          <p className="text-[11px] text-[var(--text-2)] leading-relaxed">
+            {personalization.whyShown}
+          </p>
+          {personalization.signals && personalization.signals.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {personalization.signals.map((s, i) => (
+                <span
+                  key={i}
+                  className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-glass)] px-1.5 py-0.5 rounded"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Evidence */}
