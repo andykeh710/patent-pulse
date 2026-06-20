@@ -1,37 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useFreshness } from "@/hooks/useFreshness";
 
-// Patent/trend data older than this is flagged loudly so the product never
-// silently implies live intelligence. The free Google Patents BigQuery dataset
-// lags real-time, so stale windows are expected and must be disclosed.
-const STALE_AFTER_DAYS = 7;
-
-function daysSince(isoString: string | null): number | null {
-  if (!isoString) return null;
-  const ms = Date.now() - new Date(isoString).getTime();
-  if (Number.isNaN(ms)) return null;
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
-}
-
-function formatRelative(isoString: string | null): string {
-  if (!isoString) return "Unknown";
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 30) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  if (diffDays > 0) return `${diffDays}d ago`;
-  if (diffHours > 0) return `${diffHours}h ago`;
-  return "Just now";
-}
+/**
+ * FreshnessBanner — Tier-3 hard-banner only.
+ *
+ * Only renders for TRUE full-source failures (all sources down).
+ * Dismissible and remembered per session (doesn't reappear until reload).
+ *
+ * Normal staleness, source lag, and amber warnings are handled by the
+ * always-on FreshnessChip in the PageHeader. This is the nuclear option.
+ */
 
 interface FreshnessBannerProps {
-  /** Which indicators to show. Defaults to all. */
+  /** Which indicators to monitor. Defaults to all. */
   show?: ("patents" | "summaries" | "trends" | "ai_runs")[];
   className?: string;
 }
@@ -41,168 +24,73 @@ export function FreshnessBanner({
   className = "",
 }: FreshnessBannerProps) {
   const { data, error } = useFreshness();
+  const [dismissed, setDismissed] = useState(false);
 
-  if (error || !data) return null;
+  if (error || !data || dismissed) return null;
 
-  const items: { label: string; value: string }[] = [];
+  // Only render for full-source failure — not partial, not stale, not success-no-data
+  const isTotalFailure =
+    data.last_ingestion_status === "failed" || data.last_ingestion_status === "degraded";
+  if (!isTotalFailure) return null;
 
-  // Show ingestion status clearly
-  if (show.includes("patents")) {
-    if (data.last_ingestion_status === "success") {
-      const newCount = data.last_ingestion_new_records ?? 0;
-      const when = formatRelative(data.last_ingestion_finished_at);
-      items.push({
-        label: "Ingestion",
-        value: `Last ran ${when}${newCount > 0 ? ` (${newCount} new)` : " (no new records)"}`,
-      });
-    } else if (data.last_ingestion_status === "failed") {
-      items.push({
-        label: "Ingestion",
-        value: `Failed — ${data.last_ingestion_error || "unknown error"}`,
-      });
-    } else {
-      // never_run or null — use legacy created_at as fallback
-      if (data.latest_patent_created_at) {
-        items.push({
-          label: "Patents updated",
-          value: formatRelative(data.latest_patent_created_at),
-        });
-      }
-    }
-  }
-
-  if (show.includes("summaries") && data.total_summarized > 0) {
-    items.push({
-      label: "Summaries",
-      value: `${data.total_summarized.toLocaleString()} / ${data.total_patents.toLocaleString()}`,
-    });
-  }
-
-  if (show.includes("trends") && data.latest_trend_snapshot_at) {
-    items.push({
-      label: "Trends computed",
-      value: formatRelative(data.latest_trend_snapshot_at),
-    });
-  }
-
-  // Stale-data disclosure: separate ingestion staleness from source lag
-  const ingestionAgeDays =
-    show.includes("patents") && data.last_ingestion_finished_at
-      ? daysSince(data.last_ingestion_finished_at)
-      : data.latest_patent_created_at
-        ? daysSince(data.latest_patent_created_at)
-        : null;
-  const trendAgeDays = show.includes("trends") ? daysSince(data.latest_trend_snapshot_at) : null;
-  const ingestionStale = ingestionAgeDays !== null && ingestionAgeDays > STALE_AFTER_DAYS;
-  const trendsStale = trendAgeDays !== null && trendAgeDays > STALE_AFTER_DAYS;
-
-  // Source lag: publication date vs today
-  const pubDate = data.latest_patent_publication_date
-    ? new Date(data.latest_patent_publication_date)
-    : null;
-  const pubAgeDays = pubDate ? Math.floor((Date.now() - pubDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
-  // USPTO publishes weekly; anything > 10 days from today is source lag
-  const sourceLag = pubAgeDays !== null && pubAgeDays > 10;
-
-  // Pre-compute status booleans to avoid TS narrowing conflicts
-  const isDegraded = data.last_ingestion_status === "degraded";
-  const isFailed = data.last_ingestion_status === "failed";
-  const isPartial = data.last_ingestion_status === "partial_success";
-  const isSuccessNoData = data.last_ingestion_status === "success" && data.last_ingestion_new_records === 0;
-  const showDegraded = isDegraded || isFailed || isPartial;
-
-  if (items.length === 0 && !ingestionStale && !trendsStale && !sourceLag && !showDegraded) return null;
+  // Only show if the relevant sources are affected
+  const monitorsPatents = show.includes("patents");
+  if (!monitorsPatents) return null;
 
   return (
     <div className={className}>
-      {/* Failed/degraded ingestion */}
-      {showDegraded && (
-        <div
-          role="status"
-          className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-4 py-3 text-xs"
+      >
+        <svg
+          className="w-4 h-4 mt-0.5 shrink-0"
+          style={{ color: "var(--danger)" }}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
-          <div>
-            <span className="font-semibold">
-              {isPartial
-                ? "Ingestion partially failed."
-                : "Ingestion sources unavailable."}
-            </span>{" "}
-            {data.last_ingestion_error || "USPTO data APIs are currently unreachable."}
-            {" "}Patent data may be out of date. Verify against official patent registers.
-          </div>
-        </div>
-      )}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
 
-      {/* Source lag: last successful run but no new data */}
-      {isSuccessNoData && (
-        <div
-          role="status"
-          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        <div className="flex-1 min-w-0" style={{ color: "var(--danger)" }}>
+          <p className="font-semibold">
+            Patent data sources are currently unavailable.
+          </p>
+          <p className="mt-0.5 opacity-80">
+            {data.last_ingestion_error ||
+              "USPTO data APIs are unreachable."}{" "}
+            Patent data and intelligence may be out of date. Verify against
+            official patent registers before relying on this data.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 p-1 rounded hover:bg-[var(--danger)]/20 transition-colors"
+          style={{ color: "var(--danger)" }}
+          aria-label="Dismiss"
         >
-          <span aria-hidden className="mt-0.5 font-bold">ⓘ</span>
-          <div>
-            <span className="font-semibold">No new patent data available.</span>{" "}
-            Ingestion ran but USPTO data sources did not return newer records.
-            Latest patent in database is from {data.latest_patent_publication_date || "unknown"}.
-          </div>
-        </div>
-      )}
-
-      {/* Strong warning: ingestion stale */}
-      {ingestionStale && isSuccessNoData && (
-        <div
-          role="status"
-          className="mb-2 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
-        >
-          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
-          <div>
-            <span className="font-semibold">Ingestion pipeline has been unable to fetch new data for {ingestionAgeDays}d.</span>{" "}
-            Last successful ingestion was {ingestionAgeDays}d ago.
-            {" "}Verify patent data against official registers.
-          </div>
-        </div>
-      )}
-
-      {/* Softer notice: ingestion ran but source data has inherent lag */}
-      {!ingestionStale && sourceLag && (
-        <div
-          role="status"
-          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
-        >
-          <span aria-hidden className="mt-0.5 font-bold">ℹ</span>
-          <div>
-            <span className="font-semibold">Source data lag.</span>{" "}
-            Ingestion ran successfully{data.last_ingestion_finished_at ? ` ${formatRelative(data.last_ingestion_finished_at)}` : ""}
-            , but the latest patent publication in our database is from {pubDate?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            {" "}({pubAgeDays}d ago). USPTO publishes new patents weekly on Tuesdays and Thursdays.
-          </div>
-        </div>
-      )}
-
-      {trendsStale && (
-        <div
-          role="status"
-          className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
-        >
-          <span aria-hidden className="mt-0.5 font-bold">⚠</span>
-          <div>
-            <span className="font-semibold">Trends are stale.</span>{" "}
-            Trends were last computed {trendAgeDays}d ago.
-          </div>
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
-          {items.map((item, i) => (
-            <span key={i}>
-              <span className="text-[var(--text-secondary)]">{item.label}:</span>{" "}
-              {item.value}
-            </span>
-          ))}
-        </div>
-      )}
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

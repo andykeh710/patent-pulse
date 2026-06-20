@@ -14,57 +14,26 @@
 }
 
 body {
-  color: var(--text-primary);
-  background: var(--bg-base);
+  color: var(--text);
+  background: var(--bg);
 }
 
 /* ─── Design System Utilities ─── */
 
 @layer components {
-  /* Card surface — clean, no glass default */
+  /* Card surface */
   .surface-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
   }
 
-  /* Elevated card — for modals, dropdowns, tooltips */
+  /* Elevated card */
   .surface-elevated {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
+    background: var(--elevated);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-  }
-
-  /* Double-bezel outer shell (high-end §4.A pattern) */
-  .bezel-outer {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-subtle);
-    padding: 2px;
-    border-radius: var(--radius-xl);
-  }
-  .bezel-inner {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: calc(var(--radius-xl) - 2px);
-  }
-
-  /* Subtle highlight — inner 1px border for glass/bezel depth */
-  .highlight-inner {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-
-  /* Interactive surface hover */
-  .surface-interactive {
-    transition: background-color 200ms ease, border-color 200ms ease,
-      transform 200ms ease;
-  }
-  .surface-interactive:hover {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: var(--border-default);
-  }
-  .surface-interactive:active {
-    transform: scale(0.985);
   }
 
   /* Status indicator dot */
@@ -75,20 +44,38 @@ body {
     border-radius: 50%;
   }
   .status-dot--live {
-    background: var(--score-high);
+    background: var(--ok);
   }
 
-  /* Link underline — subtle, no color bleed */
+  /* Evidence spine — the 2px accent left-border for cards */
+  .evidence-spine {
+    border-left: 2px solid var(--accent);
+  }
+
+  /* Link underline */
   .link-underline {
     text-decoration: none;
     background-image: linear-gradient(var(--accent), var(--accent));
     background-size: 0 1px;
     background-position: 0 100%;
     background-repeat: no-repeat;
-    transition: background-size 200ms ease;
+    transition: background-size 150ms ease;
   }
   .link-underline:hover {
     background-size: 100% 1px;
+  }
+
+  /* Interactive surface hover */
+  .surface-interactive {
+    transition: background-color 150ms ease, border-color 150ms ease,
+      transform 150ms ease;
+  }
+  .surface-interactive:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border-strong);
+  }
+  .surface-interactive:active {
+    transform: scale(0.985);
   }
 }
 
@@ -96,9 +83,17 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* ─── Scrollbar — dark, minimal ─── */
+/* ─── Density utility (Compact mode sets --density to 0.75) ─── */
+[data-density="compact"] {
+  --density: 0.75;
+}
+
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -114,7 +109,7 @@ body {
   background: var(--text-muted);
 }
 
-/* ─── Respect reduced motion ─── */
+/* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

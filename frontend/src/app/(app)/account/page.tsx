@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 import { useAuth } from "@/lib/AuthContext";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { subscriptionsApi, topicsApi, billingApi } from "@/lib/api";
 import type { TopicSubscription, Topic, BillingSubscription } from "@/lib/types";
 
@@ -23,21 +24,21 @@ export default function AccountPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Account</h1>
-          <p className="text-[var(--text-secondary)] text-sm">{user?.email}</p>
-        </div>
-        <button
-          onClick={async () => {
-            await logout();
-            router.push("/");
-          }}
-          className="text-sm px-4 py-2 border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-glass)]"
-        >
-          Sign out
-        </button>
-      </div>
+      <PageHeader
+        title="Account"
+        description={user?.email ?? undefined}
+        primaryAction={
+          <button
+            onClick={async () => {
+              await logout();
+              router.push("/");
+            }}
+            className="text-sm px-4 py-2 border border-[var(--border-default)] rounded-[var(--radius-sm)] hover:bg-[var(--bg-glass)] transition-colors"
+          >
+            Sign out
+          </button>
+        }
+      />
 
       <Link
         href="/onboarding"

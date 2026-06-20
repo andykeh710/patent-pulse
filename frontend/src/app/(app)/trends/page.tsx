@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useTrends";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import type { TrendItem, ConvergenceItem, CliffClusterItem } from "@/lib/types";
 
@@ -90,13 +90,11 @@ function TrendsContent() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Trends</h1>
-        <FreshnessBanner show={["trends", "patents"]} className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Technology momentum, convergence signals, and patent cliff opportunities
-        </p>
-      </div>
+      <PageHeader
+        title="Trends"
+        description="Technology momentum, convergence signals, and patent cliff opportunities"
+        freshnessSources={["trends", "patents"]}
+      />
 
       {/* Summary stats */}
       {summary && (

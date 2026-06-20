@@ -7,6 +7,7 @@ import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StarterTopics } from "@/components/ui/StarterTopics";
 import { topicsApi } from "@/lib/api";
 import type { Topic } from "@/lib/types";
@@ -120,17 +121,15 @@ export default function ThemesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Topics</h1>
-          <p className="text-[var(--text-secondary)] mt-1">
-            Track technology areas and their matched patents
-          </p>
-        </div>
-        <Button onClick={() => { setShowCreate(!showCreate); setCreateError(""); }} variant="default">
-          {showCreate ? "Cancel" : "Create Topic"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Topics"
+        description="Track technology areas and their matched patents"
+        primaryAction={
+          <Button onClick={() => { setShowCreate(!showCreate); setCreateError(""); }} variant="default">
+            {showCreate ? "Cancel" : "Create Topic"}
+          </Button>
+        }
+      />
 
       {/* Create Topic Form */}
       {showCreate && (

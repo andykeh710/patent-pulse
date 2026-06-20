@@ -144,7 +144,7 @@ export default async function PublicCompanyPage({
           <StatTile label="Tech Areas" value={String(profile.technology_area_count)} />
           <StatTile
             label="Avg Signal Score"
-            value={profile.average_signal_score != null ? profile.average_signal_score.toFixed(1) : "—"}
+            value={profile.average_signal_score != null ? String(Math.round(profile.average_signal_score)) : "—"}
           />
         </div>
 

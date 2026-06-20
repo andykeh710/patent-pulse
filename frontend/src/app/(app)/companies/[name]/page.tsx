@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { Score } from "@/components/ui/Score";
 import type { CompanyProfile } from "@/lib/types";
 
 function fetcher(url: string) {
@@ -106,7 +107,7 @@ export default function CompanyProfilePage({
               <span className="text-xs text-[var(--text-muted)]">Enrichment pending</span>
             )}
             <span className="text-[var(--text-muted)]">
-              Score: <strong className={profile.supplier_score >= 60 ? "text-[var(--score-high)]" : profile.supplier_score >= 35 ? "text-[var(--warning)]" : "text-[var(--text-muted)]"}>{profile.supplier_score}</strong>
+              Score: <Score value={profile.supplier_score} kind="composite" size="sm" />
             </span>
           </div>
         </div>
@@ -155,7 +156,7 @@ export default function CompanyProfilePage({
                       {p.publication_date && <span>{p.publication_date}</span>}
                       {p.opportunity_score !== null && (
                         <span className="text-[var(--accent)] font-medium">
-                          Opp: {p.opportunity_score.toFixed(1)}
+                          <Score value={p.opportunity_score} kind="opportunity" size="sm" />
                         </span>
                       )}
                     </div>
@@ -204,7 +205,7 @@ export default function CompanyProfilePage({
           {profile.average_signal_score !== null && (
             <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6">
               <h2 className="font-semibold text-[var(--text-primary)] mb-2">Avg. Signal Score</h2>
-              <p className="text-3xl font-bold text-[var(--text-primary)]">{profile.average_signal_score.toFixed(1)}</p>
+              <p className="text-3xl font-bold text-[var(--text-primary)]"><Score value={profile.average_signal_score} kind="composite" size="md" showLabel={false} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-1">
                 Average of opportunity and interest scores across all patents
               </p>
