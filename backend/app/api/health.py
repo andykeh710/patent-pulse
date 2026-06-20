@@ -104,7 +104,10 @@ async def _check_resend() -> str:
         # return 403 for a correctly-configured sending-access key.
         req = urllib.request.Request(
             "https://api.resend.com/emails?limit=1",
-            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            headers={
+                "Authorization": f"Bearer {settings.resend_api_key}",
+                "User-Agent": "InventionIndex8/1.0",
+            },
         )
         await asyncio.wait_for(
             asyncio.to_thread(urllib.request.urlopen, req, timeout=5),
