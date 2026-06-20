@@ -284,7 +284,7 @@ function TrendList({
                 size="sm"
                 className={
                   item.surface === "cpc"
-                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border-[var(--accent)]/30"
+                    ? "bg-[var(--accent-muted)] text-[var(--type-trend)] border-[var(--accent)]/30"
                     : item.surface === "tag"
                     ? "bg-[var(--accent-muted)] text-[var(--type-foryou)] border-[var(--type-foryou)]/30"
                     : "bg-[var(--score-medium-bg)] text-[var(--score-medium)] border-[var(--score-medium)]/30"

@@ -363,97 +363,161 @@ function ExecutiveSummary({
   onToggleWatchlist: () => void;
 }) {
   return (
-    <div className="mb-6 bg-[var(--bg-elevated)] rounded-lg border border-[var(--accent)]/20 p-5">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          {/* Title */}
-          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            {patent.title || "Untitled Patent"}
-          </h1>
+    <div className="mb-6 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--elevated)]">
+      {/* Evidence spine */}
+      <div className="flex">
+        <div
+          className="w-0.5 shrink-0 rounded-l-[var(--radius-md)]"
+          style={{ backgroundColor: "var(--accent)" }}
+        />
+        <div className="flex-1 min-w-0 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              {/* Title */}
+              <h1 className="text-xl font-bold text-[var(--text)] mb-2">
+                {patent.title || "Untitled Patent"}
+              </h1>
 
-          {/* Key metadata row */}
-          <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
-            <span className="text-[var(--text-secondary)]">{patent.assignees?.[0] || "Unknown assignee"}</span>
-            <span className="text-[var(--text-muted)]">·</span>
-            <Badge variant={patent.legal_status === "GRANTED" ? "success" : "default"}>
-              {patent.legal_status || "Unknown"}
-            </Badge>
-            {patent.estimated_expiry_date && (
-              <>
-                <span className="text-[var(--text-muted)]">·</span>
-                <span className="text-[var(--text-muted)] text-xs">
-                  Est. expiry {formatDate(patent.estimated_expiry_date)}
+              {/* Key metadata row */}
+              <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
+                <span className="text-[var(--text-2)]">
+                  {patent.assignees?.[0] || "Unknown assignee"}
                 </span>
-              </>
-            )}
-          </div>
+                <span className="text-[var(--text-muted)]">·</span>
+                <Badge
+                  variant={
+                    patent.legal_status === "GRANTED" ? "success" : "default"
+                  }
+                >
+                  {patent.legal_status || "Unknown"}
+                </Badge>
+                {patent.estimated_expiry_date && (
+                  <>
+                    <span className="text-[var(--text-muted)]">·</span>
+                    <span className="text-[var(--text-muted)] text-xs">
+                      Est. expiry {formatDate(patent.estimated_expiry_date)}
+                    </span>
+                  </>
+                )}
+              </div>
 
-          {/* AI Summary */}
-          {patent.summary?.commercial_significance && (
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
-              {patent.summary.commercial_significance}
-            </p>
-          )}
+              {/* AI Summary */}
+              {patent.summary?.commercial_significance && (
+                <p className="text-[13px] text-[var(--text-2)] leading-relaxed mb-3">
+                  {patent.summary.commercial_significance}
+                </p>
+              )}
 
-          {/* Why it matters — if available */}
-          {patent.why_now_text && (
-            <div className="flex items-start gap-2 mb-3 text-sm">
-              <span className="text-[var(--accent)] font-medium shrink-0">Why it matters:</span>
-              <span className="text-[var(--text-secondary)]">{patent.why_now_text}</span>
+              {/* Why it matters — if available */}
+              {patent.why_now_text && (
+                <div className="flex items-start gap-2 mb-3 text-sm">
+                  <span className="text-[var(--accent)] font-medium shrink-0">
+                    Why it matters:
+                  </span>
+                  <span className="text-[var(--text-2)]">
+                    {patent.why_now_text}
+                  </span>
+                </div>
+              )}
+
+              {/* Action row */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={onToggleWatchlist}
+                  disabled={watchlistLoading}
+                  className={`px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-colors ${
+                    isInWatchlist
+                      ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
+                      : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+                  } disabled:opacity-50`}
+                >
+                  {isInWatchlist ? "Saved" : "Save to watchlist"}
+                </button>
+                <Link
+                  href={`/chat?seed=Tell+me+about+patent+${encodeURIComponent(
+                    patent.doc_id || patent.publication_number
+                  )}`}
+                  className="px-4 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] text-sm text-[var(--text-2)] hover:bg-[var(--bg-glass)] transition-colors"
+                >
+                  Ask AI
+                </Link>
+                <button
+                  onClick={() => {
+                    navigator.clipboard
+                      .writeText(window.location.href)
+                      .catch(() => {});
+                  }}
+                  className="px-4 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] text-sm text-[var(--text-muted)] hover:bg-[var(--bg-glass)] transition-colors"
+                >
+                  Copy link
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* Action row */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={onToggleWatchlist}
-              disabled={watchlistLoading}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isInWatchlist
-                  ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
-                  : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
-              } disabled:opacity-50`}
-            >
-              {isInWatchlist ? "Saved" : "Save to watchlist"}
-            </button>
-            <Link
-              href={`/chat?seed=Tell+me+about+patent+${encodeURIComponent(patent.doc_id || patent.publication_number)}`}
-              className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-glass)] transition-colors"
-            >
-              Ask AI
-            </Link>
-            <button
-              onClick={() => { navigator.clipboard.writeText(window.location.href).catch(() => {}); }}
-              className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm text-[var(--text-muted)] hover:bg-[var(--bg-glass)] transition-colors"
-            >
-              Copy link
-            </button>
+            {/* Score badges */}
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <Score
+                value={patent.opportunity_score}
+                kind="opportunity"
+                size="md"
+              />
+              <Score
+                value={patent.interesting_score}
+                kind="interesting"
+                size="md"
+              />
+              <LegalConfidenceBadge
+                confidence={patent.legal_status_confidence}
+                legalStatus={patent.legal_status}
+              />
+            </div>
           </div>
-        </div>
-
-        {/* Score badges */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <Score value={patent.opportunity_score} kind="opportunity" size="md" />
-          <Score value={patent.interesting_score} kind="interesting" size="md" />
-          <LegalConfidenceBadge
-            confidence={patent.legal_status_confidence}
-            legalStatus={patent.legal_status}
-          />
         </div>
       </div>
 
-      {/* Key dates + source row */}
-      <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--text-muted)]">
-        <span>Publication: {patent.publication_date ? formatDate(patent.publication_date) : "—"}</span>
-        {patent.filing_date && <span>Filed: {formatDate(patent.filing_date)}</span>}
-        {patent.grant_date && <span>Granted: {formatDate(patent.grant_date)}</span>}
-        <span>{patent.publication_number} · {patent.office}</span>
+      {/* Provenance footer */}
+      <div className="px-5 pb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[var(--provenance)] border-t border-[var(--border)] mx-5">
+        <span>
+          {patent.office || "USPTO"} · {patent.publication_number}
+        </span>
+        {patent.publication_date && (
+          <span>Pub: {formatDate(patent.publication_date)}</span>
+        )}
+        {patent.filing_date && (
+          <span>Filed: {formatDate(patent.filing_date)}</span>
+        )}
+        {patent.grant_date && (
+          <span>Granted: {formatDate(patent.grant_date)}</span>
+        )}
         <ExternalPatentLinks
           publicationNumber={patent.publication_number}
           office={patent.office}
           docId={patent.doc_id}
         />
-        <SourceAttribution office={patent.office} />
+        <span className="ml-auto">
+          <span
+            className="underline cursor-pointer hover:text-[var(--text-2)] transition-colors"
+            onClick={() =>
+              window.open(
+                `https://patents.google.com/patent/${patent.publication_number}`,
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter")
+                window.open(
+                  `https://patents.google.com/patent/${patent.publication_number}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+            }}
+            tabIndex={0}
+            role="link"
+          >
+            Verify at source ↗
+          </span>
+        </span>
       </div>
     </div>
   );
