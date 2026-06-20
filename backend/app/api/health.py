@@ -96,6 +96,15 @@ async def _check_resend() -> str:
         return "dev_preview"
     if not settings.resend_api_key:
         return "disabled"
+
+    # Production verification showed that Resend sending can succeed while
+    # non-send probe endpoints such as GET /emails?limit=1 may return 403.
+    # Health should not send real emails, and send-only keys should not be
+    # marked unhealthy just because list/admin endpoints are unavailable.
+    if not settings.email_from_address:
+        return "disabled"
+    return "ok"
+
     try:
         import urllib.request
         import urllib.error
