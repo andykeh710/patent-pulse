@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { FreshnessChip } from "@/components/ui/FreshnessChip";
+// import { FreshnessChip } from "@/components/ui/FreshnessChip";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
