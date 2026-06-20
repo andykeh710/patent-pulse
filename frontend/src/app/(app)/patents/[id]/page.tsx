@@ -6,8 +6,7 @@ import useSWR from "swr";
 import { BRAND } from "@/lib/brand";
 import { usePatent, usePatentSummary } from "@/hooks/usePatents";
 import { AISummaryPanel } from "@/components/patents/AISummaryPanel";
-import { ScoreBadge } from "@/components/patents/ScoreBadge";
-import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
+import { Score } from "@/components/ui/Score";
 import { OpportunityBreakdown } from "@/components/patents/OpportunityBreakdown";
 import { TagsPanel } from "@/components/patents/TagsPanel";
 import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge";
@@ -434,8 +433,8 @@ function ExecutiveSummary({
 
         {/* Score badges */}
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <OpportunityScoreBadge score={patent.opportunity_score} size="md" />
-          <ScoreBadge score={patent.interesting_score} />
+          <Score value={patent.opportunity_score} kind="opportunity" size="md" />
+          <Score value={patent.interesting_score} kind="interesting" size="md" />
           <LegalConfidenceBadge
             confidence={patent.legal_status_confidence}
             legalStatus={patent.legal_status}

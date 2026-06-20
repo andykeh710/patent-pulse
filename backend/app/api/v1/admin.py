@@ -872,3 +872,123 @@ async def admin_email_analytics(
         },
         "by_variant": by_variant,
     }
+
+
+# ── V3.5: Source Health & Ingestion Admin ────────────────────────
+
+
+class RetryGrantWeekBody(BaseModel):
+    issue_date: str  # YYYY-MM-DD
+
+
+class RetryAppWeekBody(BaseModel):
+    publication_date: str  # YYYY-MM-DD
+
+
+class CatchUpBody(BaseModel):
+    start_date: str  # YYYY-MM-DD
+    end_date: str | None = None  # YYYY-MM-DD, defaults to today
+
+
+@router.get("/source-health")
+async def admin_source_health(
+    admin: _UserModel = Depends(require_admin),
+    db=Depends(get_db),
+):
+    """Aggregated source health — ingestion providers, latest status, source lag."""
+    from app.core.models import PatentPublication, SourceFetch
+
+    freshness_row = (await db.execute(
+        select(
+            func.count(PatentPublication.id).label("total"),
+            func.max(PatentPublication.publication_date).label("latest_pub_date"),
+            func.max(PatentPublication.created_at).label("latest_ingested_at"),
+        )
+    )).one()
+
+    providers = ["uspto_bulkdata", "uspto_odp", "bigquery", "wipo_bigquery"]
+    provider_rows = []
+    for provider in providers:
+        latest = (await db.execute(
+            select(SourceFetch)
+            .where(SourceFetch.provider == provider)
+            .order_by(SourceFetch.created_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+
+        latest_success = (await db.execute(
+            select(SourceFetch)
+            .where(SourceFetch.provider == provider, SourceFetch.status == "success")
+            .order_by(SourceFetch.created_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+
+        latest_failure = (await db.execute(
+            select(SourceFetch)
+            .where(SourceFetch.provider == provider, SourceFetch.status.in_(["failed", "blocked", "unavailable"]))
+            .order_by(SourceFetch.created_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+
+        if latest or latest_success or latest_failure:
+            provider_rows.append({
+                "provider": provider,
+                "latest_status": latest.status if latest else "unknown",
+                "latest_target_type": latest.target_type if latest else None,
+                "latest_target_id": latest.target_id if latest else None,
+                "latest_http_status": latest.http_status if latest else None,
+                "latest_records_found": latest.records_found if latest else None,
+                "latest_error": (latest.error_message[:200] if latest and latest.error_message else None),
+                "latest_started_at": latest.started_at.isoformat() if latest and latest.started_at else None,
+                "latest_success_at": latest_success.created_at.isoformat() if latest_success and latest_success.created_at else None,
+                "latest_failure_at": latest_failure.created_at.isoformat() if latest_failure and latest_failure.created_at else None,
+                "latest_source_url": latest.source_url if latest else None,
+            })
+
+    source_lag_days = None
+    if freshness_row.latest_pub_date:
+        source_lag_days = (date.today() - freshness_row.latest_pub_date).days
+
+    return {
+        "total_patents": freshness_row.total,
+        "latest_publication_date": freshness_row.latest_pub_date.isoformat() if freshness_row.latest_pub_date else None,
+        "latest_ingested_at": freshness_row.latest_ingested_at.isoformat() if freshness_row.latest_ingested_at else None,
+        "source_lag_days": source_lag_days,
+        "providers": provider_rows,
+    }
+
+
+@router.post("/ingestion/retry-grant-week", response_model=TaskStatusResponse)
+async def retry_grant_week(
+    body: RetryGrantWeekBody,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
+    """Retry USPTO grant week ingestion for a specific Tuesday issue date."""
+    from app.tasks.ingest_uspto_bulk import ingest_grant_week
+
+    task = ingest_grant_week.delay(body.issue_date)
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
+@router.post("/ingestion/retry-application-week", response_model=TaskStatusResponse)
+async def retry_application_week(
+    body: RetryAppWeekBody,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
+    """Retry USPTO application week ingestion for a specific Thursday publication date."""
+    from app.tasks.ingest_uspto_bulk import ingest_application_week
+
+    task = ingest_application_week.delay(body.publication_date)
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)
+
+
+@router.post("/ingestion/catch-up", response_model=TaskStatusResponse)
+async def catch_up(
+    body: CatchUpBody,
+    admin: _UserModel = Depends(require_admin),
+) -> TaskStatusResponse:
+    """Run catch-up ingestion across a date range (grant + application weeks)."""
+    from app.tasks.ingest_uspto_bulk import catch_up_weeks
+
+    task = catch_up_weeks.delay(body.start_date, body.end_date)
+    return TaskStatusResponse(task_id=task.id, status="PENDING", result=None)

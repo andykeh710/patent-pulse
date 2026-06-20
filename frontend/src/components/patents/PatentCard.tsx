@@ -4,8 +4,7 @@ import Link from "next/link";
 import type { PatentListItem } from "@/lib/types";
 import { formatDate, truncate } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
-import { ScoreBadge } from "./ScoreBadge";
-import { OpportunityScoreBadge } from "./OpportunityScoreBadge";
+import { Score } from "@/components/ui/Score";
 import { TagsPanel } from "./TagsPanel";
 import { LegalConfidenceBadge } from "./LegalConfidenceBadge";
 import { RiskFlagsBadge } from "./RiskFlagsBadge";
@@ -46,8 +45,8 @@ export function PatentCard({ patent, isSaved, onToggleSave }: PatentCardProps) {
           {truncate(patent.title, 80) || "Untitled Patent"}
         </h3>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <OpportunityScoreBadge score={patent.opportunity_score} showLabel={false} />
-          <ScoreBadge score={patent.interesting_score} showLabel={false} />
+          <Score value={patent.opportunity_score} kind="opportunity" size="sm" showLabel={false} />
+          <Score value={patent.interesting_score} kind="interesting" size="sm" showLabel={false} />
         </div>
       </div>
 

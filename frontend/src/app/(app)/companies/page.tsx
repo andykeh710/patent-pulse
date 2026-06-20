@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { Score } from "@/components/ui/Score";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSupplierMap, useSupplierSummary, useSuppliers } from "@/hooks/useSuppliers";
 import { formatNumber, humanizeTag } from "@/lib/utils";
@@ -136,7 +137,7 @@ function SummaryCard({ label, value, isLoading, highlight, decimals }: { label: 
         <div className="h-8 w-20 bg-[var(--bg-surface)] animate-pulse rounded mt-1" />
       ) : (
         <p className={`text-2xl font-bold ${highlight ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}>
-          {value !== undefined ? decimals ? value.toFixed(2) : formatNumber(value) : "—"}
+          {value !== undefined ? decimals ? Math.round(value).toString() : formatNumber(value) : "—"}
         </p>
       )}
     </div>
@@ -287,7 +288,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
   return (
     <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-[var(--border)]">
           <thead className="bg-[var(--bg-base)]">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Company</th>
@@ -299,7 +300,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
               <th className="px-4 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Expiry Risk</th>
             </tr>
           </thead>
-          <tbody className="bg-[var(--bg-surface)] divide-y divide-gray-200">
+          <tbody className="bg-[var(--bg-surface)] divide-y divide-[var(--border)]">
             {items.map((item) => (
               <tr key={item.name} className="hover:bg-[var(--bg-glass)]">
                 <td className="px-4 py-4">
@@ -319,9 +320,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-[var(--score-high)]" : item.supplier_score >= 35 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
-                    {item.supplier_score}
-                  </span>
+                  <Score value={item.supplier_score} kind="composite" size="sm" />
                 </td>
                 <td className="px-4 py-4 text-right text-sm text-[var(--text-secondary)]">{formatNumber(item.patent_count)}</td>
                 <td className="px-4 py-4 text-right text-sm text-[var(--text-secondary)]">{formatNumber(item.active_patent_count)}</td>

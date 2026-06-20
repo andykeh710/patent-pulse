@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { Score } from "@/components/ui/Score";
 import { formatDate } from "@/lib/utils";
 import { savedSearchesApi } from "@/lib/api";
 import type { WatchlistItemResponse, SavedSearch } from "@/lib/types";
@@ -124,9 +125,7 @@ function SavedPatentsTab() {
                   {item.patent.assignees[0] || "Unknown assignee"}
                 </span>
                 {item.patent.opportunity_score != null && (
-                  <Badge variant="default" size="sm">
-                    Opp: {item.patent.opportunity_score.toFixed(0)}
-                  </Badge>
+                  <Score value={item.patent.opportunity_score} kind="opportunity" size="sm" />
                 )}
               </div>
             </div>
