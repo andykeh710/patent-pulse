@@ -104,7 +104,9 @@ export default function CompanyProfilePage({
             {profile.country && profile.enrichment_source && <Badge variant="default">{profile.country}</Badge>}
             {profile.entity_type && profile.enrichment_source && <Badge variant="default">{profile.entity_type}</Badge>}
             {!profile.enrichment_source && (
-              <span className="text-xs text-[var(--text-muted)]">Enrichment pending</span>
+              <Badge variant="default" size="sm" className="bg-[var(--warn-bg)] text-[var(--warn)]">
+                Enrichment pending
+              </Badge>
             )}
             <span className="text-[var(--text-muted)]">
               Score: <Score value={profile.supplier_score} kind="composite" size="sm" />

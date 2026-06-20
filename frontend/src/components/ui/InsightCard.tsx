@@ -3,6 +3,8 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { Badge } from "./Badge";
+import { ConfidenceMark } from "./ConfidenceMark";
+import type { ConfidenceLevel } from "./ConfidenceMark";
 
 // -- Types ----------------------------------------------------------------
 
@@ -20,71 +22,66 @@ interface InsightAction {
 }
 
 interface InsightCardProps {
-  /** Category label: signal, risk, opportunity, update, recommendation */
   type: InsightType;
-  /** Primary heading */
   title: string;
-  /** 1-2 sentence summary of what this means */
   summary: string;
-  /** Optional: why this matters to the user */
   whyItMatters?: string;
-  /** Optional: evidence backing (e.g., "14 patents, 5 assignees") */
+  /** Evidence backing — rendered in provenance mono style */
   evidence?: string;
-  /** Optional: confidence level (high, medium, low) */
+  /** Confidence level — rendered with ConfidenceMark texture grammar */
   confidence?: "high" | "medium" | "low";
-  /** Optional: timestamp for when this insight was generated */
   timestamp?: string;
-  /** Primary CTA */
   primaryAction?: InsightAction;
-  /** Secondary action */
   secondaryAction?: InsightAction;
-  /** Optional: source IDs or attribution */
   sourceIds?: string[];
-  /** Optional: personalization context (why this was shown to THIS user) */
+  /** Personalization context (why shown for this user) */
   personalization?: {
     whyShown: string;
     rank?: number;
     signals?: string[];
   };
-  /** Optional: extra content at the bottom */
+  /** Source provenance for provenance footer */
+  provenance?: {
+    source?: string;
+    docId?: string;
+    confidence?: ConfidenceLevel;
+    verifyUrl?: string;
+  };
   children?: ReactNode;
   className?: string;
 }
 
 // -- Styling ---------------------------------------------------------------
 
-const TYPE_STYLES: Record<InsightType, { badge: string; border: string; bg: string }> = {
+const TYPE_STYLES: Record<
+  InsightType,
+  { badge: string; spine: string; bg: string }
+> = {
   signal: {
     badge: "bg-[var(--accent-muted)] text-[var(--type-trend)]",
-    border: "border-l-[var(--accent)]",
+    spine: "var(--accent)",
     bg: "bg-[var(--bg-glass)]",
   },
   risk: {
     badge: "bg-[var(--warning)]/12 text-[var(--warning)]",
-    border: "border-l-[var(--warning)]",
+    spine: "var(--warning)",
     bg: "bg-[var(--bg-glass)]",
   },
   opportunity: {
     badge: "bg-[var(--score-high-bg)] text-[var(--score-high)]",
-    border: "border-l-[var(--score-high)]",
+    spine: "var(--score-high)",
     bg: "bg-[var(--bg-glass)]",
   },
   update: {
     badge: "bg-[var(--text-muted)]/12 text-[var(--text-muted)]",
-    border: "border-l-[var(--text-muted)]",
+    spine: "var(--text-muted)",
     bg: "bg-[var(--bg-glass)]",
   },
   recommendation: {
     badge: "bg-[var(--accent-muted)] text-[var(--text-2)]",
-    border: "border-l-[var(--accent)]",
+    spine: "var(--accent)",
     bg: "bg-[var(--bg-elevated)]",
   },
-};
-
-const CONFIDENCE_LABELS: Record<string, { label: string; color: string }> = {
-  high: { label: "High confidence", color: "text-[var(--score-high)]" },
-  medium: { label: "Medium confidence", color: "text-[var(--score-medium)]" },
-  low: { label: "Low confidence", color: "text-[var(--text-muted)]" },
 };
 
 const TYPE_LABELS: Record<InsightType, string> = {
@@ -99,7 +96,7 @@ const TYPE_LABELS: Record<InsightType, string> = {
 
 function ActionLink({ action }: { action: InsightAction }) {
   const className =
-    "text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors";
+    "text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors";
   if (action.href) {
     return (
       <Link href={action.href} className={className}>
@@ -128,6 +125,7 @@ export function InsightCard({
   secondaryAction,
   sourceIds,
   personalization,
+  provenance,
   children,
   className = "",
 }: InsightCardProps) {
@@ -135,93 +133,149 @@ export function InsightCard({
 
   return (
     <div
-      className={`rounded-lg border border-[var(--border-subtle)] ${style.border} ${style.bg} border-l-2 p-4 ${className}`}
+      className={`rounded-[var(--radius-md)] border border-[var(--border)] ${style.bg} ${className}`}
     >
-      {/* Header row: type badge + confidence + timestamp */}
-      <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <span
-          className={`text-xs font-medium px-1.5 py-0.5 rounded ${style.badge}`}
-        >
-          {TYPE_LABELS[type]}
-        </span>
-        {confidence && (
-          <span className={`text-xs ${CONFIDENCE_LABELS[confidence].color}`}>
-            {CONFIDENCE_LABELS[confidence].label}
-          </span>
-        )}
-        {timestamp && (
-          <span className="text-xs text-[var(--text-muted)] ml-auto">
-            {timestamp}
-          </span>
-        )}
-      </div>
+      {/* Evidence spine — 2px left rule in type color */}
+      <div className="flex">
+        <div
+          className="w-0.5 shrink-0 rounded-l-[var(--radius-md)]"
+          style={{ backgroundColor: style.spine }}
+        />
 
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
-        {title}
-      </h3>
+        <div className="flex-1 min-w-0 p-4">
+          {/* Header row: type badge + confidence + timestamp */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span
+              className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${style.badge}`}
+            >
+              {TYPE_LABELS[type]}
+            </span>
+            {confidence && (
+              <ConfidenceMark
+                level={confidence as ConfidenceLevel}
+                size="sm"
+              />
+            )}
+            {timestamp && (
+              <span className="text-[11px] text-[var(--text-muted)] ml-auto font-mono tabular-nums">
+                {timestamp}
+              </span>
+            )}
+          </div>
 
-      {/* Summary */}
-      <p className="text-sm text-[var(--text-secondary)] mb-2">{summary}</p>
+          {/* Title */}
+          <h3 className="text-sm font-semibold text-[var(--text)] mb-1">
+            {title}
+          </h3>
 
-      {/* Why it matters */}
-      {whyItMatters && (
-        <p className="text-xs text-[var(--text-muted)] mb-2">
-          Why it matters: {whyItMatters}
-        </p>
-      )}
-
-      {/* Personalization — why shown for this user */}
-      {personalization && (
-        <div className="mb-2 rounded-[var(--radius-sm)] bg-[var(--bg-glass-strong)] px-3 py-2">
-          <p className="text-[11px] text-[var(--text-2)] leading-relaxed">
-            {personalization.whyShown}
+          {/* Summary */}
+          <p className="text-[13px] text-[var(--text-2)] mb-2 leading-relaxed">
+            {summary}
           </p>
-          {personalization.signals && personalization.signals.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {personalization.signals.map((s, i) => (
-                <span
-                  key={i}
-                  className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-glass)] px-1.5 py-0.5 rounded"
-                >
-                  {s}
-                </span>
+
+          {/* Why it matters */}
+          {whyItMatters && (
+            <p className="text-xs text-[var(--text-muted)] mb-2 leading-relaxed">
+              Why it matters: {whyItMatters}
+            </p>
+          )}
+
+          {/* Personalization */}
+          {personalization && (
+            <div className="mb-2 rounded-[var(--radius-sm)] bg-[var(--bg-glass-strong)] px-3 py-2">
+              <p className="text-[11px] text-[var(--text-2)] leading-relaxed">
+                {personalization.whyShown}
+              </p>
+              {personalization.signals &&
+                personalization.signals.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {personalization.signals.map((s, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-glass)] px-1.5 py-0.5 rounded"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Actions */}
+          {(primaryAction || secondaryAction) && (
+            <div className="flex items-center gap-4 mt-2 pt-2 border-t border-[var(--border)]">
+              {primaryAction && <ActionLink action={primaryAction} />}
+              {secondaryAction && <ActionLink action={secondaryAction} />}
+            </div>
+          )}
+
+          {/* Source IDs */}
+          {sourceIds && sourceIds.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {sourceIds.map((id) => (
+                <Badge key={id} variant="default" size="sm">
+                  {id}
+                </Badge>
               ))}
             </div>
           )}
+
+          {/* Extra content */}
+          {children}
         </div>
-      )}
+      </div>
 
-      {/* Evidence */}
-      {evidence && (
-        <p className="text-xs text-[var(--text-muted)] mb-2 italic">
-          Evidence: {evidence}
-        </p>
-      )}
-
-      {/* Actions */}
-      {(primaryAction || secondaryAction) && (
-        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-[var(--border-subtle)]">
-          {primaryAction && <ActionLink action={primaryAction} />}
-          {secondaryAction && (
-            <ActionLink action={secondaryAction} />
+      {/* Provenance footer — source/evidence metadata */}
+      {(evidence || provenance) && (
+        <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-mono text-[var(--provenance)] border-t border-[var(--border)] mx-4">
+          {evidence && <span className="text-[var(--text-muted)]">{evidence}</span>}
+          {provenance?.source && (
+            <>
+              {evidence && <span className="text-[var(--text-muted)]">·</span>}
+              <span>{provenance.source}</span>
+            </>
+          )}
+          {provenance?.docId && (
+            <>
+              <span>·</span>
+              <span>{provenance.docId}</span>
+            </>
+          )}
+          {provenance?.confidence && (
+            <>
+              <span>·</span>
+              <ConfidenceMark level={provenance.confidence} size="dot" />
+            </>
+          )}
+          {provenance?.verifyUrl && (
+            <span className="ml-auto">
+              <span
+                className="underline cursor-pointer hover:text-[var(--text-2)] transition-colors"
+                onClick={() =>
+                  window.open(
+                    provenance.verifyUrl,
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && provenance.verifyUrl)
+                    window.open(
+                      provenance.verifyUrl,
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
+                }}
+                tabIndex={0}
+                role="link"
+              >
+                Verify at source ↗
+              </span>
+            </span>
           )}
         </div>
       )}
-
-      {/* Source IDs */}
-      {sourceIds && sourceIds.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {sourceIds.map((id) => (
-            <Badge key={id} variant="default" size="sm">
-              {id}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {/* Extra content */}
-      {children}
     </div>
   );
 }
