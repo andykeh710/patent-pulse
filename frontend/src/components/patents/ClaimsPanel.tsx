@@ -142,7 +142,7 @@ export function ClaimsPanel({ claimsText }: ClaimsPanelProps) {
                 <span
                   className={`flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                     claim.isIndependent
-                      ? "bg-bg-[var(--accent-muted)] text-[var(--accent)]"
+                      ? "bg-[var(--accent-muted)] text-[var(--accent)]"
                       : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                   }`}
                 >

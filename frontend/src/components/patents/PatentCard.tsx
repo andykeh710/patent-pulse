@@ -20,7 +20,7 @@ export function PatentCard({ patent, isSaved, onToggleSave }: PatentCardProps) {
   return (
     <Link
       href={`/patents/${patent.id}`}
-      className="block bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] transition-all relative"
+      className="block bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 hover:shadow-[var(--shadow-sm)] transition-all relative"
     >
       {/* Save/bookmark button */}
       {onToggleSave && (

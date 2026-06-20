@@ -131,7 +131,7 @@ export function LinkedInPostPanel({ patentId }: LinkedInPostPanelProps) {
                 onClick={() => setTone(t.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   tone === t.value
-                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
                     : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
                 }`}
               >
@@ -222,7 +222,7 @@ function DraftView({
               onClick={() => onToneChange(t.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 tone === t.value
-                  ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
                   : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
               }`}
             >
@@ -328,7 +328,7 @@ function SuccessView({
                 onClick={() => onToneChange(t.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   tone === t.value
-                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-border-[var(--accent)]/30"
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30"
                     : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] border border-transparent"
                 }`}
               >

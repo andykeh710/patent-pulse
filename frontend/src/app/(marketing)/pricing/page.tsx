@@ -250,7 +250,7 @@ export default function PricingPage() {
                 <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
                   Basic
                 </th>
-                <th className="p-4 text-center font-semibold text-[var(--text-primary)] bg-bg-[var(--bg-elevated)]">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)] bg-[var(--bg-elevated)]">
                   Lifetime
                 </th>
                 <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
@@ -266,7 +266,7 @@ export default function PricingPage() {
                   </td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">{row.free}</td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">{row.basic}</td>
-                  <td className="p-4 text-center text-[var(--text-secondary)] bg-bg-[var(--bg-elevated)]/50">
+                  <td className="p-4 text-center text-[var(--text-secondary)] bg-[var(--bg-elevated)]/50">
                     {row.lifetime}
                   </td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">

@@ -642,7 +642,7 @@ function CliffCard({ cliff }: { cliff: CliffClusterItem }) {
       : `${cliff.window_months / 12}yr`;
 
   return (
-    <div className="block rounded-lg border border-border-[var(--accent)]/20 bg-[var(--bg-elevated)] p-4">
+    <div className="block rounded-lg border border-[var(--accent)]/20 bg-[var(--bg-elevated)] p-4">
       <div className="flex items-start justify-between">
         <div>
           <span className="font-mono text-sm font-bold text-[var(--accent)]">

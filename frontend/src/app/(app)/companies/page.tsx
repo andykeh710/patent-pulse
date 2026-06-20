@@ -131,7 +131,7 @@ export default function CompaniesPage() {
 
 function SummaryCard({ label, value, isLoading, highlight, decimals }: { label: string; value?: number; isLoading: boolean; highlight?: boolean; decimals?: boolean }) {
   return (
-    <div className={`rounded-lg border p-4 ${highlight ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"}`}>
+    <div className={`rounded-lg border p-4 ${highlight ? "bg-[var(--bg-elevated)] border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"}`}>
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
       {isLoading ? (
         <div className="h-8 w-20 bg-[var(--bg-surface)] animate-pulse rounded mt-1" />
@@ -200,7 +200,7 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
                   <span className="text-[var(--text-muted)]">{formatNumber(item.patent_count)} patents</span>
                 </div>
                 <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-                  <div className="h-2 bg-bg-[var(--accent)]/70 rounded-full" style={{ width: `${Math.max((item.patent_count / max) * 100, 3)}%` }} />
+                  <div className="h-2 bg-[var(--accent)]/70 rounded-full" style={{ width: `${Math.max((item.patent_count / max) * 100, 3)}%` }} />
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
                   {item.supplier_count} companies · avg score {item.average_supplier_score}
@@ -236,7 +236,7 @@ function CoverageBar({ label, value, total, isLoading, enrichmentNote }: { label
         <span className="text-[var(--text-muted)]">{pct}%</span>
       </div>
       <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-        <div className="h-2 bg-bg-[var(--accent)]/70 rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-2 bg-[var(--accent)]/70 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <p className="text-xs text-[var(--text-muted)] mt-1">
         {formatNumber(value)} of {formatNumber(total)} companies

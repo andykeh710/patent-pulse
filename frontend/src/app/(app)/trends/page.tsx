@@ -214,7 +214,7 @@ function SummaryCard({
   return (
     <div
       className={`rounded-lg border p-4 ${
-        highlight ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
+        highlight ? "bg-[var(--bg-elevated)] border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
       }`}
     >
       <p className="text-sm text-[var(--text-muted)]">{label}</p>

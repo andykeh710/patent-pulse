@@ -86,7 +86,7 @@ export function OpportunityNarrativePanel({
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-[var(--text-primary)]">What Could Someone Build?</h2>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium px-2 py-1 rounded-full bg-bg-[var(--accent-muted)] text-[var(--accent)]">
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-[var(--accent-muted)] text-[var(--accent)]">
             {typeLabels[artifact.opportunity_type] || artifact.opportunity_type}
           </span>
           <Button onClick={handleGenerate} variant="outline" size="sm" disabled={isGenerating}>
