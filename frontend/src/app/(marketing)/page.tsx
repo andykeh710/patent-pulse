@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 const CONFIDENCE_PILLS = [
   { label: "active_estimated", color: "bg-[var(--score-high-bg)] text-[var(--score-high)]" },
   { label: "expiring_soon", color: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]" },
-  { label: "lapsed_possible", color: "bg-orange-500/15 text-orange-400" },
-  { label: "lapsed_confirmed", color: "bg-red-500/15 text-red-400" },
+  { label: "lapsed_possible", color: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+  { label: "lapsed_confirmed", color: "bg-[var(--danger-bg)] text-[var(--danger)]" },
 ];
 
 const TIER_BADGES = [
@@ -233,7 +233,7 @@ export default function LandingPage() {
                 {b.label}
               </span>
             ))}
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn)]/30">
               ⚠ self-citation risk
             </span>
           </div>
