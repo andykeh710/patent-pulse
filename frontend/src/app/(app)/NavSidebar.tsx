@@ -93,7 +93,7 @@ export function NavSidebar() {
               href={item.href}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 isActive(item.href)
-                  ? "bg-bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
+                  ? "bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
                   : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               }`}
             >
@@ -127,7 +127,7 @@ export function NavSidebar() {
               href={item.href}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 isActive(item.href)
-                  ? "bg-bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
+                  ? "bg-[var(--bg-elevated)] text-[var(--accent)] font-medium"
                   : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               }`}
             >
