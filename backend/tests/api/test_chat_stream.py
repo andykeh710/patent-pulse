@@ -4,7 +4,10 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from app.api.deps import current_user, get_db
+from app.main import app
 
 
 def _cookie(user_id: str = "local-user") -> dict[str, str]:
@@ -920,6 +923,62 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
     assert "meta" in event_types
     assert "done" in event_types
     assert "sources" in event_types  # proves we got past memory ops
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_does_not_use_request_db_after_stream_starts(
+    monkeypatch,
+):
+    """Streaming body must not depend on FastAPI request-scoped DB cleanup timing."""
+    store = _make_memory_mock()
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _fake_token_stream,
+    )
+
+    class RequestScopedDb:
+        closed = False
+
+    request_scoped_db = RequestScopedDb()
+    used_closed_request_db = False
+
+    async def override_current_user():
+        return "local-user"
+
+    async def override_get_db():
+        try:
+            yield request_scoped_db
+        finally:
+            request_scoped_db.closed = True
+
+    async def assert_stream_uses_live_db(query, db):
+        nonlocal used_closed_request_db
+        used_closed_request_db = db is request_scoped_db and request_scoped_db.closed
+        return MOCK_PATENTS
+
+    try:
+        app.dependency_overrides[current_user] = override_current_user
+        app.dependency_overrides[get_db] = override_get_db
+        monkeypatch.setattr(
+            "app.api.v1.chat.retrieve_patents",
+            assert_stream_uses_live_db,
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as test_client:
+            r = await test_client.post(
+                "/api/v1/chat/stream",
+                json={"message": "solid state batteries", "conversation_id": None},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    assert used_closed_request_db is False
 
 
 # ── Edge case tests ──────────────────────────────────────────────────
