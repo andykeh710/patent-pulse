@@ -137,6 +137,7 @@ function ExpiryContent() {
     ...params,
     expiry_status: "expiring_soon",
     expiry_window_start: undefined,
+    min_expiry_opportunity_score: undefined,  // never apply score filter to primary view
   };
 
   const recentlyExpiredParams: ExpiryParams = {
@@ -417,7 +418,7 @@ function ExpiryContent() {
           description="Recently expired patents with high opportunity scores — may be worth investigating."
           items={(revival.data?.items || []).map(expiryItemToCardProps)}
           isLoading={revival.isLoading}
-          emptyMessage="No high-opportunity revival candidates in this window."
+          emptyMessage="No high-opportunity revival candidates in this window (score ≥ 50)."
           emptyDetail="A revival candidate is an estimated-expired patent with an above-threshold opportunity score. This is not a legal determination — active family members may still be enforceable in other jurisdictions."
         />
 

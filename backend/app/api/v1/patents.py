@@ -245,11 +245,15 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
 
     # If ingestion says "success" but all recent USPTO sources are unavailable,
     # override to "degraded" so the UI shows honest source status.
+    # HOWEVER: do not override if ODP bulk dataset has succeeded recently
+    # (ODP bulk is the primary freshness path as of V3.8C).
     if last_ingestion_status == "success":
         source_result = await db.execute(
             text("""
                 SELECT COUNT(*) AS total,
-                       COUNT(*) FILTER (WHERE status = 'unavailable') AS down
+                       COUNT(*) FILTER (WHERE status = 'unavailable') AS down,
+                       COUNT(*) FILTER (WHERE provider = 'odp_bulk_dataset') AS odp_total,
+                       COUNT(*) FILTER (WHERE provider = 'odp_bulk_dataset' AND status = 'success') AS odp_success
                 FROM source_fetches
                 WHERE office = 'USPTO'
                   AND started_at >= now() - INTERVAL '24 hours'
@@ -257,8 +261,30 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
         )
         sf_row = source_result.first()
         if sf_row and sf_row.total > 0 and sf_row.down == sf_row.total:
-            last_ingestion_status = "degraded"
-            last_ingestion_error = "All USPTO data sources are currently unavailable."
+            if sf_row.odp_success and sf_row.odp_success > 0:
+                pass  # ODP is working — keep success
+            else:
+                last_ingestion_status = "degraded"
+                last_ingestion_error = "All USPTO data sources are currently unavailable."
+
+    # Check primary ODP source status for admin visibility
+    odp_result = await db.execute(
+        text("""
+            SELECT status, target_id, records_found, started_at
+            FROM source_fetches
+            WHERE provider = 'odp_bulk_dataset'
+            ORDER BY started_at DESC
+            LIMIT 1
+        """)
+    )
+    odp_row = odp_result.first()
+    primary_source = "odp_bulk_dataset" if (odp_row and odp_row.status == "success") else "legacy"
+    source_diagnostics = {
+        "odp_status": odp_row.status if odp_row else None,
+        "odp_target": odp_row.target_id if odp_row else None,
+        "odp_records": odp_row.records_found if odp_row else None,
+        "odp_last_run": odp_row.started_at.isoformat() if odp_row and odp_row.started_at else None,
+    } if odp_row else None
 
     return FreshnessResponse(
         latest_patent_created_at=latest_patent_created_at,
@@ -274,6 +300,8 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
         last_ingestion_finished_at=last_ingestion_finished_at,
         last_ingestion_new_records=last_ingestion_new_records,
         last_ingestion_error=last_ingestion_error,
+        primary_source=primary_source,
+        source_diagnostics=source_diagnostics,
     )
 
 
