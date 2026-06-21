@@ -95,18 +95,21 @@ class Settings(BaseSettings):
     claude_haiku_input_usd_per_mtok: float = 0.8
     claude_haiku_output_usd_per_mtok: float = 4.0
 
-    # DeepSeek — OpenAI-compatible API
+    # DeepSeek — primary AI provider (all text generation)
     deepseek_api_key: str = ""
-    deepseek_chat_model: str = "deepseek-chat"           # V3 — fast, cheap
-    deepseek_reasoner_model: str = "deepseek-reasoner"   # R1 — reasoning
-    deepseek_input_usd_per_mtok: float = 0.27            # $0.27/M input
-    deepseek_output_usd_per_mtok: float = 1.10           # $1.10/M output
+    deepseek_chat_model: str = "deepseek-v4-pro"
+    deepseek_reasoner_model: str = "deepseek-v4-pro"
+    deepseek_input_usd_per_mtok: float = 0.27
+    deepseek_output_usd_per_mtok: float = 1.10
 
-    # LLM provider: "anthropic" | "deepseek"
+    # LLM provider: "deepseek" (primary) | "anthropic" (compatibility only)
     llm_provider: str = "deepseek"
 
-    # Phase 3: Chatbot config
-    chat_model: str = "claude-sonnet-4-20250514"
+    # Anthropic SDK compatibility path (routes to DeepSeek when base_url set)
+    anthropic_base_url: str = "https://api.deepseek.com/anthropic"
+
+    # Phase 3: Chatbot config — DeepSeek via Anthropic-compatible endpoint
+    chat_model: str = "deepseek-v4-pro"
     chat_retrieve_k: int = 8
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

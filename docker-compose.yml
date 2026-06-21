@@ -46,8 +46,14 @@ services:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${DEEPSEEK_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      LLM_PROVIDER: deepseek
+      AI_PROVIDER: deepseek
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.deepseek.com/anthropic}
+      CLAUDE_MODEL: deepseek-v4-pro
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
@@ -60,7 +66,7 @@ services:
       USPTO_ODP_BASE_URL: ${USPTO_ODP_BASE_URL:-https://developer.uspto.gov/ibd-api/v1}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      # CLAUDE_MODEL deprecated — using deepseek-v4-pro
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
       INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
@@ -99,8 +105,14 @@ services:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${DEEPSEEK_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      LLM_PROVIDER: deepseek
+      AI_PROVIDER: deepseek
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.deepseek.com/anthropic}
+      CLAUDE_MODEL: deepseek-v4-pro
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
@@ -113,7 +125,7 @@ services:
       USPTO_ODP_BASE_URL: ${USPTO_ODP_BASE_URL:-https://developer.uspto.gov/ibd-api/v1}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      # CLAUDE_MODEL deprecated — using deepseek-v4-pro
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
       INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}

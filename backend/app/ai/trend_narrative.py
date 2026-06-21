@@ -197,7 +197,7 @@ async def generate_trend_narrative(
         response = await client.complete(session, request)
     except anthropic.APIError as e:
         raise SummarizationError(
-            f"Claude API error during trend narrative generation: {e}"
+            f"AI API error during trend narrative generation: {e}"
         ) from e
 
     if response.content_json is None:

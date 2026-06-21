@@ -211,7 +211,7 @@ async def generate_why_now(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:  # pragma: no cover - network path
-        raise SummarizationError(f"Claude API error during Why Now: {e}") from e
+        raise SummarizationError(f"AI API error during Why Now: {e}") from e
 
     if response.content_json is None:
         raise SummarizationError(

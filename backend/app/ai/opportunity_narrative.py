@@ -219,7 +219,7 @@ async def generate_opportunity_narrative(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:  # pragma: no cover - network path
-        raise SummarizationError(f"Claude API error during Opportunity Narrative: {e}") from e
+        raise SummarizationError(f"AI API error during Opportunity Narrative: {e}") from e
 
     if response.content_json is None:
         raise SummarizationError(

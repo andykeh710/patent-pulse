@@ -481,7 +481,7 @@ export default function LandingPage() {
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)] mb-6">
           <span>Data: USPTO + EPO + WIPO</span>
           <span>Updated weekly</span>
-          <span>AI: Claude Sonnet narratives</span>
+          <span>AI: DeepSeek-powered patent analysis</span>
           <span>Not legal advice</span>
         </div>
         <div className="text-center">

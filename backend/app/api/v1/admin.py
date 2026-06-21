@@ -479,12 +479,15 @@ async def trigger_sentry_test(
 async def admin_system_health(
     admin: _UserModel = Depends(require_admin),
 ):
-    """Returns Anthropic API health status for monitoring."""
+    """Returns AI provider health status for monitoring."""
     from app.tasks.tag import (
         _LAST_ANTHROPIC_ERROR_AT,
         ANTHROPIC_ERROR_MAX_CONSECUTIVE,
         _anthropic_error_count,
     )
+
+    provider = settings.llm_provider or "deepseek"
+    model = settings.deepseek_chat_model
 
     status = "ok"
     if _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE:
@@ -493,10 +496,13 @@ async def admin_system_health(
         status = "degraded"
 
     return {
-        "anthropic_status": status,
-        "anthropic_consecutive_errors": _anthropic_error_count,
-        "anthropic_last_error_at": _LAST_ANTHROPIC_ERROR_AT,
+        "provider": provider,
+        "model": model,
+        "status": status,
+        "consecutive_errors": _anthropic_error_count,
+        "last_error_at": _LAST_ANTHROPIC_ERROR_AT,
         "circuit_broken": _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE,
+        "deepseek_configured": bool(settings.deepseek_api_key),
     }
 
 
