@@ -301,11 +301,14 @@ class FreshnessResponse(BaseModel):
     total_summarized: int
     total_trend_snapshots: int
     # Ingestion pipeline health
-    last_ingestion_status: str | None = None         # "never_run" | "success" | "failed"
-    last_ingestion_started_at: str | None = None     # ISO 8601
-    last_ingestion_finished_at: str | None = None    # ISO 8601
-    last_ingestion_new_records: int | None = None    # grants_created + apps_created
+    last_ingestion_status: str | None = None
+    last_ingestion_started_at: str | None = None
+    last_ingestion_finished_at: str | None = None
+    last_ingestion_new_records: int | None = None
     last_ingestion_error: str | None = None
+    # Primary source info (V3.8F)
+    primary_source: str | None = None
+    source_diagnostics: dict | None = None
 
 
 # ── V3.1 Preference Center ───────────────────────────────────────────
