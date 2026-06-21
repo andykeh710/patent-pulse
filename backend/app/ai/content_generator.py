@@ -122,7 +122,7 @@ async def generate_linkedin_post(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:
-        raise SummarizationError(f"Claude API error during LinkedIn post generation: {e}") from e
+        raise SummarizationError(f"AI API error during content generation: {e}") from e
 
     if response.content_json is None:
         raise SummarizationError(

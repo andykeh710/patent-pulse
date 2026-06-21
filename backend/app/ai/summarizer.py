@@ -154,7 +154,7 @@ async def summarize_patent(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:  # pragma: no cover - network path
-        raise SummarizationError(f"Claude API error: {e}") from e
+        raise SummarizationError(f"AI API error: {e}") from e
 
     content = response.content_json
     if content is None:

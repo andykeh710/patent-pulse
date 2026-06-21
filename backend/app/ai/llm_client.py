@@ -211,9 +211,12 @@ class LLMClient:
         if self._anthropic is None:
             if not self._api_key:
                 raise RuntimeError(
-                    "anthropic_api_key is not configured; cannot make live calls"
+                    "API key is not configured; cannot make live calls"
                 )
-            self._anthropic = anthropic.Anthropic(api_key=self._api_key)
+            self._anthropic = anthropic.Anthropic(
+                api_key=self._api_key,
+                base_url=settings.anthropic_base_url,
+            )
         return self._anthropic
 
     async def _call_deepseek(
