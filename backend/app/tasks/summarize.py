@@ -24,18 +24,8 @@ logger = logging.getLogger(__name__)
     autoretry_for=(SummarizationError,),
 )
 def summarize_patent(self, patent_id: str, force: bool = False) -> dict:
-    """
-    Generate AI summary for a single patent.
-
-    Args:
-        patent_id: UUID of the patent to summarize
-        force: If True, re-summarize even if already summarized
-
-    Returns:
-        Dict with status and summary keys
-    """
+    """Generate AI summary for a single patent."""
     logger.info(f"Starting summarization for patent {patent_id} (force={force})")
-
     try:
         result = asyncio.run(_summarize_patent_async(patent_id, force=force))
         return result
@@ -53,39 +43,14 @@ def summarize_patent(self, patent_id: str, force: bool = False) -> dict:
     max_retries=1,
 )
 def batch_summarize_pending(self, limit: int | None = None) -> dict:
-    """
-    Summarize all patents that haven't been summarized yet.
+    """Summarize all patents that haven't been summarized yet.
 
-    Args:
-        limit: Maximum number of patents to process. Defaults to settings.summarization_batch_size.
-
-    Returns:
-        Stats dict with processed, succeeded, failed counts.
+    Uses a SINGLE event loop for the entire batch to avoid
+    "Event loop is closed / Future attached to a different loop" errors.
     """
     batch_limit = limit or settings.summarization_batch_size
     logger.info(f"Starting batch summarization (limit: {batch_limit})")
-
-    patents = asyncio.run(_get_pending_patents(batch_limit))
-
-    stats = {"processed": 0, "succeeded": 0, "failed": 0, "skipped": 0}
-
-    for patent in patents:
-        try:
-            result = asyncio.run(_summarize_patent_async(str(patent.id)))
-            if result["status"] == "success":
-                stats["succeeded"] += 1
-            elif result["status"] == "skipped":
-                stats["skipped"] += 1
-            else:
-                stats["failed"] += 1
-        except Exception as e:
-            stats["failed"] += 1
-            logger.error(f"Batch summarization failed for {patent.id}: {e}")
-
-        stats["processed"] += 1
-
-    logger.info(f"Batch summarization complete: {stats}")
-    return stats
+    return asyncio.run(_batch_summarize_async(batch_limit))
 
 
 @celery_app.task(
@@ -94,34 +59,56 @@ def batch_summarize_pending(self, limit: int | None = None) -> dict:
     max_retries=1,
 )
 def batch_resummarize_enriched(self, limit: int | None = None) -> dict:
-    """
-    Re-summarize patents that have abstracts but were previously summarized
-    with title-only (low quality). Targets patents where abstract was added
-    after initial summarization.
-
-    Args:
-        limit: Maximum number of patents to process.
-
-    Returns:
-        Stats dict with processed, succeeded, failed counts.
+    """Re-summarize patents that have abstracts but were previously summarized
+    with title-only (low quality). Single event loop for the entire batch.
     """
     batch_limit = limit or settings.summarization_batch_size
     logger.info(f"Starting re-summarization of enriched patents (limit: {batch_limit})")
+    return asyncio.run(_batch_resummarize_async(batch_limit))
 
-    patents = asyncio.run(_get_enriched_resummarize_candidates(batch_limit))
 
+# ── Async batch runners (single event loop each) ──────────────────────
+
+
+async def _batch_summarize_async(limit: int) -> dict:
+    """Process a batch of unsummarized patents in one event loop."""
+    patents = await _get_pending_patents(limit)
+    stats = {"processed": 0, "succeeded": 0, "failed": 0, "skipped": 0}
+
+    for patent in patents:
+        try:
+            result = await _summarize_patent_async(str(patent.id))
+            if result["status"] == "success":
+                stats["succeeded"] += 1
+            elif result["status"] == "skipped":
+                stats["skipped"] += 1
+            else:
+                stats["failed"] += 1
+        except Exception as e:
+            stats["failed"] += 1
+            logger.warning(f"Batch summarization failed for {patent.id}: {e}")
+
+        stats["processed"] += 1
+
+    logger.info(f"Batch summarization complete: {stats}")
+    return stats
+
+
+async def _batch_resummarize_async(limit: int) -> dict:
+    """Re-summarize enriched patents in one event loop."""
+    patents = await _get_enriched_resummarize_candidates(limit)
     stats = {"processed": 0, "succeeded": 0, "failed": 0, "total_candidates": len(patents)}
 
     for patent in patents:
         try:
-            result = asyncio.run(_summarize_patent_async(str(patent.id), force=True))
+            result = await _summarize_patent_async(str(patent.id), force=True)
             if result["status"] == "success":
                 stats["succeeded"] += 1
             else:
                 stats["failed"] += 1
         except Exception as e:
             stats["failed"] += 1
-            logger.error(f"Re-summarization failed for {patent.id}: {e}")
+            logger.warning(f"Re-summarization failed for {patent.id}: {e}")
 
         stats["processed"] += 1
 
@@ -129,27 +116,11 @@ def batch_resummarize_enriched(self, limit: int | None = None) -> dict:
     return stats
 
 
-async def _get_enriched_resummarize_candidates(limit: int) -> list[PatentPublication]:
-    """Get patents that have abstracts but were summarized before the abstract was added."""
-    async with async_session_maker() as session:
-        result = await session.execute(
-            select(PatentPublication)
-            .where(PatentPublication.abstract.isnot(None))
-            .where(PatentPublication.summarized_at.isnot(None))
-            .where(PatentPublication.updated_at > PatentPublication.summarized_at)
-            .order_by(PatentPublication.interesting_score.desc().nullslast())
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+# ── Async helpers ─────────────────────────────────────────────────────
 
 
 async def _summarize_patent_async(patent_id: str, force: bool = False) -> dict:
-    """Async helper for patent summarization.
-
-    Routes through :func:`app.ai.summarizer.summarize_patent` so every
-    summary is cached as an ``AIArtifact(summary)`` row and the patent's
-    ``latest_summary_artifact_id`` is updated for fast denormalized reads.
-    """
+    """Summarize a single patent using the cached LLM pipeline."""
     async with async_session_maker() as session:
         result = await session.execute(
             select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
@@ -191,3 +162,17 @@ async def _get_pending_patents(limit: int) -> list[PatentPublication]:
     """Get patents awaiting summarization."""
     async with async_session_maker() as session:
         return await get_unsummarized_patents(session, limit=limit)
+
+
+async def _get_enriched_resummarize_candidates(limit: int) -> list[PatentPublication]:
+    """Get patents with abstracts that were summarized before abstract was added."""
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(PatentPublication)
+            .where(PatentPublication.abstract.isnot(None))
+            .where(PatentPublication.summarized_at.isnot(None))
+            .where(PatentPublication.updated_at > PatentPublication.summarized_at)
+            .order_by(PatentPublication.interesting_score.desc().nullslast())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
