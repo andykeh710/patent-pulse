@@ -65,8 +65,12 @@ export function ExpiryRadarCard({
   usageSignalCount, usageHasSelfCitationRisk,
   isSaved, onToggleSave,
 }: ExpiryRadarCardProps) {
-  const statusLabel = STATUS_LABELS[expiryStatus] || expiryStatus;
-  const statusTone = expiryStatusTone(expiryStatus);
+  const statusLabel = daysUntilExpiry != null && daysUntilExpiry <= 0
+    ? "Expired"
+    : STATUS_LABELS[expiryStatus] || expiryStatus;
+  const statusTone = daysUntilExpiry != null && daysUntilExpiry <= 0
+    ? expiryStatusTone("expired_confirmed")
+    : expiryStatusTone(expiryStatus);
   const confTone = confidenceTone(expiryConfidence);
 
   const expiryDateDisplay = estimatedExpiryDate ? formatDate(estimatedExpiryDate) : "Unknown";
