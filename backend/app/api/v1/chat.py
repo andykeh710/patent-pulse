@@ -18,13 +18,13 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.anthropic_client import get_chat_client
-from app.api.deps import current_user, get_db
+from app.api.deps import current_user
+from app.database import async_session_maker
 from app.services.chat_citations import extract_citations, verify_citations
 from app.services.chat_memory import get_conversation_store
 from app.services.chat_retrieval import build_system_prompt, retrieve_patents
@@ -125,7 +125,6 @@ async def _stream_anthropic_response(
     message: str,
     conversation_id: str | None,
     user_id: str,
-    db: AsyncSession,
 ):
     """Retrieve patents + stream Anthropic response with tool calls,
     citation verification, and conversation memory.
@@ -143,173 +142,174 @@ async def _stream_anthropic_response(
     Yields:
         SSE-formatted strings.
     """
-    store = get_conversation_store()
+    async with async_session_maker() as db:
+        store = get_conversation_store()
 
-    # ── Step 1: Conversation ID ───────────────────────────────────
-    if not conversation_id:
-        conversation_id = await store.new_conversation_id()
-    else:
-        # Validate that the client-supplied ID is a well-formed UUID
-        # (defense-in-depth against garbage input — Redis key safety)
-        conversation_id = str(conversation_id).strip()
+        # ── Step 1: Conversation ID ───────────────────────────────────
         if not conversation_id:
             conversation_id = await store.new_conversation_id()
+        else:
+            # Validate that the client-supplied ID is a well-formed UUID
+            # (defense-in-depth against garbage input — Redis key safety)
+            conversation_id = str(conversation_id).strip()
+            if not conversation_id:
+                conversation_id = await store.new_conversation_id()
 
-    # ── Step 2: Load history ──────────────────────────────────────
-    try:
-        history = await store.get_history(user_id, conversation_id)
-    except Exception:
-        logger.exception("Failed to load conversation history")
-        history = []
-
-    # ── Step 3: Retrieve ──────────────────────────────────────────
-    patents = await retrieve_patents(message, db)
-
-    yield _sse_event(
-        "meta",
-        model="claude-sonnet-4-20250514",
-        retrieved_count=len(patents),
-        conversation_id=conversation_id,
-    )
-
-    # ── Step 4: System prompt ─────────────────────────────────────
-    system_prompt = build_system_prompt(patents)
-
-    # ── Citation-tracking state ───────────────────────────────────
-    full_text_parts: list[str] = []
-    known_doc_ids: set[str] = {p["doc_id"] for p in patents}
-
-    # ── Step 5: Anthropic messages (history + current turn) ───────
-    # Build messages: prior turns from Redis + current user message.
-    messages: list[dict] = [
-        {"role": m["role"], "content": m["content"]}
-        for m in history
-    ]
-    messages.append({"role": "user", "content": message})
-
-    # ── Step 6: Streaming with tool loop ──────────────────────────
-    client = get_chat_client()
-    tool_call_count = 0
-
-    while True:
+        # ── Step 2: Load history ──────────────────────────────────────
         try:
-            async for event in client.stream(
-                system=system_prompt,
-                messages=messages,
-                tools=TOOLS,
-            ):
-                if event["type"] == "text":
-                    full_text_parts.append(event["content"])
-                    yield _sse_event("token", content=event["content"])
+            history = await store.get_history(user_id, conversation_id)
+        except Exception:
+            logger.exception("Failed to load conversation history")
+            history = []
 
-                elif event["type"] == "tool_use":
-                    tool_call_count += 1
-                    if tool_call_count > MAX_TOOL_CALLS_PER_TURN:
+        # ── Step 3: Retrieve ──────────────────────────────────────────
+        patents = await retrieve_patents(message, db)
+
+        yield _sse_event(
+            "meta",
+            model="claude-sonnet-4-20250514",
+            retrieved_count=len(patents),
+            conversation_id=conversation_id,
+        )
+
+        # ── Step 4: System prompt ─────────────────────────────────────
+        system_prompt = build_system_prompt(patents)
+
+        # ── Citation-tracking state ───────────────────────────────────
+        full_text_parts: list[str] = []
+        known_doc_ids: set[str] = {p["doc_id"] for p in patents}
+
+        # ── Step 5: Anthropic messages (history + current turn) ───────
+        # Build messages: prior turns from Redis + current user message.
+        messages: list[dict] = [
+            {"role": m["role"], "content": m["content"]}
+            for m in history
+        ]
+        messages.append({"role": "user", "content": message})
+
+        # ── Step 6: Streaming with tool loop ──────────────────────────
+        client = get_chat_client()
+        tool_call_count = 0
+
+        while True:
+            try:
+                async for event in client.stream(
+                    system=system_prompt,
+                    messages=messages,
+                    tools=TOOLS,
+                ):
+                    if event["type"] == "text":
+                        full_text_parts.append(event["content"])
+                        yield _sse_event("token", content=event["content"])
+
+                    elif event["type"] == "tool_use":
+                        tool_call_count += 1
+                        if tool_call_count > MAX_TOOL_CALLS_PER_TURN:
+                            yield _sse_event(
+                                "warning",
+                                message="Tool call limit reached (5 per turn).",
+                            )
+                            yield _sse_event("done")
+                            return
+
+                        tool_name: str = event.get("name", "")
+                        tool_input: dict = event.get("input", {})
+                        tool_id: str = event.get("id", "")
+
                         yield _sse_event(
-                            "warning",
-                            message="Tool call limit reached (5 per turn).",
+                            "tool_call_start",
+                            name=tool_name,
+                            input=tool_input,
                         )
-                        yield _sse_event("done")
-                        return
 
-                    tool_name: str = event.get("name", "")
-                    tool_input: dict = event.get("input", {})
-                    tool_id: str = event.get("id", "")
+                        try:
+                            result = await execute_tool(tool_name, tool_input, db)
+                        except Exception:
+                            logger.exception("Tool execution failed: %s", tool_name)
+                            result = {
+                                "error": f"Tool '{tool_name}' encountered an internal error."
+                            }
 
-                    yield _sse_event(
-                        "tool_call_start",
-                        name=tool_name,
-                        input=tool_input,
-                    )
+                        known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
+                        sanitized = _sanitize_tool_result(result)
 
-                    try:
-                        result = await execute_tool(tool_name, tool_input, db)
-                    except Exception:
-                        logger.exception("Tool execution failed: %s", tool_name)
-                        result = {
-                            "error": f"Tool '{tool_name}' encountered an internal error."
-                        }
+                        yield _sse_event(
+                            "tool_call_result",
+                            name=tool_name,
+                            result=sanitized,
+                        )
 
-                    known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
-                    sanitized = _sanitize_tool_result(result)
+                        messages.append({
+                            "role": "assistant",
+                            "content": [{
+                                "type": "tool_use",
+                                "id": tool_id,
+                                "name": tool_name,
+                                "input": tool_input,
+                            }],
+                        })
+                        messages.append({
+                            "role": "user",
+                            "content": [{
+                                "type": "tool_result",
+                                "tool_use_id": tool_id,
+                                "content": json.dumps(sanitized),
+                            }],
+                        })
 
-                    yield _sse_event(
-                        "tool_call_result",
-                        name=tool_name,
-                        result=sanitized,
-                    )
+                        break
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
-                    })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
-                    })
-
+                else:
                     break
 
-            else:
-                break
+            except Exception:
+                logger.exception("Anthropic streaming failed")
+                yield _sse_event(
+                    "error",
+                    message=(
+                        "The chat service is temporarily unavailable. "
+                        "Please try again."
+                    ),
+                )
+                yield _sse_event("done")
+                return
 
-        except Exception:
-            logger.exception("Anthropic streaming failed")
+        # ── Step 7: Citation verification ─────────────────────────────
+        full_text = "".join(full_text_parts)
+        cited = extract_citations(full_text)
+        verification = verify_citations(cited, known_doc_ids)
+
+        yield _sse_event(
+            "citations",
+            verified=verification["verified"],
+            unverified=verification["unverified"],
+        )
+
+        if verification["unverified"]:
             yield _sse_event(
-                "error",
+                "warning",
+                code="uncited_or_invalid_doc_ids",
                 message=(
-                    "The chat service is temporarily unavailable. "
-                    "Please try again."
+                    "Some patent references could not be verified "
+                    "against retrieved sources."
                 ),
             )
-            yield _sse_event("done")
-            return
 
-    # ── Step 7: Citation verification ─────────────────────────────
-    full_text = "".join(full_text_parts)
-    cited = extract_citations(full_text)
-    verification = verify_citations(cited, known_doc_ids)
+        # ── Step 8: Persist conversation ──────────────────────────────
+        # Persist only the final user message + assistant text.
+        # Tool-call sequences are intentionally NOT persisted — each turn
+        # starts fresh with retrieval + tools.
+        try:
+            await store.append_message(user_id, conversation_id, "user", message)
+            await store.append_message(
+                user_id, conversation_id, "assistant", full_text,
+            )
+        except Exception:
+            logger.exception("Failed to persist conversation turn")
 
-    yield _sse_event(
-        "citations",
-        verified=verification["verified"],
-        unverified=verification["unverified"],
-    )
-
-    if verification["unverified"]:
-        yield _sse_event(
-            "warning",
-            code="uncited_or_invalid_doc_ids",
-            message=(
-                "Some patent references could not be verified "
-                "against retrieved sources."
-            ),
-        )
-
-    # ── Step 8: Persist conversation ──────────────────────────────
-    # Persist only the final user message + assistant text.
-    # Tool-call sequences are intentionally NOT persisted — each turn
-    # starts fresh with retrieval + tools.
-    try:
-        await store.append_message(user_id, conversation_id, "user", message)
-        await store.append_message(
-            user_id, conversation_id, "assistant", full_text,
-        )
-    except Exception:
-        logger.exception("Failed to persist conversation turn")
-
-    # ── Step 9: Sources + done ────────────────────────────────────
-    yield _sse_event("sources", patents=patents)
-    yield _sse_event("done")
+        # ── Step 9: Sources + done ────────────────────────────────────
+        yield _sse_event("sources", patents=patents)
+        yield _sse_event("done")
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────
@@ -317,10 +317,8 @@ async def _stream_anthropic_response(
 
 @router.post("/stream")
 async def chat_stream(
-    request: Request,
     body: ChatStreamRequest,
     user_id: str = Depends(current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream an LLM response as Server-Sent Events.
 
@@ -342,7 +340,6 @@ async def chat_stream(
             body.message,
             body.conversation_id,
             user_id,
-            db,
         ),
         media_type="text/event-stream",
         headers={

@@ -192,6 +192,59 @@ def _setup_default_mocks(monkeypatch):
     )
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_opens_database_session_inside_generator(monkeypatch):
+    """Streaming work should own a DB session for the full body lifecycle."""
+    from app.api.v1 import chat
+
+    fake_stream_session = object()
+
+    class FakeStreamSessionContext:
+        async def __aenter__(self):
+            fake_session_maker.opened += 1
+            return fake_stream_session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            fake_session_maker.closed += 1
+
+    class FakeSessionMaker:
+        def __init__(self):
+            self.opened = 0
+            self.closed = 0
+
+        def __call__(self):
+            return FakeStreamSessionContext()
+
+    fake_session_maker = FakeSessionMaker()
+    retrieve_sessions = []
+
+    async def _record_retrieve_session(query, session, k=None):
+        retrieve_sessions.append(session)
+        return MOCK_PATENTS
+
+    monkeypatch.setattr(chat, "async_session_maker", fake_session_maker, raising=False)
+    monkeypatch.setattr(chat, "retrieve_patents", _record_retrieve_session)
+    monkeypatch.setattr(chat, "get_conversation_store", lambda: _make_memory_mock())
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _fake_token_stream,
+    )
+
+    chunks = [
+        chunk
+        async for chunk in chat._stream_anthropic_response(
+            "battery tech",
+            None,
+            "local-user",
+        )
+    ]
+
+    assert chunks
+    assert fake_session_maker.opened == 1
+    assert fake_session_maker.closed == 1
+    assert retrieve_sessions == [fake_stream_session]
+
+
 # ── Auth tests (unchanged from PR 1) ──────────────────────────────────
 
 
