@@ -974,7 +974,7 @@ async def test_chat_stream_closes_retrieval_transaction_before_llm_wait(
 
     events = _parse_events("".join(chunks))
     assert [event["type"] for event in events][-1] == "done"
-    assert order.index("retrieve") < order.index("rollback") < order.index("stream")
+    assert order.index("retrieve") < order.index("rollback1") < order.index("stream")
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -987,11 +987,15 @@ async def test_chat_stream_closes_tool_transaction_before_resuming_llm(
     order = []
 
     class RecordingDb:
+        def __init__(self):
+            self.rollback_count = 0
+
         def in_transaction(self):
             return True
 
         async def rollback(self):
-            order.append("rollback")
+            self.rollback_count += 1
+            order.append(f"rollback{self.rollback_count}")
 
     async def _mock_retrieve(*a, **kw):
         return MOCK_PATENTS
