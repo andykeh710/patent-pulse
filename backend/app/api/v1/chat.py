@@ -118,6 +118,15 @@ def _collect_tool_doc_ids(name: str, result: dict) -> set[str]:
     return ids
 
 
+async def _close_chat_read_transaction(db: AsyncSession, context: str) -> None:
+    """End read-only DB transactions before waiting on external LLM I/O."""
+    try:
+        if db.in_transaction():
+            await db.rollback()
+    except Exception:
+        logger.exception("Failed to close chat DB transaction after %s", context)
+
+
 # ── Anthropic stream adapter ──────────────────────────────────────────
 
 
@@ -164,6 +173,7 @@ async def _stream_anthropic_response(
 
     # ── Step 3: Retrieve ──────────────────────────────────────────
     patents = await retrieve_patents(message, db)
+    await _close_chat_read_transaction(db, "retrieval")
 
     yield _sse_event(
         "meta",
@@ -229,6 +239,8 @@ async def _stream_anthropic_response(
                         result = {
                             "error": f"Tool '{tool_name}' encountered an internal error."
                         }
+                    finally:
+                        await _close_chat_read_transaction(db, f"tool {tool_name}")
 
                     known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
                     sanitized = _sanitize_tool_result(result)

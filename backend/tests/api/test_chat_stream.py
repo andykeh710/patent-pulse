@@ -922,6 +922,129 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
     assert "sources" in event_types  # proves we got past memory ops
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_closes_retrieval_transaction_before_llm_wait(
+    monkeypatch,
+):
+    """Chat retrieval must not leave an idle transaction open during LLM streaming."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    order = []
+
+    class RecordingDb:
+        def __init__(self):
+            self.rollback_count = 0
+
+        def in_transaction(self):
+            return True
+
+        async def rollback(self):
+            self.rollback_count += 1
+            order.append(f"rollback{self.rollback_count}")
+
+    async def _mock_retrieve(*a, **kw):
+        order.append("retrieve")
+        return MOCK_PATENTS
+
+    async def _stream_after_retrieval(self, **kw):
+        order.append("stream")
+        yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_after_retrieval,
+    )
+
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "battery thermal management",
+            None,
+            "local-user",
+            RecordingDb(),
+        )
+    ]
+
+    events = _parse_events("".join(chunks))
+    assert [event["type"] for event in events][-1] == "done"
+    assert order.index("retrieve") < order.index("rollback") < order.index("stream")
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_closes_tool_transaction_before_resuming_llm(
+    monkeypatch,
+):
+    """Tool reads must close their transaction before the next LLM request."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    order = []
+
+    class RecordingDb:
+        def in_transaction(self):
+            return True
+
+        async def rollback(self):
+            order.append("rollback")
+
+    async def _mock_retrieve(*a, **kw):
+        return MOCK_PATENTS
+
+    async def _stream_with_tool_then_answer(self, **kw):
+        call_number = sum(1 for item in order if item.startswith("stream"))
+        if call_number == 0:
+            order.append("stream1")
+            yield {
+                "type": "tool_use",
+                "id": "toolu_001",
+                "name": "open_patent",
+                "input": {"doc_id": "USPTO:US99999"},
+            }
+        else:
+            order.append("stream2")
+            yield {"type": "text", "content": "Done."}
+
+    async def _mock_execute_tool(*a, **kw):
+        order.append("execute_tool")
+        return {"doc_id": "USPTO:US99999", "title": "Example Patent"}
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_tool_then_answer,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        _mock_execute_tool,
+    )
+
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "open this patent",
+            None,
+            "local-user",
+            RecordingDb(),
+        )
+    ]
+
+    events = _parse_events("".join(chunks))
+    assert [event["type"] for event in events][-1] == "done"
+    assert order.index("execute_tool") < order.index("rollback2") < order.index("stream2")
+
+
 # ── Edge case tests ──────────────────────────────────────────────────
 
 
