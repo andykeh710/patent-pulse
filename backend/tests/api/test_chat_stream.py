@@ -4,7 +4,10 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from app.api.deps import current_user, get_db
+from app.main import app
 
 
 def _cookie(user_id: str = "local-user") -> dict[str, str]:
@@ -358,6 +361,85 @@ async def test_chat_stream_empty_retrieval(client: AsyncClient, monkeypatch):
     meta = events[0]
     assert meta["retrieved_count"] == 0
     assert "done" in [e["type"] for e in events]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_opens_db_session_inside_stream_lifecycle(monkeypatch):
+    """DB work in the SSE body should use a session owned by the stream."""
+
+    class FakeDbSession:
+        def __init__(self):
+            self.closed = False
+
+    class StreamSessionContext:
+        def __init__(self):
+            self.session = FakeDbSession()
+
+        async def __aenter__(self):
+            return self.session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            self.session.closed = True
+
+    class StreamSessionFactory:
+        def __init__(self):
+            self.sessions: list[FakeDbSession] = []
+
+        def __call__(self):
+            context = StreamSessionContext()
+            self.sessions.append(context.session)
+            return context
+
+    request_session = FakeDbSession()
+    stream_sessions = StreamSessionFactory()
+    retrieve_saw_closed_session: list[bool] = []
+
+    async def override_get_db():
+        try:
+            yield request_session
+        finally:
+            request_session.closed = True
+
+    async def override_current_user():
+        return "local-user"
+
+    async def retrieve_with_stream_session(message, session):
+        retrieve_saw_closed_session.append(session.closed)
+        return []
+
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[current_user] = override_current_user
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        stream_sessions,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        retrieve_with_stream_session,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        lambda self, **kw: _yield_mock([{"type": "text", "content": "ok"}]),
+    )
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            r = await ac.post("/api/v1/chat/stream", json={"message": "hello"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    assert retrieve_saw_closed_session == [False]
+    assert len(stream_sessions.sessions) == 1
+    assert stream_sessions.sessions[0].closed is True
 
 
 @pytest.mark.asyncio(loop_scope="function")
