@@ -596,6 +596,93 @@ async def test_chat_stream_sources_after_tool_calls(client: AsyncClient, monkeyp
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_closes_db_sessions_before_llm_waits(monkeypatch):
+    """DB sessions are short-lived so Postgres cannot reap idle transactions mid-stream."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    session_events: list[str] = []
+
+    class _FakeSession:
+        def __init__(self, name: str):
+            self.name = name
+
+    class _FakeSessionContext:
+        def __init__(self, session: _FakeSession):
+            self.session = session
+
+        async def __aenter__(self):
+            session_events.append(f"enter:{self.session.name}")
+            return self.session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            session_events.append(f"exit:{self.session.name}")
+
+    session_count = 0
+
+    def _session_factory():
+        nonlocal session_count
+        session_count += 1
+        return _FakeSessionContext(_FakeSession(f"session-{session_count}"))
+
+    async def _retrieve_with_session_check(query, db):
+        assert db.name == "session-1"
+        session_events.append(f"retrieve:{db.name}")
+        return MOCK_PATENTS
+
+    async def _execute_tool_with_session_check(name, input, db):
+        assert db.name == "session-2"
+        session_events.append(f"tool:{db.name}")
+        return MOCK_TOOL_RESULT
+
+    stream_calls: list[int] = []
+
+    async def _stream_with_tool(self, **kw):
+        stream_calls.append(1)
+        if len(stream_calls) == 1:
+            assert session_events == [
+                "enter:session-1",
+                "retrieve:session-1",
+                "exit:session-1",
+            ]
+            yield MOCK_TOOL_STREAM[1]
+        else:
+            assert "exit:session-2" in session_events
+            yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr("app.api.v1.chat.retrieve_patents", _retrieve_with_session_check)
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool_with_session_check)
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_tool,
+    )
+
+    chunks = [
+        chunk
+        async for chunk in _stream_anthropic_response(
+            "search solid state batteries",
+            None,
+            "local-user",
+            session_factory=_session_factory,
+        )
+    ]
+
+    events = _parse_events("".join(chunks))
+    assert [event["type"] for event in events][-2:] == ["sources", "done"]
+    assert session_events == [
+        "enter:session-1",
+        "retrieve:session-1",
+        "exit:session-1",
+        "enter:session-2",
+        "tool:session-2",
+        "exit:session-2",
+    ]
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypatch):
     """After 5 tool calls, a warning event fires and the turn ends."""
     monkeypatch.setattr(

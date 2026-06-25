@@ -21,10 +21,10 @@ import logging
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.anthropic_client import get_chat_client
-from app.api.deps import current_user, get_db
+from app.api.deps import current_user
+from app.database import async_session_maker
 from app.services.chat_citations import extract_citations, verify_citations
 from app.services.chat_memory import get_conversation_store
 from app.services.chat_retrieval import build_system_prompt, retrieve_patents
@@ -125,7 +125,7 @@ async def _stream_anthropic_response(
     message: str,
     conversation_id: str | None,
     user_id: str,
-    db: AsyncSession,
+    session_factory=async_session_maker,
 ):
     """Retrieve patents + stream Anthropic response with tool calls,
     citation verification, and conversation memory.
@@ -163,7 +163,8 @@ async def _stream_anthropic_response(
         history = []
 
     # ── Step 3: Retrieve ──────────────────────────────────────────
-    patents = await retrieve_patents(message, db)
+    async with session_factory() as db:
+        patents = await retrieve_patents(message, db)
 
     yield _sse_event(
         "meta",
@@ -223,7 +224,8 @@ async def _stream_anthropic_response(
                     )
 
                     try:
-                        result = await execute_tool(tool_name, tool_input, db)
+                        async with session_factory() as db:
+                            result = await execute_tool(tool_name, tool_input, db)
                     except Exception:
                         logger.exception("Tool execution failed: %s", tool_name)
                         result = {
@@ -320,7 +322,6 @@ async def chat_stream(
     request: Request,
     body: ChatStreamRequest,
     user_id: str = Depends(current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream an LLM response as Server-Sent Events.
 
@@ -342,7 +343,6 @@ async def chat_stream(
             body.message,
             body.conversation_id,
             user_id,
-            db,
         ),
         media_type="text/event-stream",
         headers={
