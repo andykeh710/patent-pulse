@@ -362,11 +362,13 @@ async def test_chat_stream_empty_retrieval(client: AsyncClient, monkeypatch):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_opens_db_session_inside_stream_lifecycle(
-    client: AsyncClient,
-    db_session,
     monkeypatch,
 ):
     """The stream body must not use the request dependency session."""
+    from app.api.deps import current_user, get_db
+    from app.main import app
+
+    dependency_db = object()
     stream_db = object()
 
     class _SessionContext:
@@ -382,8 +384,14 @@ async def test_chat_stream_opens_db_session_inside_stream_lifecycle(
 
     async def _assert_stream_session(message, db):
         assert db is stream_db
-        assert db is not db_session
+        assert db is not dependency_db
         return MOCK_PATENTS
+
+    async def _override_current_user():
+        return "local-user"
+
+    async def _override_get_db():
+        yield dependency_db
 
     monkeypatch.setattr(
         "app.api.v1.chat.async_session_maker",
@@ -403,11 +411,18 @@ async def test_chat_stream_opens_db_session_inside_stream_lifecycle(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "solid state batteries"},
-        cookies=_cookie(),
-    )
+    app.dependency_overrides[current_user] = _override_current_user
+    app.dependency_overrides[get_db] = _override_get_db
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            r = await ac.post(
+                "/api/v1/chat/stream",
+                json={"message": "solid state batteries"},
+            )
+    finally:
+        app.dependency_overrides.clear()
 
     assert r.status_code == 200
     events = _parse_events(r.text)
