@@ -361,6 +361,60 @@ async def test_chat_stream_empty_retrieval(client: AsyncClient, monkeypatch):
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_opens_db_session_inside_stream_lifecycle(
+    client: AsyncClient,
+    db_session,
+    monkeypatch,
+):
+    """The stream body must not use the request dependency session."""
+    stream_db = object()
+
+    class _SessionContext:
+        async def __aenter__(self):
+            return stream_db
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class _SessionMaker:
+        def __call__(self):
+            return _SessionContext()
+
+    async def _assert_stream_session(message, db):
+        assert db is stream_db
+        assert db is not db_session
+        return MOCK_PATENTS
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.async_session_maker",
+        _SessionMaker(),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _assert_stream_session,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _fake_token_stream,
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "solid state batteries"},
+        cookies=_cookie(),
+    )
+
+    assert r.status_code == 200
+    events = _parse_events(r.text)
+    assert "done" in [e["type"] for e in events]
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_anthropic_error(client: AsyncClient, monkeypatch):
     """Anthropic errors produce an 'error' event + 'done'."""
     monkeypatch.setattr(
