@@ -81,6 +81,8 @@ export interface PatentListItem {
   estimated_expiry_date: string | null;
   figure_page_url: string | null;
   similarity?: number;
+  // V3.8I: direct image URL (lazy-resolved by frontend via /thumbnail-url)
+  thumbnail_url: string | null;
 }
 
 export interface PatentDetail {
@@ -126,6 +128,8 @@ export interface PatentDetail {
   presentation_rank_confidence: string | null;
   // Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
   figure_page_url: string | null;
+  // V3.8I: direct image URL (lazy-resolved by frontend via /thumbnail-url)
+  thumbnail_url: string | null;
 }
 
 export interface ExpiryItem {

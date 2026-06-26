@@ -45,6 +45,10 @@ class PatentListItem(BaseModel):
     days_until_expiry: int | None = None
     similarity: float | None = None
 
+    # V3.8I: explicit image contract
+    figure_page_url: str | None = None
+    thumbnail_url: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -77,6 +81,8 @@ class PatentListItem(BaseModel):
             summary_what_it_is=summary_what,
             estimated_expiry_date=patent.estimated_expiry_date,
             days_until_expiry=days_until,
+            figure_page_url=getattr(patent, "figure_page_url", None),
+            thumbnail_url=None,  # lazy-resolved by frontend via /thumbnail-url
         )
 
 
@@ -124,6 +130,9 @@ class PatentDetailResponse(BaseModel):
 
     # Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
     figure_page_url: str | None = None
+
+    # V3.8I: direct image URL when resolvable (lazy-resolved by frontend).
+    thumbnail_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
