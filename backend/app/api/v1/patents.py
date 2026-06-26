@@ -286,15 +286,13 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
         "odp_last_run": odp_row.started_at.isoformat() if odp_row and odp_row.started_at else None,
     } if odp_row else None
 
-    # ── V3.8H: primary source wins over legacy errors ──
+    # ── V3.8H-R1: primary source wins over legacy errors ──
     # When ODP is the active primary source and its latest fetch succeeded,
     # the headline status must reflect ODP health — not stale BigQuery / old
     # USPTO failures. Legacy provider errors are preserved in source_diagnostics
     # for admin visibility but must not contaminate public-facing fields.
     if primary_source == "odp_bulk_dataset":
         if last_ingestion_status != "success":
-            # Move the stale ingestion_run error into source_diagnostics so
-            # admins can still see it, then promote headline status to success.
             if source_diagnostics is None:
                 source_diagnostics = {}
             if last_ingestion_error:
