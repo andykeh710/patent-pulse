@@ -24,7 +24,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.anthropic_client import get_chat_client
-from app.api.deps import current_user, get_db
+from app.api.deps import current_user
+from app.database import async_session_maker
 from app.services.chat_citations import extract_citations, verify_citations
 from app.services.chat_memory import get_conversation_store
 from app.services.chat_retrieval import build_system_prompt, retrieve_patents
@@ -125,7 +126,6 @@ async def _stream_anthropic_response(
     message: str,
     conversation_id: str | None,
     user_id: str,
-    db: AsyncSession,
 ):
     """Retrieve patents + stream Anthropic response with tool calls,
     citation verification, and conversation memory.
@@ -162,6 +162,26 @@ async def _stream_anthropic_response(
         logger.exception("Failed to load conversation history")
         history = []
 
+    async with async_session_maker() as db:
+        async for event in _stream_anthropic_response_with_session(
+            message,
+            conversation_id,
+            user_id,
+            db,
+            store,
+            history,
+        ):
+            yield event
+
+
+async def _stream_anthropic_response_with_session(
+    message: str,
+    conversation_id: str,
+    user_id: str,
+    db: AsyncSession,
+    store,
+    history: list[dict],
+):
     # ── Step 3: Retrieve ──────────────────────────────────────────
     patents = await retrieve_patents(message, db)
 
@@ -320,7 +340,6 @@ async def chat_stream(
     request: Request,
     body: ChatStreamRequest,
     user_id: str = Depends(current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream an LLM response as Server-Sent Events.
 
@@ -342,7 +361,6 @@ async def chat_stream(
             body.message,
             body.conversation_id,
             user_id,
-            db,
         ),
         media_type="text/event-stream",
         headers={
