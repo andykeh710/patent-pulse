@@ -106,11 +106,7 @@ class ConversationStore:
 
         try:
             key = self._key(user_id, conversation_id)
-            payload = json.dumps({
-                "role": role,
-                "content": content,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            payload = self._message_payload(role, content)
             async with r.pipeline() as pipe:
                 pipe.rpush(key, payload)
                 pipe.ltrim(key, -MAX_MESSAGES_PER_CONVERSATION, -1)
@@ -118,6 +114,37 @@ class ConversationStore:
                 await pipe.execute()
         except Exception:
             logger.exception("Failed to append message to conversation history")
+
+    async def append_turn(
+        self,
+        user_id: str,
+        conversation_id: str,
+        user_content: str,
+        assistant_content: str,
+    ) -> None:
+        """Append a user/assistant turn atomically to preserve role ordering."""
+        r = await self._ensure_redis()
+        if r is None:
+            return
+
+        try:
+            key = self._key(user_id, conversation_id)
+            user_payload = self._message_payload("user", user_content)
+            assistant_payload = self._message_payload("assistant", assistant_content)
+            async with r.pipeline() as pipe:
+                pipe.rpush(key, user_payload, assistant_payload)
+                pipe.ltrim(key, -MAX_MESSAGES_PER_CONVERSATION, -1)
+                pipe.expire(key, CONVERSATION_TTL_SECONDS)
+                await pipe.execute()
+        except Exception:
+            logger.exception("Failed to append conversation turn to history")
+
+    def _message_payload(self, role: str, content: str) -> str:
+        return json.dumps({
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
 
 # ── Module-level singleton ────────────────────────────────────────────

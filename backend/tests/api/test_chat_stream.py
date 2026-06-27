@@ -1,5 +1,6 @@
 """Tests for Phase 3 PR 2–5 — Anthropic streaming + retrieval + tools + citations + memory."""
 
+import copy
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -36,6 +37,14 @@ def _parse_events(text: str) -> list[dict]:
         if stripped.startswith("data: "):
             events.append(json.loads(stripped[len("data: "):]))
     return events
+
+
+async def _collect_stream_text(stream) -> str:
+    """Collect SSE chunks from a stream generator."""
+    chunks = []
+    async for chunk in stream:
+        chunks.append(chunk)
+    return "".join(chunks)
 
 
 # ── Mock data ─────────────────────────────────────────────────────────
@@ -88,6 +97,22 @@ MOCK_TOOL_STREAM = [
     {
         "type": "tool_use",
         "id": "toolu_001",
+        "name": "search_patents",
+        "input": {"query": "solid state batteries", "limit": 5},
+    },
+]
+
+MOCK_MULTI_TOOL_STREAM = [
+    {"type": "text", "content": "I will compare both patents."},
+    {
+        "type": "tool_use",
+        "id": "toolu_001",
+        "name": "open_patent",
+        "input": {"doc_id": "USPTO:US99999"},
+    },
+    {
+        "type": "tool_use",
+        "id": "toolu_002",
         "name": "search_patents",
         "input": {"query": "solid state batteries", "limit": 5},
     },
@@ -173,6 +198,7 @@ def _make_memory_mock(
     store.new_conversation_id = AsyncMock(return_value=conversation_id)
     store.get_history = AsyncMock(return_value=history if history is not None else [])
     store.append_message = AsyncMock()
+    store.append_turn = AsyncMock()
     return store
 
 
@@ -552,6 +578,135 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_replays_full_assistant_turn_before_tool_result(
+    monkeypatch,
+):
+    """The Anthropic continuation must include text blocks before tool_use blocks."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    captured_calls = []
+
+    async def _stream_with_tool_and_capture(self, **kw):
+        captured_calls.append(copy.deepcopy(kw.get("messages", [])))
+        if len(captured_calls) == 1:
+            for event in MOCK_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "Done."}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_tool_and_capture,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return(MOCK_TOOL_RESULT),
+    )
+
+    text = await _collect_stream_text(
+        _stream_anthropic_response(
+            "search solid state batteries",
+            None,
+            "local-user",
+            object(),
+        )
+    )
+    events = _parse_events(text)
+    assert "done" in [e["type"] for e in events]
+
+    assert len(captured_calls) == 2
+    continuation_messages = captured_calls[1]
+    assistant_turn = continuation_messages[-2]
+    assert assistant_turn["role"] == "assistant"
+    assert assistant_turn["content"] == [
+        {"type": "text", "text": "Let me search for that."},
+        {
+            "type": "tool_use",
+            "id": "toolu_001",
+            "name": "search_patents",
+            "input": {"query": "solid state batteries", "limit": 5},
+        },
+    ]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_executes_all_tool_uses_from_one_assistant_turn(
+    monkeypatch,
+):
+    """Parallel tool_use blocks must all receive matching tool_result blocks."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    captured_calls = []
+    executed_tools = []
+
+    async def _stream_with_multiple_tools(self, **kw):
+        captured_calls.append(copy.deepcopy(kw.get("messages", [])))
+        if len(captured_calls) == 1:
+            for event in MOCK_MULTI_TOOL_STREAM:
+                yield event
+        else:
+            yield {"type": "text", "content": "Done."}
+
+    async def _execute_tool(name, input, db):
+        executed_tools.append(name)
+        return MOCK_TOOL_RESULT
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_multiple_tools,
+    )
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
+
+    text = await _collect_stream_text(
+        _stream_anthropic_response(
+            "compare these patent areas",
+            None,
+            "local-user",
+            object(),
+        )
+    )
+
+    events = _parse_events(text)
+    results = [e for e in events if e["type"] == "tool_call_result"]
+    assert executed_tools == ["open_patent", "search_patents"]
+    assert len(results) == 2
+
+    assert len(captured_calls) == 2
+    tool_result_turn = captured_calls[1][-1]
+    assert tool_result_turn["role"] == "user"
+    assert tool_result_turn["content"] == [
+        {
+            "type": "tool_result",
+            "tool_use_id": "toolu_001",
+            "content": json.dumps(MOCK_TOOL_RESULT),
+        },
+        {
+            "type": "tool_result",
+            "tool_use_id": "toolu_002",
+            "content": json.dumps(MOCK_TOOL_RESULT),
+        },
+    ]
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_sources_after_tool_calls(client: AsyncClient, monkeypatch):
     """sources event still appears (and after tool calls, before done)."""
     monkeypatch.setattr(
@@ -848,9 +1003,11 @@ async def test_chat_stream_continuing_conversation_loads_history(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_persists_messages_after_streaming(
-    client: AsyncClient, monkeypatch,
+    monkeypatch,
 ):
     """After the stream completes, user + assistant messages are persisted."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -865,24 +1022,22 @@ async def test_chat_stream_persists_messages_after_streaming(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "solid state batteries", "conversation_id": None},
-        cookies=_cookie(),
+    text = await _collect_stream_text(
+        _stream_anthropic_response(
+            "solid state batteries",
+            None,
+            "local-user",
+            object(),
+        )
     )
-    assert r.status_code == 200
+    events = _parse_events(text)
+    assert "done" in [e["type"] for e in events]
 
-    # Two append calls: user message + assistant response
-    assert store.append_message.await_count >= 2
-
-    calls = store.append_message.await_args_list
-    # First call: user message
-    assert calls[0].args[0] == "local-user"
-    assert calls[0].args[2] == "user"
-    assert calls[0].args[3] == "solid state batteries"
-    # Second call: assistant response
-    assert calls[1].args[2] == "assistant"
-    assert len(calls[1].args[3]) > 0  # non-empty response text
+    store.append_turn.assert_awaited_once()
+    args = store.append_turn.await_args.args
+    assert args[0] == "local-user"
+    assert args[2] == "solid state batteries"
+    assert len(args[3]) > 0  # non-empty response text
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -893,6 +1048,7 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
     store = _make_memory_mock()
     store.get_history.side_effect = RuntimeError("Redis connection refused")
     store.append_message.side_effect = RuntimeError("Redis connection refused")
+    store.append_turn.side_effect = RuntimeError("Redis connection refused")
 
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",

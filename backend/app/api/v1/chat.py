@@ -193,12 +193,16 @@ async def _stream_anthropic_response(
 
     while True:
         try:
+            assistant_text_parts: list[str] = []
+            tool_uses: list[dict] = []
+
             async for event in client.stream(
                 system=system_prompt,
                 messages=messages,
                 tools=TOOLS,
             ):
                 if event["type"] == "text":
+                    assistant_text_parts.append(event["content"])
                     full_text_parts.append(event["content"])
                     yield _sse_event("token", content=event["content"])
 
@@ -215,52 +219,66 @@ async def _stream_anthropic_response(
                     tool_name: str = event.get("name", "")
                     tool_input: dict = event.get("input", {})
                     tool_id: str = event.get("id", "")
-
-                    yield _sse_event(
-                        "tool_call_start",
-                        name=tool_name,
-                        input=tool_input,
-                    )
-
-                    try:
-                        result = await execute_tool(tool_name, tool_input, db)
-                    except Exception:
-                        logger.exception("Tool execution failed: %s", tool_name)
-                        result = {
-                            "error": f"Tool '{tool_name}' encountered an internal error."
-                        }
-
-                    known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
-                    sanitized = _sanitize_tool_result(result)
-
-                    yield _sse_event(
-                        "tool_call_result",
-                        name=tool_name,
-                        result=sanitized,
-                    )
-
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
-                    })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
+                    tool_uses.append({
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
                     })
 
-                    break
-
-            else:
+            if not tool_uses:
                 break
+
+            assistant_content: list[dict] = []
+            assistant_text = "".join(assistant_text_parts)
+            if assistant_text:
+                assistant_content.append({"type": "text", "text": assistant_text})
+            assistant_content.extend([
+                {
+                    "type": "tool_use",
+                    "id": tool_use["id"],
+                    "name": tool_use["name"],
+                    "input": tool_use["input"],
+                }
+                for tool_use in tool_uses
+            ])
+            messages.append({"role": "assistant", "content": assistant_content})
+
+            tool_results: list[dict] = []
+            for tool_use in tool_uses:
+                tool_name = tool_use["name"]
+                tool_input = tool_use["input"]
+                tool_id = tool_use["id"]
+
+                yield _sse_event(
+                    "tool_call_start",
+                    name=tool_name,
+                    input=tool_input,
+                )
+
+                try:
+                    result = await execute_tool(tool_name, tool_input, db)
+                except Exception:
+                    logger.exception("Tool execution failed: %s", tool_name)
+                    result = {
+                        "error": f"Tool '{tool_name}' encountered an internal error."
+                    }
+
+                known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
+                sanitized = _sanitize_tool_result(result)
+
+                yield _sse_event(
+                    "tool_call_result",
+                    name=tool_name,
+                    result=sanitized,
+                )
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_id,
+                    "content": json.dumps(sanitized),
+                })
+
+            messages.append({"role": "user", "content": tool_results})
 
         except Exception:
             logger.exception("Anthropic streaming failed")
@@ -300,10 +318,7 @@ async def _stream_anthropic_response(
     # Tool-call sequences are intentionally NOT persisted — each turn
     # starts fresh with retrieval + tools.
     try:
-        await store.append_message(user_id, conversation_id, "user", message)
-        await store.append_message(
-            user_id, conversation_id, "assistant", full_text,
-        )
+        await store.append_turn(user_id, conversation_id, message, full_text)
     except Exception:
         logger.exception("Failed to persist conversation turn")
 
