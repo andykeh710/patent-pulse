@@ -173,6 +173,7 @@ def _make_memory_mock(
     store.new_conversation_id = AsyncMock(return_value=conversation_id)
     store.get_history = AsyncMock(return_value=history if history is not None else [])
     store.append_message = AsyncMock()
+    store.append_turn = AsyncMock()
     return store
 
 
@@ -770,6 +771,71 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
     assert cite_warnings == []
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_open_patent_not_found_citation_is_unverified(
+    client: AsyncClient, monkeypatch,
+):
+    """A failed open_patent lookup must not authorize citations to that doc_id."""
+    store = _make_memory_mock()
+    missing_doc_id = "USPTO:USDOESNOTEXIST"
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_empty,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: store,
+    )
+
+    calls = []
+
+    async def _stream_with_missing_open_patent(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            yield {
+                "type": "tool_use",
+                "id": "toolu_missing",
+                "name": "open_patent",
+                "input": {"doc_id": missing_doc_id},
+            }
+        else:
+            yield {
+                "type": "text",
+                "content": f"This patent is not in the source set [{missing_doc_id}].",
+            }
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_missing_open_patent,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.execute_tool",
+        lambda name, input, db: _async_return({
+            "error": "Patent not found",
+            "doc_id": missing_doc_id,
+        }),
+    )
+
+    r = await client.post(
+        "/api/v1/chat/stream",
+        json={"message": "open missing patent"},
+        cookies=_cookie(),
+    )
+    assert r.status_code == 200
+
+    events = _parse_events(r.text)
+    cit = next(e for e in events if e["type"] == "citations")
+    assert missing_doc_id in cit["unverified"]
+    assert missing_doc_id not in cit["verified"]
+
+    warnings = [
+        e for e in events
+        if e["type"] == "warning" and e.get("code") == "uncited_or_invalid_doc_ids"
+    ]
+    assert len(warnings) == 1
+
+
 # ── Conversation memory tests ─────────────────────────────────────────
 
 
@@ -850,7 +916,7 @@ async def test_chat_stream_continuing_conversation_loads_history(
 async def test_chat_stream_persists_messages_after_streaming(
     client: AsyncClient, monkeypatch,
 ):
-    """After the stream completes, user + assistant messages are persisted."""
+    """After the stream completes, user + assistant messages are persisted as one turn."""
     store = _make_memory_mock()
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -872,17 +938,12 @@ async def test_chat_stream_persists_messages_after_streaming(
     )
     assert r.status_code == 200
 
-    # Two append calls: user message + assistant response
-    assert store.append_message.await_count >= 2
-
-    calls = store.append_message.await_args_list
-    # First call: user message
-    assert calls[0].args[0] == "local-user"
-    assert calls[0].args[2] == "user"
-    assert calls[0].args[3] == "solid state batteries"
-    # Second call: assistant response
-    assert calls[1].args[2] == "assistant"
-    assert len(calls[1].args[3]) > 0  # non-empty response text
+    store.append_turn.assert_awaited_once()
+    args = store.append_turn.await_args.args
+    assert args[0] == "local-user"
+    assert args[2] == "solid state batteries"
+    assert len(args[3]) > 0
+    store.append_message.assert_not_awaited()
 
 
 @pytest.mark.asyncio(loop_scope="function")
