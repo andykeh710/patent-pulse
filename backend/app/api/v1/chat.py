@@ -98,6 +98,9 @@ def _collect_tool_doc_ids(name: str, result: dict) -> set[str]:
     """Extract patent doc_ids from a tool-call result."""
     ids: set[str] = set()
 
+    if result.get("error"):
+        return ids
+
     if name == "open_patent":
         doc_id = result.get("doc_id")
         if isinstance(doc_id, str) and doc_id:
@@ -300,10 +303,7 @@ async def _stream_anthropic_response(
     # Tool-call sequences are intentionally NOT persisted — each turn
     # starts fresh with retrieval + tools.
     try:
-        await store.append_message(user_id, conversation_id, "user", message)
-        await store.append_message(
-            user_id, conversation_id, "assistant", full_text,
-        )
+        await store.append_turn(user_id, conversation_id, message, full_text)
     except Exception:
         logger.exception("Failed to persist conversation turn")
 
