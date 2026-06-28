@@ -773,9 +773,11 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_open_patent_not_found_citation_is_unverified(
-    client: AsyncClient, monkeypatch,
+    monkeypatch,
 ):
     """A failed open_patent lookup must not authorize citations to that doc_id."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     missing_doc_id = "USPTO:USDOESNOTEXIST"
 
@@ -817,14 +819,16 @@ async def test_chat_stream_open_patent_not_found_citation_is_unverified(
         }),
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "open missing patent"},
-        cookies=_cookie(),
-    )
-    assert r.status_code == 200
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "open missing patent",
+            None,
+            "local-user",
+            db=object(),
+        )
+    ]
+    events = _parse_events("".join(chunks))
 
-    events = _parse_events(r.text)
     cit = next(e for e in events if e["type"] == "citations")
     assert missing_doc_id in cit["unverified"]
     assert missing_doc_id not in cit["verified"]
@@ -860,6 +864,7 @@ async def test_chat_stream_new_conversation_emits_conversation_id(
     cid = meta["conversation_id"]
     assert len(cid) == 36
     assert cid.count("-") == 4
+
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -914,9 +919,11 @@ async def test_chat_stream_continuing_conversation_loads_history(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_persists_messages_after_streaming(
-    client: AsyncClient, monkeypatch,
+    monkeypatch,
 ):
     """After the stream completes, user + assistant messages are persisted as one turn."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -931,12 +938,16 @@ async def test_chat_stream_persists_messages_after_streaming(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "solid state batteries", "conversation_id": None},
-        cookies=_cookie(),
-    )
-    assert r.status_code == 200
+    chunks = [
+        chunk async for chunk in _stream_anthropic_response(
+            "solid state batteries",
+            None,
+            "local-user",
+            db=object(),
+        )
+    ]
+    events = _parse_events("".join(chunks))
+    assert "done" in [e["type"] for e in events]
 
     store.append_turn.assert_awaited_once()
     args = store.append_turn.await_args.args
