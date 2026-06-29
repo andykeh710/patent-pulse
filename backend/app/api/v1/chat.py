@@ -97,6 +97,8 @@ def _sanitize_tool_result(result: dict) -> dict:
 def _collect_tool_doc_ids(name: str, result: dict) -> set[str]:
     """Extract patent doc_ids from a tool-call result."""
     ids: set[str] = set()
+    if result.get("error"):
+        return ids
 
     if name == "open_patent":
         doc_id = result.get("doc_id")
@@ -193,6 +195,10 @@ async def _stream_anthropic_response(
 
     while True:
         try:
+            assistant_text_parts: list[str] = []
+            assistant_content_blocks: list[dict] = []
+            tool_result_blocks: list[dict] = []
+
             async for event in client.stream(
                 system=system_prompt,
                 messages=messages,
@@ -200,6 +206,7 @@ async def _stream_anthropic_response(
             ):
                 if event["type"] == "text":
                     full_text_parts.append(event["content"])
+                    assistant_text_parts.append(event["content"])
                     yield _sse_event("token", content=event["content"])
 
                 elif event["type"] == "tool_use":
@@ -215,6 +222,12 @@ async def _stream_anthropic_response(
                     tool_name: str = event.get("name", "")
                     tool_input: dict = event.get("input", {})
                     tool_id: str = event.get("id", "")
+                    if assistant_text_parts:
+                        assistant_content_blocks.append({
+                            "type": "text",
+                            "text": "".join(assistant_text_parts),
+                        })
+                        assistant_text_parts = []
 
                     yield _sse_event(
                         "tool_call_start",
@@ -239,28 +252,35 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
+                    assistant_content_blocks.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
                     })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
+                    tool_result_blocks.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": json.dumps(sanitized),
                     })
 
-                    break
+            if tool_result_blocks:
+                if assistant_text_parts:
+                    assistant_content_blocks.append({
+                        "type": "text",
+                        "text": "".join(assistant_text_parts),
+                    })
+                messages.append({
+                    "role": "assistant",
+                    "content": assistant_content_blocks,
+                })
+                messages.append({
+                    "role": "user",
+                    "content": tool_result_blocks,
+                })
+                continue
 
-            else:
-                break
+            break
 
         except Exception:
             logger.exception("Anthropic streaming failed")
