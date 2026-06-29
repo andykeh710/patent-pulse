@@ -137,3 +137,10 @@ class TestVerifyCitations:
         )
         assert result["verified"] == ["US1", "EPO:EP2"]
         assert result["unverified"] == ["WIPO:WO99"]
+
+    def test_rejects_cross_office_same_document_tail(self):
+        """EPO:US123 must not verify against USPTO:US123."""
+        known = {"USPTO:US123"}
+        result = verify_citations(["EPO:US123"], known)
+        assert result["verified"] == []
+        assert result["unverified"] == ["EPO:US123"]

@@ -38,6 +38,14 @@ def _parse_events(text: str) -> list[dict]:
     return events
 
 
+async def _collect_stream_events(stream) -> list[dict]:
+    """Collect events from a direct stream generator call."""
+    text = ""
+    async for chunk in stream:
+        text += chunk
+    return _parse_events(text)
+
+
 # ── Mock data ─────────────────────────────────────────────────────────
 
 MOCK_PATENTS = [
@@ -650,6 +658,108 @@ async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypat
     assert "sources" not in event_types
 
 
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_executes_all_tool_uses_from_same_assistant_turn(monkeypatch):
+    """Multiple tool_use blocks in one stream pass all get tool results."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    captured_messages = []
+
+    async def _stream_with_parallel_tools(self, **kw):
+        captured_messages.append(kw.get("messages", []))
+        if len(captured_messages) == 1:
+            yield {"type": "text", "content": "I'll compare and search."}
+            yield {
+                "type": "tool_use",
+                "id": "toolu_search",
+                "name": "search_patents",
+                "input": {"query": "solid state batteries"},
+            }
+            yield {
+                "type": "tool_use",
+                "id": "toolu_compare",
+                "name": "compare_companies",
+                "input": {"names": ["Toyota", "Panasonic"]},
+            }
+        else:
+            yield {"type": "text", "content": "Both tool results are available."}
+
+    tool_results = {
+        "search_patents": MOCK_TOOL_RESULT,
+        "compare_companies": {
+            "companies": [
+                {
+                    "company": "Toyota Motor Corp",
+                    "total_patents": 3,
+                    "recent_patents_3y": 1,
+                    "avg_opportunity_score": 72.0,
+                    "top_opportunity_score": 91.0,
+                    "top_patent_id": "USPTO:US12345",
+                    "top_patent_title": "Battery Patent",
+                }
+            ],
+            "compared": 2,
+        },
+    }
+
+    async def _execute_tool(name, input, db):
+        return tool_results[name]
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_parallel_tools,
+    )
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
+
+    events = await _collect_stream_events(
+        _stream_anthropic_response(
+            "compare Toyota and Panasonic batteries",
+            None,
+            "local-user",
+            db=object(),
+        )
+    )
+
+    starts = [e for e in events if e["type"] == "tool_call_start"]
+    results = [e for e in events if e["type"] == "tool_call_result"]
+    assert [e["name"] for e in starts] == ["search_patents", "compare_companies"]
+    assert [e["name"] for e in results] == ["search_patents", "compare_companies"]
+
+    resumed_messages = captured_messages[1]
+    assistant_turn = resumed_messages[-2]
+    tool_result_turn = resumed_messages[-1]
+    assert assistant_turn["role"] == "assistant"
+    assert assistant_turn["content"] == [
+        {"type": "text", "text": "I'll compare and search."},
+        {
+            "type": "tool_use",
+            "id": "toolu_search",
+            "name": "search_patents",
+            "input": {"query": "solid state batteries"},
+        },
+        {
+            "type": "tool_use",
+            "id": "toolu_compare",
+            "name": "compare_companies",
+            "input": {"names": ["Toyota", "Panasonic"]},
+        },
+    ]
+    assert tool_result_turn["role"] == "user"
+    assert [block["tool_use_id"] for block in tool_result_turn["content"]] == [
+        "toolu_search",
+        "toolu_compare",
+    ]
+
+
 # ── Citation tests ────────────────────────────────────────────────────
 
 
@@ -768,6 +878,66 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
         if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
     ]
     assert cite_warnings == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_stream_warns_when_failed_open_patent_doc_id_is_cited(monkeypatch):
+    """A failed open_patent lookup must not authorize that doc_id as a citation."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_empty,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    calls = []
+
+    async def _stream_with_failed_open_patent(self, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            yield {
+                "type": "tool_use",
+                "id": "toolu_missing",
+                "name": "open_patent",
+                "input": {"doc_id": "USPTO:US99999999"},
+            }
+        else:
+            yield {
+                "type": "text",
+                "content": "I found details in [USPTO:US99999999].",
+            }
+
+    async def _missing_patent_tool(name, input, db):
+        return {"error": "Patent not found", "doc_id": input["doc_id"]}
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_failed_open_patent,
+    )
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _missing_patent_tool)
+
+    events = await _collect_stream_events(
+        _stream_anthropic_response(
+            "open USPTO:US99999999",
+            None,
+            "local-user",
+            db=object(),
+        )
+    )
+
+    citations = next(e for e in events if e["type"] == "citations")
+    assert citations["verified"] == []
+    assert citations["unverified"] == ["USPTO:US99999999"]
+
+    cite_warnings = [
+        e for e in events
+        if e["type"] == "warning" and e.get("code") == "uncited_or_invalid_doc_ids"
+    ]
+    assert len(cite_warnings) == 1
 
 
 # ── Conversation memory tests ─────────────────────────────────────────
