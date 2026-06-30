@@ -192,6 +192,8 @@ async def _stream_anthropic_response(
     tool_call_count = 0
 
     while True:
+        pending_tool_uses: list[dict] = []
+        pending_tool_results: list[dict] = []
         try:
             async for event in client.stream(
                 system=system_prompt,
@@ -239,28 +241,30 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
+                    pending_tool_uses.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input,
                     })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
+                    pending_tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": json.dumps(sanitized),
                     })
 
-                    break
+            if pending_tool_uses:
+                messages.append({
+                    "role": "assistant",
+                    "content": pending_tool_uses,
+                })
+                messages.append({
+                    "role": "user",
+                    "content": pending_tool_results,
+                })
+                continue
 
-            else:
-                break
+            break
 
         except Exception:
             logger.exception("Anthropic streaming failed")
