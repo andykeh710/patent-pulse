@@ -300,10 +300,7 @@ async def _stream_anthropic_response(
     # Tool-call sequences are intentionally NOT persisted — each turn
     # starts fresh with retrieval + tools.
     try:
-        await store.append_message(user_id, conversation_id, "user", message)
-        await store.append_message(
-            user_id, conversation_id, "assistant", full_text,
-        )
+        await store.append_turn(user_id, conversation_id, message, full_text)
     except Exception:
         logger.exception("Failed to persist conversation turn")
 
