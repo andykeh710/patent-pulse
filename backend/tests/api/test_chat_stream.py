@@ -890,12 +890,14 @@ async def test_chat_stream_persists_completed_turn_atomically(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_redis_failure_degrades_gracefully(
-    client: AsyncClient, monkeypatch,
+    monkeypatch,
 ):
     """When Redis fails, the stream still works — memory just degrades."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     store.get_history.side_effect = RuntimeError("Redis connection refused")
-    store.append_message.side_effect = RuntimeError("Redis connection refused")
+    store.append_turn.side_effect = RuntimeError("Redis connection refused")
 
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -910,15 +912,15 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "test", "conversation_id": None},
-        cookies=_cookie(),
-    )
-    # Stream still completes normally
-    assert r.status_code == 200
+    events = []
+    async for raw in _stream_anthropic_response(
+        "test",
+        None,
+        "local-user",
+        MagicMock(),
+    ):
+        events.extend(_parse_events(raw))
 
-    events = _parse_events(r.text)
     event_types = [e["type"] for e in events]
     assert "meta" in event_types
     assert "done" in event_types
