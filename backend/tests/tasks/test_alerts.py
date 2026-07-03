@@ -330,7 +330,7 @@ async def test_webhook_sends_correct_headers(monkeypatch):
 
     captured_headers = {}
 
-    async def capture_post(url, **kwargs):
+    async def capture_post(self, url, **kwargs):
         captured_headers.update(kwargs.get("headers", {}))
         mock_resp = AsyncMock()
         mock_resp.status_code = 200
