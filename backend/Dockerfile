@@ -17,7 +17,7 @@ FROM builder AS builder-dev
 
 COPY requirements-dev.txt ./
 
-RUN pip install --no-cache-dir --target=/build/deps -r requirements-dev.txt
+RUN pip install --no-cache-dir --upgrade --target=/build/deps -r requirements-dev.txt
 
 
 # ── Runtime (prod) — default build target ─────────────────────────────
