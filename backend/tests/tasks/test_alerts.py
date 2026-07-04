@@ -3,8 +3,7 @@
 import pytest
 
 pytestmark = pytest.mark.xfail(
-    reason="KI-001: test DB schema incomplete — missing alerts/alert_intents/users tables"
-)
+    from
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 

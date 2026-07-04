@@ -6,8 +6,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
-pytestmark = pytest.mark.xfail(
     reason="KI-001: test DB schema incomplete — missing ai_artifacts/users tables"
 )
 from sqlalchemy import select

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.api.deps import get_db
 from app.config import Settings
-from app.core import ai_models, theme_models  # noqa: F401  -- register tables
+from app.core import ai_models, theme_models, alert_models, blog_models, billing_models, subscription_models  # noqa: F401  -- register tables
 from app.core.models import Base
 from app.main import app
 from tests.fixtures.loader import insert_dev_fixture

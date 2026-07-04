@@ -3,8 +3,6 @@
 from datetime import datetime, timezone
 
 import pytest
-
-pytestmark = pytest.mark.xfail(reason="KI-003: asyncpg event-loop conflict in FastAPI TestClient")
 from sqlalchemy import select
 
 from app.core.subscription_models import EmailDelivery

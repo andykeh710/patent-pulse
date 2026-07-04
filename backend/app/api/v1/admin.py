@@ -91,7 +91,7 @@ class TriggerIngestRequest(BaseModel):
 
 
 @router.post("/trigger-ingest", response_model=TaskStatusResponse)
-async def trigger_ingest(request: TriggerIngestRequest) -> TaskStatusResponse:
+async def trigger_ingest(request: TriggerIngestRequest, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Manually trigger patent ingestion (development only).
 
@@ -151,7 +151,7 @@ async def get_task_status(task_id: str) -> TaskStatusResponse:
 
 
 @router.post("/trigger-summarize", response_model=TaskStatusResponse)
-async def trigger_batch_summarize(limit: int = 10) -> TaskStatusResponse:
+async def trigger_batch_summarize(limit: int = 10, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Manually trigger batch summarization (development only).
     """
@@ -170,7 +170,7 @@ async def trigger_batch_summarize(limit: int = 10) -> TaskStatusResponse:
 
 
 @router.post("/trigger-family-resolution", response_model=TaskStatusResponse)
-async def trigger_family_resolution(limit: int = 100) -> TaskStatusResponse:
+async def trigger_family_resolution(limit: int = 100, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Manually trigger INPADOC family resolution (development only).
 
@@ -194,7 +194,7 @@ async def trigger_family_resolution(limit: int = 100) -> TaskStatusResponse:
 
 
 @router.post("/trigger-expiry-backfill", response_model=TaskStatusResponse)
-async def trigger_expiry_backfill(settings: AppSettings) -> TaskStatusResponse:
+async def trigger_expiry_backfill(settings: AppSettings, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Trigger backfill of USPTO grants from 2006-2011 for expiry window population (development only).
     """
@@ -267,7 +267,8 @@ async def seed_themes(db: DbSession, settings: AppSettings) -> dict[str, Any]:
 
 
 @router.post("/trigger-enrich-abstracts", response_model=TaskStatusResponse)
-async def trigger_enrich_abstracts(
+async def trigger_enrich_abstracts(_admin=Depends(require_admin),
+    
     batch_size: int = 200,
 ) -> TaskStatusResponse:
     """
@@ -290,7 +291,7 @@ async def trigger_enrich_abstracts(
 
 
 @router.post("/trigger-resummarize", response_model=TaskStatusResponse)
-async def trigger_resummarize(limit: int = 50) -> TaskStatusResponse:
+async def trigger_resummarize(limit: int = 50, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Re-summarize patents that now have abstracts but were previously
     summarized with title-only (development only).
@@ -306,7 +307,7 @@ async def trigger_resummarize(limit: int = 50) -> TaskStatusResponse:
 
 
 @router.post("/trigger-match-themes", response_model=TaskStatusResponse)
-async def trigger_match_themes(settings: AppSettings) -> TaskStatusResponse:
+async def trigger_match_themes(settings: AppSettings, _admin=Depends(require_admin)) -> TaskStatusResponse:
     """
     Trigger theme matching for all active themes (development only).
     """

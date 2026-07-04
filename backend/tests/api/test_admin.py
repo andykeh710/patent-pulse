@@ -58,7 +58,6 @@ TRIGGER_ENDPOINTS = [
 
 
 @pytest.mark.asyncio(loop_scope="function")
-@pytest.mark.xfail(reason="KI-005: Trigger endpoints missing auth gating — tracked in docs/KNOWN_ISSUES.md")
 @pytest.mark.parametrize("path", TRIGGER_ENDPOINTS)
 async def test_trigger_unauthorized_no_cookie(client, db_session, path):
     """Trigger endpoints must reject requests without auth cookies."""
@@ -67,7 +66,6 @@ async def test_trigger_unauthorized_no_cookie(client, db_session, path):
 
 
 @pytest.mark.asyncio(loop_scope="function")
-@pytest.mark.xfail(reason="KI-005: Trigger endpoints missing auth gating")
 @pytest.mark.parametrize("path", TRIGGER_ENDPOINTS)
 async def test_trigger_forbidden_non_admin(client, db_session, path):
     """Trigger endpoints must reject non-admin users."""
