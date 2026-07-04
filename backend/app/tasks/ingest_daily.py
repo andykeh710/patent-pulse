@@ -296,7 +296,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             total_new = bq_stats.get("created", 0) + odp_stats.get("created", 0)
             total_updated = bq_stats.get("updated", 0) + odp_stats.get("updated", 0)
             total_failed = bq_stats.get("failed", 0) + odp_stats.get("failed", 0)
-            total_processed = (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (
+            (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (
                 odp_stats.get("fetched", 0) or 0
             )
 
@@ -313,7 +313,6 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             total_new = 0
             total_updated = 0
             total_failed = 1
-            total_processed = 0
             status = "degraded"
             errors = []
             if bq_error or bq_stats.get("error"):

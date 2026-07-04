@@ -131,7 +131,7 @@ async def test_scan_creates_expiring_alert(db_session):
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
 
-    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
 
     theme = Theme(name="Semiconductor", is_active=True, cpc_prefixes=["H01L"])
     db_session.add(theme)
@@ -166,7 +166,7 @@ async def test_scan_creates_high_opportunity_alert(db_session):
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
 
-    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
 
     theme = Theme(name="Biotech", is_active=True, cpc_prefixes=["C12N"])
     db_session.add(theme)
@@ -364,7 +364,7 @@ async def test_alert_dedup_same_patent(db_session):
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
 
-    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
+    (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
 
     theme = Theme(name="AI", is_active=True, cpc_prefixes=["G06N"])
     db_session.add(theme)

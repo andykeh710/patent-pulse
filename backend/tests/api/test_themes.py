@@ -359,9 +359,9 @@ async def test_theme_matcher_uses_keywords(client, db_session):
     match = result.scalar_one_or_none()
     assert match is not None
     assert match.match_score > 0
-    assert any("quantum" in reason.lower() for reason in match.match_reasons), (
-        f"Expected keyword reason in {match.match_reasons}"
-    )
+    assert any(
+        "quantum" in reason.lower() for reason in match.match_reasons
+    ), f"Expected keyword reason in {match.match_reasons}"
 
 
 # ---------------------------------------------------------------------------

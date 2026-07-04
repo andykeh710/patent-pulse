@@ -95,7 +95,7 @@ def _ingest_week(kind: str, target_date: date) -> dict:
     sources = _try_all_sources(None, kind, target_date)  # type: ignore[arg-type]
     stats["sources"] = sources
 
-    any_success = any(s["status"] == "success" for s in sources.values())
+    any(s["status"] == "success" for s in sources.values())
     any_data = any(s.get("records_found", 0) > 0 for s in sources.values())
 
     if not any_data:

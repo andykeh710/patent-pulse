@@ -71,9 +71,10 @@ async def test_trigger_forbidden_non_admin(client, db_session, path):
     """Trigger endpoints must reject non-admin users."""
     await _make_non_admin(db_session)
     r = await client.post(path, cookies=_cookie())
-    assert r.status_code in (401, 403), (
-        f"{path}: expected 401/403 for non-admin, got {r.status_code}"
-    )
+    assert r.status_code in (
+        401,
+        403,
+    ), f"{path}: expected 401/403 for non-admin, got {r.status_code}"
 
 
 @pytest.mark.asyncio(loop_scope="function")

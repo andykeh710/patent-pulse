@@ -196,14 +196,14 @@ async def test_narrative_post_returns_valid_schema(client, db_session):
     assert isinstance(data["summary"], str)
     assert isinstance(data["caveats"], list)
     # Sprint 4: content quality assertions (Sonnet tier).
-    assert len(data["summary"]) > 30, (
-        f"Summary too short ({len(data['summary'])} chars): {data['summary'][:100]!r}"
-    )
+    assert (
+        len(data["summary"]) > 30
+    ), f"Summary too short ({len(data['summary'])} chars): {data['summary'][:100]!r}"
     assert len(data["caveats"]) >= 1, f"Expected at least 1 caveat, got {len(data['caveats'])}"
     caveat_text = " ".join(data["caveats"]).lower()
-    assert any(kw in caveat_text for kw in ["patent", "trend", "filing", "data"]), (
-        f"No keyword found in caveats: {data['caveats']}"
-    )
+    assert any(
+        kw in caveat_text for kw in ["patent", "trend", "filing", "data"]
+    ), f"No keyword found in caveats: {data['caveats']}"
 
 
 @pytest.mark.xfail(
@@ -294,6 +294,6 @@ async def test_narrative_uses_patent_context(client, db_session):
     combined = (data["summary"] + " " + data["why_now"]).lower()
     keywords = ["quantum", "photonic", "transformer", "inference", "neural"]
     matches = [kw for kw in keywords if kw in combined]
-    assert len(matches) >= 1 or len(data["summary"]) >= 20, (
-        f"Narrative doesn't reference any patent-title keywords. Text: {combined[:300]}"
-    )
+    assert (
+        len(matches) >= 1 or len(data["summary"]) >= 20
+    ), f"Narrative doesn't reference any patent-title keywords. Text: {combined[:300]}"

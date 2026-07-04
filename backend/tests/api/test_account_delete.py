@@ -158,7 +158,6 @@ async def test_ai_runs_anonymized_not_deleted(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_subscriptions_cascaded_after_delete(client: AsyncClient, db_session):
-
     from app.core.ai_models import User
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
