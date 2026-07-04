@@ -78,7 +78,6 @@ async def test_trigger_forbidden_non_admin(client, db_session, path):
 
 
 @pytest.mark.asyncio(loop_scope="function")
-@pytest.mark.xfail(reason="KI-005: Trigger endpoint missing — returns 404")
 async def test_trigger_assignee_backfill_admin_accepted(client, db_session):
     """Trigger assignee backfill accepts admin user."""
     await _make_admin(db_session)

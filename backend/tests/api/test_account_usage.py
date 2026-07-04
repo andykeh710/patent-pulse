@@ -4,7 +4,6 @@ import pytest
 
 SECRET = "test-secret-key-for-tests"
 
-pytestmark = pytest.mark.xfail(reason="KI-001: test DB schema incomplete — missing tables")
 
 
 @pytest.fixture(autouse=True, scope="session")
