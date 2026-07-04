@@ -89,7 +89,7 @@ def _ingest_week(kind: str, target_date: date) -> dict:
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
-    stats = {"fetched": 0, "created": 0, "updated": 0, "failed": 0, "sources": {}}
+    stats = {"fetched": 0, "created": 0, "updated": 0, "failed": 0, "source_status": "ok", "sources": {}}
 
     # Try ODP datasets API
     sources = _try_all_sources(None, kind, target_date)  # type: ignore[arg-type]

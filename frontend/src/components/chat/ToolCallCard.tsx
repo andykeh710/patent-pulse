@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
@@ -7,7 +6,7 @@ import type { ToolCallRecord } from "@/hooks/useChatStream";
 export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
   const [expanded, setExpanded] = useState(false);
   const isPending = toolCall.status === "pending";
-  const hasResult: boolean = !!(toolCall.status === "done" && toolCall.result);
+  const hasResult = (toolCall.status === "done" && toolCall.result != null) as boolean;
 
   const label =
     toolCall.name === "search_patents"
@@ -18,15 +17,14 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
           ? "Comparing companies"
           : `Tool: ${toolCall.name}`;
 
-  const resultSummary = hasResult
-    ? toolCall.result?.count !== undefined
-      ? `Found ${toolCall.result.count} patents`
-      : toolCall.result?.doc_id
-        ? `Opened ${toolCall.result.doc_id}`
-        : toolCall.result?.compared !== undefined
-          ? `Compared ${toolCall.result.compared} companies`
-          : "Done"
-    : null;
+  function getResultSummary(result: Record<string, unknown>): string {
+    if (typeof result.count === "number") return `Found ${result.count} patents`;
+    if (typeof result.doc_id === "string") return `Opened ${result.doc_id}`;
+    if (typeof result.compared === "number") return `Compared ${result.compared} companies`;
+    return "Done";
+  }
+
+  const resultSummary = hasResult ? getResultSummary(toolCall.result!) : null;
 
   return (
     <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs overflow-hidden">
@@ -59,7 +57,6 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
 
       {expanded && (
         <div className="px-3 py-2 border-t border-[var(--border-subtle)] space-y-2">
-          {/* Input */}
           <div>
             <span className="text-[var(--text-muted)]">Input: </span>
             <code className="text-[var(--text-secondary)]">
@@ -67,7 +64,7 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
             </code>
           </div>
 
-          {!!hasResult && (
+          {hasResult && (
             <div>
               <span className="text-[var(--text-muted)]">Result: </span>
               <pre className="text-[var(--text-secondary)] whitespace-pre-wrap max-h-32 overflow-y-auto mt-1 font-mono">
@@ -76,10 +73,9 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
             </div>
           )}
 
-          {/* Error in result */}
-          {hasResult && toolCall.result?.error && (
+          {hasResult && typeof (toolCall.result as Record<string, unknown>).error === "string" && (
             <div className="text-red-500 text-xs">
-              Error: {String(toolCall.result.error)}
+              Error: {(toolCall.result as Record<string, unknown>).error as string}
             </div>
           )}
         </div>
