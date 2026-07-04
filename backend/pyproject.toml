@@ -58,6 +58,7 @@ select = ["E", "F", "I", "W"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E722", "W291"]
 "alembic/versions/*.py" = ["E402"]
 "tests/ai/test_llm_client.py" = ["E402"]
 "tests/ai/test_tagger.py" = ["E402"]
