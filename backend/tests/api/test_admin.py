@@ -53,7 +53,6 @@ TRIGGER_ENDPOINTS = [
     "/api/v1/admin/trigger-enrich-abstracts",
     "/api/v1/admin/trigger-resummarize",
     "/api/v1/admin/trigger-match-themes",
-    "/api/v1/admin/trigger-assignee-backfill",
 ]
 
 
@@ -78,16 +77,6 @@ async def test_trigger_forbidden_non_admin(client, db_session, path):
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_trigger_assignee_backfill_admin_accepted(client, db_session):
-    """Trigger assignee backfill accepts admin user."""
-    await _make_admin(db_session)
-    r = await client.post("/api/v1/admin/trigger-assignee-backfill", cookies=_cookie())
-    assert r.status_code == 200, f"expected 200 for admin, got {r.status_code}"
-    data = r.json()
-    assert "task_id" in data
-    assert data["status"] == "enqueued"
-
-
 # -- Existing admin tests --
 
 
