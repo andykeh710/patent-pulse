@@ -1,7 +1,6 @@
 """Tests for blog system (Phase 6 PR 2)."""
 
 import pytest
-
 from sqlalchemy import select
 
 from app.core.blog_models import BlogPost

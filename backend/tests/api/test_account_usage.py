@@ -5,7 +5,6 @@ import pytest
 SECRET = "test-secret-key-for-tests"
 
 
-
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings

@@ -1,7 +1,6 @@
 """Tests for sitemap index, robots.txt, structured data (Phase 6 PR 1)."""
 
 import io
-import json
 import re
 
 import pytest

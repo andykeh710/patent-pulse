@@ -23,9 +23,9 @@ KEY_PREFIX = "chat:quota"
 QUOTA_KEY_TTL_SECONDS = 86_400  # 24h safety net; date in key handles rollover
 
 TIER_LIMITS: dict[str, int | None] = {
-    "free": None,       # set at init from settings
-    "basic": None,      # set at init from settings
-    "lifetime": None,   # unlimited
+    "free": None,  # set at init from settings
+    "basic": None,  # set at init from settings
+    "lifetime": None,  # unlimited
     "enterprise": None,  # unlimited
 }
 
@@ -70,9 +70,7 @@ class ChatQuotaService:
         if self._redis is not None:
             return self._redis
         try:
-            self._redis = aioredis.Redis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            self._redis = aioredis.Redis.from_url(settings.redis_url, decode_responses=True)
         except Exception:
             logger.warning("Redis unavailable; quota enforcement disabled")
             return None

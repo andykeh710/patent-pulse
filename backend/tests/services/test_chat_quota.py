@@ -12,6 +12,7 @@ from app.services.chat_quota import (
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _mock_redis(get_return=None):
     """Return an AsyncMock that looks like redis.asyncio.Redis."""
     redis = AsyncMock()

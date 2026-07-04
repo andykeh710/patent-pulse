@@ -39,7 +39,9 @@ def generate_opportunity_narrative(
     return asyncio.run(_generate_opportunity_narrative_async(patent_id, run_id))
 
 
-async def _generate_opportunity_narrative_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
+async def _generate_opportunity_narrative_async(
+    patent_id: str, run_id: str | None
+) -> dict[str, Any]:
     run_uuid = UUID(run_id) if run_id else None
     async with async_session_maker() as session:
         result = await session.execute(

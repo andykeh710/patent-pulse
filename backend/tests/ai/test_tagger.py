@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 import json
 from unittest.mock import MagicMock
 from uuid import uuid4

@@ -1,6 +1,5 @@
 """Tests for alert webhook system (Phase 5 PR 2)."""
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 

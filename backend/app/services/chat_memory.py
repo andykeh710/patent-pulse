@@ -46,9 +46,7 @@ class ConversationStore:
         if self._redis is not None:
             return self._redis
         try:
-            self._redis = aioredis.Redis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            self._redis = aioredis.Redis.from_url(settings.redis_url, decode_responses=True)
         except Exception:
             logger.warning("Failed to connect to Redis; conversation memory disabled")
             return None
@@ -58,19 +56,19 @@ class ConversationStore:
         return f"{KEY_PREFIX}:{user_id}:{conversation_id}"
 
     def _message_payload(self, role: str, content: str) -> str:
-        return json.dumps({
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        return json.dumps(
+            {
+                "role": role,
+                "content": content,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
     async def new_conversation_id(self) -> str:
         """Generate a fresh UUID for a new conversation."""
         return str(uuid.uuid4())
 
-    async def get_history(
-        self, user_id: str, conversation_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_history(self, user_id: str, conversation_id: str) -> list[dict[str, Any]]:
         """Return messages in chronological order (oldest first).
 
         Each message is ``{"role": "user"|"assistant", "content": "..."}``.

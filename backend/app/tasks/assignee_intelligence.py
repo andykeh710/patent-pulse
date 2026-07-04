@@ -52,7 +52,11 @@ async def _gen_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
         if run_uuid:
             await record_run_task_completion(session, run_uuid)
             await recompute_run_aggregates(session, run_uuid)
-        return {"status": "success", "artifact_id": str(artifact_id), "assignee_intelligence_score": intel.get("assignee_intelligence_score")}
+        return {
+            "status": "success",
+            "artifact_id": str(artifact_id),
+            "assignee_intelligence_score": intel.get("assignee_intelligence_score"),
+        }
 
 
 @celery_app.task(

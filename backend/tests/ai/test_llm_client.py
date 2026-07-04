@@ -6,8 +6,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-    reason="KI-001: test DB schema incomplete — missing ai_artifacts/users tables"
-)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

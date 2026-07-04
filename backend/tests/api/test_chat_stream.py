@@ -33,7 +33,7 @@ def _parse_events(text: str) -> list[dict]:
     for line in text.split("\n"):
         stripped = line.strip()
         if stripped.startswith("data: "):
-            events.append(json.loads(stripped[len("data: "):]))
+            events.append(json.loads(stripped[len("data: ") :]))
     return events
 
 
@@ -132,6 +132,7 @@ MOCK_UNCITED_TOKENS = [
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 async def _mock_retrieve_patents(*a, **kw):
     """Async mock returning MOCK_PATENTS."""
     return MOCK_PATENTS
@@ -165,8 +166,10 @@ async def _yield_mock(events: list[dict]):
 @pytest.fixture(autouse=True)
 def _passthrough_quota(monkeypatch):
     """All existing stream tests skip quota enforcement."""
+
     async def _noop(*a, **kw):
         return None
+
     monkeypatch.setattr(
         "app.api.v1.chat._enforce_chat_quota",
         _noop,
@@ -238,7 +241,7 @@ async def test_chat_stream_yields_sse_data_lines(client: AsyncClient, monkeypatc
 
     for line in lines:
         assert line.startswith("data: ")
-        payload = json.loads(line[len("data: "):])
+        payload = json.loads(line[len("data: ") :])
         assert "type" in payload
 
 
@@ -536,22 +539,14 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
     events = _parse_events(r.text)
 
     # There should be token events BEFORE the tool call
-    tcs_idx = next(
-        i for i, e in enumerate(events) if e["type"] == "tool_call_start"
-    )
-    tokens_before = [
-        e for e in events[:tcs_idx] if e["type"] == "token"
-    ]
+    tcs_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_start")
+    tokens_before = [e for e in events[:tcs_idx] if e["type"] == "token"]
     assert len(tokens_before) >= 1
     assert any("search" in t["content"].lower() for t in tokens_before)
 
     # And token events AFTER the tool result (text from second pass)
-    tcr_idx = next(
-        i for i, e in enumerate(events) if e["type"] == "tool_call_result"
-    )
-    tokens_after = [
-        e for e in events[tcr_idx:] if e["type"] == "token"
-    ]
+    tcr_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_result")
+    tokens_after = [e for e in events[tcr_idx:] if e["type"] == "token"]
     assert len(tokens_after) >= 1
     assert any("found" in t["content"].lower() for t in tokens_after)
 
@@ -683,14 +678,13 @@ async def test_chat_stream_emits_citations_event(client: AsyncClient, monkeypatc
     cit_idx = event_types.index("citations")
     sources_idx = event_types.index("sources")
     done_idx = event_types.index("done")
-    assert cit_idx < sources_idx < done_idx, (
-        "citations must appear before sources before done"
-    )
+    assert cit_idx < sources_idx < done_idx, "citations must appear before sources before done"
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_all_verified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When all citations match known doc_ids, verified list is populated."""
     monkeypatch.setattr(
@@ -723,7 +717,8 @@ async def test_chat_stream_citations_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_warning_on_unverified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When unverified citations exist, warning event fires with code."""
     monkeypatch.setattr(
@@ -749,15 +744,14 @@ async def test_chat_stream_citations_warning_on_unverified(
     assert "USPTO:US99999999" in cit["unverified"]
 
     warnings = [e for e in events if e["type"] == "warning"]
-    cite_warnings = [
-        w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"
-    ]
+    cite_warnings = [w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"]
     assert len(cite_warnings) == 1
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_no_citation_warning_when_all_verified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When all citations are verified, no citation warning fires."""
     monkeypatch.setattr(
@@ -783,7 +777,8 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
 
     # No citation-related warning
     cite_warnings = [
-        w for w in events
+        w
+        for w in events
         if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
     ]
     assert cite_warnings == []
@@ -794,7 +789,8 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_quota_exceeded_returns_402(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When quota is exceeded, 402 with structured JSON body is returned."""
     # Override the passthrough fixture with a real enforcement failure
@@ -833,7 +829,8 @@ async def test_chat_stream_quota_exceeded_returns_402(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_lifetime_user_no_quota_check(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """Lifetime users can chat without hitting quota."""
     # The passthrough fixture already skips enforcement.
@@ -857,19 +854,22 @@ async def test_chat_stream_lifetime_user_no_quota_check(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_quota_endpoint_returns_usage(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """GET /api/v1/chat/quota returns usage dict."""
     from unittest.mock import AsyncMock, MagicMock
 
     svc = MagicMock()
-    svc.get_usage = AsyncMock(return_value={
-        "tier": "free",
-        "used": 2,
-        "limit": 5,
-        "unlimited": False,
-        "remaining": 3,
-    })
+    svc.get_usage = AsyncMock(
+        return_value={
+            "tier": "free",
+            "used": 2,
+            "limit": 5,
+            "unlimited": False,
+            "remaining": 3,
+        }
+    )
     monkeypatch.setattr(
         "app.api.v1.chat.get_quota_service",
         lambda: svc,

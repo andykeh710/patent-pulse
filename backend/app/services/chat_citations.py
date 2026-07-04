@@ -42,7 +42,7 @@ def _canonical_doc_id(doc_id: str) -> tuple[str | None, str]:
     normalized = doc_id.strip()
     for prefix, office in _CITATION_PREFIXES.items():
         if normalized.startswith(prefix):
-            return office, normalized[len(prefix):]
+            return office, normalized[len(prefix) :]
 
     for doc_prefix, office in _DOC_ID_OFFICE_PREFIXES:
         if normalized.startswith(doc_prefix):
@@ -89,16 +89,8 @@ def verify_citations(
     Returns:
         Dict with ``verified`` and ``unverified`` lists.
     """
-    known: set[tuple[str | None, str]] = {
-        _canonical_doc_id(d) for d in known_doc_ids
-    }
+    known: set[tuple[str | None, str]] = {_canonical_doc_id(d) for d in known_doc_ids}
 
-    verified = [
-        d for d in cited_doc_ids
-        if _canonical_doc_id(d) in known
-    ]
-    unverified = [
-        d for d in cited_doc_ids
-        if _canonical_doc_id(d) not in known
-    ]
+    verified = [d for d in cited_doc_ids if _canonical_doc_id(d) in known]
+    unverified = [d for d in cited_doc_ids if _canonical_doc_id(d) not in known]
     return {"verified": verified, "unverified": unverified}

@@ -28,9 +28,7 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
     autoretry_for=(SummarizationError,),
 )
-def summarize_patent(
-    self, patent_id: str, force: bool = False, run_id: str | None = None
-) -> dict:
+def summarize_patent(self, patent_id: str, force: bool = False, run_id: str | None = None) -> dict:
     """
     Generate AI summary for a single patent.
 
@@ -43,9 +41,7 @@ def summarize_patent(
     """
     logger.info(f"Starting summarization for patent {patent_id} (force={force})")
     try:
-        result = asyncio.run(
-            _summarize_patent_async(patent_id, force=force, run_id=run_id)
-        )
+        result = asyncio.run(_summarize_patent_async(patent_id, force=force, run_id=run_id))
         return result
     except SummarizationError as e:
         logger.warning(f"Summarization failed for {patent_id}, retrying: {e}")

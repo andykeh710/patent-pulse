@@ -455,11 +455,7 @@ async def _count_cached_artifacts(
         return 0
 
     patents = list(
-        (
-            await db.execute(
-                select(PatentPublication).where(PatentPublication.id.in_(patent_ids))
-            )
-        )
+        (await db.execute(select(PatentPublication).where(PatentPublication.id.in_(patent_ids))))
         .scalars()
         .all()
     )
@@ -490,14 +486,10 @@ async def _count_cached_artifacts(
 def _cached_completion_count(
     *, patent_input_hashes: list[str], cached_input_hashes: set[str]
 ) -> int:
-    return sum(
-        1 for input_hash in patent_input_hashes if input_hash in cached_input_hashes
-    )
+    return sum(1 for input_hash in patent_input_hashes if input_hash in cached_input_hashes)
 
 
-def _cache_input_hash_for_task(
-    task_type: str, patent: PatentPublication, model: str
-) -> str:
+def _cache_input_hash_for_task(task_type: str, patent: PatentPublication, model: str) -> str:
     if task_type == "summary":
         payload = build_summary_payload(patent)
     elif task_type == "tags":

@@ -1,4 +1,5 @@
 """Tests for GET /api/v1/admin/billing/health (Phase 4 PR 1)."""
+
 import pytest
 from sqlalchemy import select
 
@@ -8,6 +9,7 @@ SECRET = "test-secret-key-for-tests"
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
     global_settings.resend_api_key = "re_test"
     global_settings.email_from_address = "test@example.com"
@@ -23,6 +25,7 @@ def _make_session_cookie(user_id="local-user"):
     from datetime import datetime, timedelta, timezone
 
     import jwt
+
     token = jwt.encode(
         {
             "sub": user_id,
@@ -50,9 +53,7 @@ async def test_billing_health_admin_returns_200(client, db_session):
     """Admin can access billing health."""
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()
 
@@ -68,9 +69,7 @@ async def test_billing_health_returns_expected_shape(client, db_session):
     """Response has expected keys and types."""
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()
 
@@ -105,9 +104,7 @@ async def test_billing_health_no_secret_leak(client, db_session):
     """Response must not contain raw API keys or secrets."""
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()
 
@@ -131,16 +128,16 @@ async def test_billing_health_subscription_counts_accurate(client, db_session):
     from app.core.billing_models import BillingSubscription
 
     # Make admin
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
 
     # Seed subscriptions
-    db_session.add_all([
-        BillingSubscription(user_id="local-user", tier="basic", status="active"),
-        BillingSubscription(user_id="local-user-2", tier="enterprise", status="active"),
-    ])
+    db_session.add_all(
+        [
+            BillingSubscription(user_id="local-user", tier="basic", status="active"),
+            BillingSubscription(user_id="local-user-2", tier="enterprise", status="active"),
+        ]
+    )
     await db_session.commit()
 
     r = await client.get(

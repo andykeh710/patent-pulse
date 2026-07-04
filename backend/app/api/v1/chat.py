@@ -213,9 +213,7 @@ async def _stream_anthropic_response(
                         result = await execute_tool(tool_name, tool_input, db)
                     except Exception:
                         logger.exception("Tool execution failed: %s", tool_name)
-                        result = {
-                            "error": f"Tool '{tool_name}' encountered an internal error."
-                        }
+                        result = {"error": f"Tool '{tool_name}' encountered an internal error."}
 
                     known_doc_ids |= _collect_tool_doc_ids(tool_name, result)
                     sanitized = _sanitize_tool_result(result)
@@ -226,23 +224,31 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": [{
-                            "type": "tool_use",
-                            "id": tool_id,
-                            "name": tool_name,
-                            "input": tool_input,
-                        }],
-                    })
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": json.dumps(sanitized),
-                        }],
-                    })
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "type": "tool_use",
+                                    "id": tool_id,
+                                    "name": tool_name,
+                                    "input": tool_input,
+                                }
+                            ],
+                        }
+                    )
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_id,
+                                    "content": json.dumps(sanitized),
+                                }
+                            ],
+                        }
+                    )
 
                     break
 
@@ -253,10 +259,7 @@ async def _stream_anthropic_response(
             logger.exception("Anthropic streaming failed")
             yield _sse_event(
                 "error",
-                message=(
-                    "The chat service is temporarily unavailable. "
-                    "Please try again."
-                ),
+                message=("The chat service is temporarily unavailable. " "Please try again."),
             )
             yield _sse_event("done")
             return
@@ -276,10 +279,7 @@ async def _stream_anthropic_response(
         yield _sse_event(
             "warning",
             code="uncited_or_invalid_doc_ids",
-            message=(
-                "Some patent references could not be verified "
-                "against retrieved sources."
-            ),
+            message=("Some patent references could not be verified " "against retrieved sources."),
         )
 
     # ── Step 5: Sources + done ────────────────────────────────────

@@ -197,7 +197,9 @@ def test_summary_dispatch_passes_run_id(monkeypatch: pytest.MonkeyPatch) -> None
 
     class FakeSummaryTask:
         @staticmethod
-        def delay(patent_id_arg: str, force_arg: bool = False, run_id_arg: str | None = None) -> None:
+        def delay(
+            patent_id_arg: str, force_arg: bool = False, run_id_arg: str | None = None
+        ) -> None:
             assert run_id_arg is not None
             calls.append((patent_id_arg, force_arg, run_id_arg))
 
@@ -254,7 +256,10 @@ def test_summary_cache_input_hash_changes_with_patent_inputs() -> None:
 def test_cached_completion_count_counts_each_matching_patent_input() -> None:
     from app.api.v1.ai_runs import _cached_completion_count
 
-    assert _cached_completion_count(
-        patent_input_hashes=["same-hash", "same-hash", "other-hash"],
-        cached_input_hashes={"same-hash"},
-    ) == 2
+    assert (
+        _cached_completion_count(
+            patent_input_hashes=["same-hash", "same-hash", "other-hash"],
+            cached_input_hashes={"same-hash"},
+        )
+        == 2
+    )
