@@ -28,10 +28,6 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
     autoretry_for=(SummarizationError,),
 )
-<<<<<<< HEAD
-def summarize_patent(self, patent_id: str, force: bool = False) -> dict:
-    """Generate AI summary for a single patent."""
-=======
 def summarize_patent(
     self, patent_id: str, force: bool = False, run_id: str | None = None
 ) -> dict:
@@ -45,7 +41,6 @@ def summarize_patent(
     Returns:
         Dict with status and summary keys
     """
->>>>>>> origin/cursor/critical-bug-inspection-a56e
     logger.info(f"Starting summarization for patent {patent_id} (force={force})")
     try:
         result = asyncio.run(
@@ -142,10 +137,6 @@ async def _batch_resummarize_async(limit: int) -> dict:
 # ── Async helpers ─────────────────────────────────────────────────────
 
 
-<<<<<<< HEAD
-async def _summarize_patent_async(patent_id: str, force: bool = False) -> dict:
-    """Summarize a single patent using the cached LLM pipeline."""
-=======
 async def _summarize_patent_async(
     patent_id: str, force: bool = False, run_id: str | None = None
 ) -> dict:
@@ -156,7 +147,6 @@ async def _summarize_patent_async(
     ``latest_summary_artifact_id`` is updated for fast denormalized reads.
     """
     run_uuid = UUID(run_id) if run_id else None
->>>>>>> origin/cursor/critical-bug-inspection-a56e
     async with async_session_maker() as session:
         result = await session.execute(
             select(PatentPublication).where(PatentPublication.id == UUID(patent_id))

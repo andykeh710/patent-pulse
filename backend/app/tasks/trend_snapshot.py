@@ -45,26 +45,12 @@ async def _gen_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
                 await record_run_task_failure(session, run_uuid)
                 await recompute_run_aggregates(session, run_uuid)
             return {"status": "failed", "error": "patent not found"}
-<<<<<<< HEAD
-        snapshot, artifact_id = await generate_trend_snapshot(
-            session, patent, run_id=UUID(run_id) if run_id else None
-        )
-        await session.commit()
-        if run_id:
-            await recompute_run_aggregates(session, run_id)
-        return {
-            "status": "success",
-            "artifact_id": str(artifact_id),
-            "trend_score": snapshot.get("trend_score"),
-        }
-=======
         snapshot, artifact_id = await generate_trend_snapshot(session, patent, run_id=run_uuid)
         await session.commit()
         if run_uuid:
             await record_run_task_completion(session, run_uuid)
             await recompute_run_aggregates(session, run_uuid)
         return {"status": "success", "artifact_id": str(artifact_id), "trend_score": snapshot.get("trend_score")}
->>>>>>> origin/cursor/critical-bug-inspection-a56e
 
 
 @celery_app.task(bind=True, name="app.tasks.trend_snapshot.batch_trend_snapshot", max_retries=1)

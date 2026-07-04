@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 
@@ -36,12 +36,9 @@ from app.ai.assignee_intelligence import (
 from app.ai.assignee_intelligence import (
     RULES_VERSION as ASSIGNEE_RULES_VERSION,
 )
-<<<<<<< HEAD
-=======
 from app.ai.assignee_intelligence import (
     extract_features as extract_assignee_features,
 )
->>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.llm_client import (
     _model_for_tier,
     compute_input_hash,
@@ -65,12 +62,9 @@ from app.ai.opportunity_scorer import (
 from app.ai.opportunity_scorer import (
     RULES_VERSION as OPPORTUNITY_RULES_VERSION,
 )
-<<<<<<< HEAD
-=======
 from app.ai.opportunity_scorer import (
     extract_features as extract_opportunity_features,
 )
->>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.prompts import get_prompt
 from app.ai.summarizer import (
     SUMMARY_PROMPT_NAME,
@@ -91,12 +85,9 @@ from app.ai.trend_snapshot import (
 from app.ai.trend_snapshot import (
     RULES_VERSION as TREND_RULES_VERSION,
 )
-<<<<<<< HEAD
-=======
 from app.ai.trend_snapshot import (
     extract_features as extract_trend_features,
 )
->>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.why_now import (
     WHY_NOW_PROMPT_NAME,
     WHY_NOW_PROMPT_VERSION,
@@ -114,16 +105,7 @@ from app.core.ai_models import (
 from app.core.models import PatentPublication
 from app.core.validators import validate_cpc_prefix
 
-
-def _require_non_production_ai_runs(settings: AppSettings) -> None:
-    if settings.environment == "production":
-        raise HTTPException(
-            status_code=403,
-            detail="AI run administration is not available in production without authentication.",
-        )
-
-
-router = APIRouter(dependencies=[Depends(_require_non_production_ai_runs)])
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------

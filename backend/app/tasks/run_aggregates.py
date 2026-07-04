@@ -25,9 +25,6 @@ from app.core.ai_models import AIArtifact, AIRun
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
-async def recompute_run_aggregates(session: AsyncSession, run_id: UUID | str) -> None:
-=======
 async def record_run_task_completion(
     session: AsyncSession, run_id: UUID | str
 ) -> None:
@@ -59,7 +56,6 @@ async def record_run_task_failure(session: AsyncSession, run_id: UUID | str) -> 
 async def recompute_run_aggregates(
     session: AsyncSession, run_id: UUID | str
 ) -> None:
->>>>>>> origin/cursor/critical-bug-inspection-a56e
     """Recompute counters + finalize status for one AIRun.
 
     Safe to call after every per-patent task completion. Will:
