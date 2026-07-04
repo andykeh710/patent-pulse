@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     figure_retry_backoff_base: float = 5.0  # seconds
     google_patents_images_enabled: bool = False  # feature flag: ToS gray area
 
+    # Phase 3 PR 6: Chat quota — tier-based daily limits
+    chat_quota_free: int = 5
+    chat_quota_basic: int = 50
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
