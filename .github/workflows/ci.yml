@@ -209,35 +209,3 @@ jobs:
             git reset --hard "$PREV_COMMIT"
             docker compose up -d --build --force-recreate backend worker beat frontend
             exit 1
-
-      - name: Notify success
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.resend.com
-          server_port: 465
-          username: resend
-          password: ${{ secrets.RESEND_API_KEY }}
-          from: andy@web3r.tech
-          to: andy@web3r.tech
-          subject: "✅ Deploy succeeded — Invention Index 8"
-          body: |
-            Deploy of ${{ github.sha }} to inventionindex8.com succeeded.
-            Commit: ${{ github.event.head_commit.message }}
-            ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-
-      - name: Notify failure
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.resend.com
-          server_port: 465
-          username: resend
-          password: ${{ secrets.RESEND_API_KEY }}
-          from: andy@web3r.tech
-          to: andy@web3r.tech
-          subject: "❌ Deploy FAILED — Invention Index 8"
-          body: |
-            Deploy of ${{ github.sha }} FAILED and was rolled back.
-            Commit: ${{ github.event.head_commit.message }}
-            Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
