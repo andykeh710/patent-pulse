@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { PricingCard } from "./PricingCard";
-import { BriefingPreview } from "./BriefingPreview";
 import { BRAND, COPY } from "@/lib/brand";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -64,29 +63,38 @@ export default function LandingPage() {
   return (
     <>
       {/* ═══════════════════════════════════════════
-          1. HERO — premium dark with animated background
+          1. HERO — value prop + stat + CTA
           ═══════════════════════════════════════════ */}
       <section className="relative overflow-hidden bg-[var(--bg-base)] pt-24 pb-20">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left: copy */}
             <div>
-              <div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-[var(--radius-full)] border border-[var(--border-subtle)] bg-[var(--bg-glass)] text-xs text-[var(--text-secondary)]">
-                <span className="status-dot status-dot--live" />
-                Patent intelligence platform
-              </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-[var(--text-primary)]">
-                {COPY.heroHeadline}
+                Turn patent data into actionable intelligence.
               </h1>
               <p className="mt-6 text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl">
-                {COPY.heroSubheadline}
+                Invention Index 8 surfaces filing trends, company moves,
+                expiring opportunities, and notable inventions —
+                calibrated, evidence-backed, and honest about its
+                confidence.
               </p>
+
+              {/* Hero stat — patent count hardcoded; swap to server-side fetch when stats endpoint exists */}
+              <p className="mt-6 text-sm text-[var(--text-muted)] leading-relaxed">
+                Tracking{" "}
+                <span className="font-semibold text-[var(--text-primary)]">64,231</span>{" "}
+                patents across{" "}
+                <span className="font-semibold text-[var(--text-primary)]">600+</span>{" "}
+                CPC areas with daily AI signals. Updated weekly.
+              </p>
+
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/login"
                   className="inline-flex items-center justify-center px-7 py-3.5 rounded-[var(--radius-md)] bg-[var(--accent)] text-white font-semibold text-base hover:bg-[var(--accent-hover)] active:scale-[0.98] transition-all"
                 >
-                  {COPY.ctaPrimary}
+                  Get started — it&apos;s free
                 </Link>
                 <Link
                   href="/pricing"
@@ -95,34 +103,39 @@ export default function LandingPage() {
                   See pricing
                 </Link>
               </div>
+
+              {/* Social proof placeholder */}
+              <p className="mt-4 text-xs text-[var(--text-muted)]">
+                Built for founders, investors, engineers, and researchers
+                tracking frontier innovation.
+              </p>
             </div>
 
-            {/* Right: briefing preview card placeholder */}
+            {/* Right: today screenshot placeholder */}
             <div className="hidden md:flex justify-center">
-              <BriefingPreview />
+              <div className="relative rounded-lg border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-surface)] shadow-lg">
+                {/*
+                  Replace public/landing-today.png with a real screenshot
+                  of the /today page once available. Matching dimensions:
+                  800×450 or similar 16:9.
+                */}
+                <div className="w-[400px] h-[280px] flex items-center justify-center text-[var(--text-muted)] text-sm">
+                  <div className="text-center">
+                    <svg className="mx-auto h-10 w-10 text-[var(--text-muted)] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>Product screenshot</p>
+                    <p className="text-xs mt-1">Daily briefing view</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════
-          2. DATA STRIP
-          ═══════════════════════════════════════════ */}
-      <section className="border-y border-[var(--border-subtle)] bg-[var(--bg-base)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <p className="text-sm text-[var(--text-muted)] text-center flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <span>64,231 patents</span>
-            <span>USPTO</span>
-            <span>EPO</span>
-            <span>WIPO</span>
-            <span>Updated weekly</span>
-            <span>Evidence-backed</span>
-          </p>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════
-          3. VALUE PROPS — 4 premium cards, 2×2 grid
+          2. VALUE PROPS — 4 premium cards, 2×2 grid
           ═══════════════════════════════════════════ */}
       <section className="bg-[var(--bg-elevated)] py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -507,7 +520,7 @@ export default function LandingPage() {
             href="/login"
             className="inline-flex items-center justify-center px-8 py-3.5 rounded-[var(--radius-md)] bg-white text-[var(--accent)] font-semibold text-base hover:bg-white/90 active:scale-[0.98] transition-all"
           >
-            {COPY.ctaPrimary}
+            Get started — it&apos;s free
           </Link>
         </div>
       </section>
