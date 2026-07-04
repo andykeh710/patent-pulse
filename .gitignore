@@ -106,4 +106,4 @@ fresh_patent_pulse.dump
 @tailwind
 @*
 *.sql
-celerybeat-schedule*
+celerybeat-schedule*backups/

@@ -99,6 +99,16 @@ deps-check:
 	@rm -f /tmp/req-check.txt /tmp/req-dev-check.txt
 	@echo "requirements.txt and requirements-dev.txt are up to date."
 
+# Database backup (compressed custom format) + figure_data volume
+backup:
+	mkdir -p backups/figures_$(shell date +%Y%m%d)
+	docker compose exec db pg_dump -U patent -Fc patent_pulse -f /tmp/pp_$(shell date +%Y%m%d).dump
+	docker compose cp db:/tmp/pp_$(shell date +%Y%m%d).dump backups/pp_$(shell date +%Y%m%d).dump
+	docker compose exec db rm /tmp/pp_$(shell date +%Y%m%d).dump
+	docker compose cp backend:/data/figures/. backups/figures_$(shell date +%Y%m%d)/
+	@ls -lh backups/pp_$(shell date +%Y%m%d).dump
+	@echo "Backup complete. See docs/OPERATIONS.md for restore procedure."
+
 # Production build
 build-prod:
 	docker compose -f docker-compose.yml build
