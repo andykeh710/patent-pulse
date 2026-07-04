@@ -67,15 +67,14 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
           </div>
 
           {/* Result (if done) */}
-          {/* @ts-ignore */}
-          {hasResult && toolCall.result && (
+          {hasResult && (toolCall.result && (
             <div>
               <span className="text-[var(--text-muted)]">Result: </span>
               <pre className="text-[var(--text-secondary)] whitespace-pre-wrap max-h-32 overflow-y-auto mt-1 font-mono">
                 {JSON.stringify(toolCall.result, null, 2)}
               </pre>
             </div>
-          )}
+          ))}
 
           {/* Error in result */}
           {hasResult && toolCall.result?.error && (
