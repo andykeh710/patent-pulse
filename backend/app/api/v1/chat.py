@@ -194,6 +194,8 @@ async def _stream_anthropic_response(
     tool_call_count = 0
 
     while True:
+        pending_tool_uses: list[dict] = []
+        pending_tool_results: list[dict] = []
         try:
             assistant_text_parts: list[str] = []
             assistant_content_blocks: list[dict] = []
@@ -252,18 +254,27 @@ async def _stream_anthropic_response(
                         result=sanitized,
                     )
 
+<<<<<<< HEAD
                     assistant_content_blocks.append({
+=======
+                    pending_tool_uses.append({
+>>>>>>> origin/cursor/critical-bug-investigation-e183
                         "type": "tool_use",
                         "id": tool_id,
                         "name": tool_name,
                         "input": tool_input,
                     })
+<<<<<<< HEAD
                     tool_result_blocks.append({
+=======
+                    pending_tool_results.append({
+>>>>>>> origin/cursor/critical-bug-investigation-e183
                         "type": "tool_result",
                         "tool_use_id": tool_id,
                         "content": json.dumps(sanitized),
                     })
 
+<<<<<<< HEAD
             if tool_result_blocks:
                 if assistant_text_parts:
                     assistant_content_blocks.append({
@@ -277,6 +288,16 @@ async def _stream_anthropic_response(
                 messages.append({
                     "role": "user",
                     "content": tool_result_blocks,
+=======
+            if pending_tool_uses:
+                messages.append({
+                    "role": "assistant",
+                    "content": pending_tool_uses,
+                })
+                messages.append({
+                    "role": "user",
+                    "content": pending_tool_results,
+>>>>>>> origin/cursor/critical-bug-investigation-e183
                 })
                 continue
 

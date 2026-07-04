@@ -505,6 +505,87 @@ async def test_chat_stream_tool_call_result_event(client: AsyncClient, monkeypat
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_chat_stream_executes_parallel_tool_uses(monkeypatch):
+    """Multiple tool_use blocks in one assistant turn all receive results."""
+    from app.api.v1.chat import _stream_anthropic_response
+
+    monkeypatch.setattr(
+        "app.api.v1.chat.retrieve_patents",
+        _mock_retrieve_patents,
+    )
+    monkeypatch.setattr(
+        "app.api.v1.chat.get_conversation_store",
+        lambda: _make_memory_mock(),
+    )
+
+    calls = []
+
+    async def _stream_with_parallel_tools(self, **kw):
+        calls.append(kw["messages"])
+        if len(calls) == 1:
+            yield {
+                "type": "tool_use",
+                "id": "toolu_search",
+                "name": "search_patents",
+                "input": {"query": "solid state batteries"},
+            }
+            yield {
+                "type": "tool_use",
+                "id": "toolu_open",
+                "name": "open_patent",
+                "input": {"doc_id": "USPTO:US99999"},
+            }
+        else:
+            assistant_message = kw["messages"][-2]
+            user_message = kw["messages"][-1]
+            assert assistant_message["role"] == "assistant"
+            assert user_message["role"] == "user"
+            assert [block["id"] for block in assistant_message["content"]] == [
+                "toolu_search",
+                "toolu_open",
+            ]
+            assert [
+                block["tool_use_id"] for block in user_message["content"]
+            ] == [
+                "toolu_search",
+                "toolu_open",
+            ]
+            yield {"type": "text", "content": "Both tools completed."}
+
+    async def _execute_tool(name, input, db):
+        return {
+            **MOCK_TOOL_RESULT,
+            "tool_name": name,
+        }
+
+    monkeypatch.setattr(
+        "app.ai.anthropic_client.AnthropicChatClient.stream",
+        _stream_with_parallel_tools,
+    )
+    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
+
+    stream = _stream_anthropic_response(
+        "compare and open patents",
+        None,
+        "local-user",
+        MagicMock(),
+    )
+    events = _parse_events("".join([chunk async for chunk in stream]))
+
+    event_types = [e["type"] for e in events]
+    starts = [e for e in events if e["type"] == "tool_call_start"]
+    results = [e for e in events if e["type"] == "tool_call_result"]
+
+    assert event_types.count("error") == 0
+    assert [e["name"] for e in starts] == ["search_patents", "open_patent"]
+    assert [e["name"] for e in results] == ["search_patents", "open_patent"]
+    assert any(
+        e["type"] == "token" and "Both tools completed" in e["content"]
+        for e in events
+    )
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monkeypatch):
     """After a tool_result, the stream resumes with more tokens."""
     monkeypatch.setattr(
