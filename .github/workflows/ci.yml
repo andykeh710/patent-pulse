@@ -179,6 +179,9 @@ jobs:
             # Rebuild and restart (production overrides)
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate backend worker beat frontend
 
+            # Wait for containers to start before health check
+            sleep 15
+
             # Health check — poll for up to 90 seconds
             for i in $(seq 1 30); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
@@ -215,7 +218,7 @@ jobs:
           server_port: 465
           username: resend
           password: ${{ secrets.RESEND_API_KEY }}
-          from: Invention Index 8 <hello@inventionindex8.com>
+          from: andy@web3r.tech
           to: andy@web3r.tech
           subject: "✅ Deploy succeeded — Invention Index 8"
           body: |
@@ -231,7 +234,7 @@ jobs:
           server_port: 465
           username: resend
           password: ${{ secrets.RESEND_API_KEY }}
-          from: Invention Index 8 <hello@inventionindex8.com>
+          from: andy@web3r.tech
           to: andy@web3r.tech
           subject: "❌ Deploy FAILED — Invention Index 8"
           body: |
