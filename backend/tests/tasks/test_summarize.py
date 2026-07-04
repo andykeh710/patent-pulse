@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
+from datetime import datetime, timezone
 
 import pytest
 
@@ -168,7 +169,7 @@ async def test_summarize_patent_async_recomputes_run_when_summary_skips(
         publication_number="SUMMARY-SKIP",
         title="Already summarized",
         abstract="Abstract",
-        summarized_at=datetime.utcnow(),
+        summarized_at=datetime.now(timezone.utc),
     )
     session = _SummarySession(patent)
     completion_calls: list[str] = []
