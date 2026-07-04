@@ -1,4 +1,5 @@
 """Assignee Intelligence — rules-based artifact."""
+
 from __future__ import annotations
 
 import logging
@@ -10,10 +11,49 @@ from app.ai.llm_client import RulesArtifactRequest, hash_rules, record_rules_art
 logger = logging.getLogger(__name__)
 RULES_ID = "assignee_intelligence_rules"
 RULES_VERSION = 1
-DEFAULT_WEIGHTS = {"assignee_type": 0.35, "portfolio_signals": 0.25, "commercial_orientation": 0.25, "licensing_potential": 0.15}
-_UNI = ("university","institute of technology","national lab","national laborator","research institute","academy","college of")
-_GOV = ("department of","ministry of","naval research","air force","army research","darpa")
-_MEGA = ("ibm","microsoft","google","alphabet","apple","amazon","meta platforms","facebook","samsung","intel","qualcomm","siemens","ge ","general electric","general motors","toyota","ford motor","boeing","lockheed","raytheon","pfizer","merck","johnson & johnson","novartis")
+DEFAULT_WEIGHTS = {
+    "assignee_type": 0.35,
+    "portfolio_signals": 0.25,
+    "commercial_orientation": 0.25,
+    "licensing_potential": 0.15,
+}
+_UNI = (
+    "university",
+    "institute of technology",
+    "national lab",
+    "national laborator",
+    "research institute",
+    "academy",
+    "college of",
+)
+_GOV = ("department of", "ministry of", "naval research", "air force", "army research", "darpa")
+_MEGA = (
+    "ibm",
+    "microsoft",
+    "google",
+    "alphabet",
+    "apple",
+    "amazon",
+    "meta platforms",
+    "facebook",
+    "samsung",
+    "intel",
+    "qualcomm",
+    "siemens",
+    "ge ",
+    "general electric",
+    "general motors",
+    "toyota",
+    "ford motor",
+    "boeing",
+    "lockheed",
+    "raytheon",
+    "pfizer",
+    "merck",
+    "johnson & johnson",
+    "novartis",
+)
+
 
 def _classify(a):
     if not a:
@@ -29,7 +69,9 @@ def _classify(a):
 
 
 def _ts(c):
-    return {"university": 1.0, "sme": 0.75, "gov": 0.6, "megacorp": 0.35, "unknown": 0.5}.get(c, 0.5)
+    return {"university": 1.0, "sme": 0.75, "gov": 0.6, "megacorp": 0.35, "unknown": 0.5}.get(
+        c, 0.5
+    )
 
 
 def _ps(fs):
@@ -42,7 +84,9 @@ def _co(c, hc):
 
 
 def _lp(c, fs):
-    base = {"university": 0.85, "sme": 0.65, "gov": 0.4, "megacorp": 0.25, "unknown": 0.5}.get(c, 0.5)
+    base = {"university": 0.85, "sme": 0.65, "gov": 0.4, "megacorp": 0.25, "unknown": 0.5}.get(
+        c, 0.5
+    )
     return min(base + fs * 0.05, 1.0)
 
 

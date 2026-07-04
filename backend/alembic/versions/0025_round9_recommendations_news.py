@@ -8,6 +8,7 @@ Creates the four tables required by the Round 9 recommendation and news
 ingestion features. Without this migration the /for-you endpoint and the
 ingest_news Celery task will fail at runtime.
 """
+
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 
@@ -22,7 +23,12 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "user_view_events",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            sa.dialects.postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("user_id", sa.String(64), nullable=False, index=True),
         sa.Column(
             "patent_id",
@@ -60,7 +66,12 @@ def upgrade() -> None:
 
     op.create_table(
         "news_items",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            sa.dialects.postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("headline", sa.String(512), nullable=False),
         sa.Column("source", sa.String(128), nullable=False),
         sa.Column("source_url", sa.String(1024), nullable=True),
@@ -78,7 +89,12 @@ def upgrade() -> None:
 
     op.create_table(
         "news_patent_links",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            sa.dialects.postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column(
             "news_id",
             sa.dialects.postgresql.UUID(as_uuid=True),

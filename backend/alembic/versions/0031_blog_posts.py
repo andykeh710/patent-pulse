@@ -4,12 +4,13 @@ Revision ID: 0031
 Revises: 0030_alerts_webhook_configs
 Create Date: 2026-06-12
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
+from alembic import op
 
 revision: str = "0031"
 down_revision: Union[str, None] = "0030"
@@ -29,13 +30,29 @@ def upgrade() -> None:
         sa.Column("author_name", sa.String(128), nullable=False),
         sa.Column("author_role", sa.String(128), nullable=True),
         sa.Column("tags", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("related_patent_doc_ids", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("related_theme_slugs", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("related_company_names", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "related_patent_doc_ids", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "related_theme_slugs", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "related_company_names", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.Column("status", sa.String(16), nullable=False, server_default="draft"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
 
 

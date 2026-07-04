@@ -40,17 +40,22 @@ async def assemble_briefing(
         .limit(6)
     )
     for t in trend_rows.scalars().all():
-        items.append({
-            "type": "trend",
-            "label": f"Filing trend · {getattr(t, 'trend_surface', 'cpc').upper()}",
-            "title": f"{getattr(t, 'trend_label', 'Unknown')} — z-score {t.z_score:.1f}",
-            "subtext": f"{getattr(t, 'count_4w', 0)} filings in 4 weeks",
-            "reason": _trend_reason(t, companies),
-            "source": "USPTO · EPO · WIPO",
-            "freshness": {"updated_at": t.created_at.isoformat(), "relative": _relative(t.created_at)},
-            "confidence": None,
-            "href": f"/trends/{getattr(t, 'trend_surface', 'cpc')}/{getattr(t, 'trend_key', '')}",
-        })
+        items.append(
+            {
+                "type": "trend",
+                "label": f"Filing trend · {getattr(t, 'trend_surface', 'cpc').upper()}",
+                "title": f"{getattr(t, 'trend_label', 'Unknown')} — z-score {t.z_score:.1f}",
+                "subtext": f"{getattr(t, 'count_4w', 0)} filings in 4 weeks",
+                "reason": _trend_reason(t, companies),
+                "source": "USPTO · EPO · WIPO",
+                "freshness": {
+                    "updated_at": t.created_at.isoformat(),
+                    "relative": _relative(t.created_at),
+                },
+                "confidence": None,
+                "href": f"/trends/{getattr(t, 'trend_surface', 'cpc')}/{getattr(t, 'trend_key', '')}",
+            }
+        )
 
     # 2. Notable patents
     patent_rows = await db.execute(
@@ -62,53 +67,69 @@ async def assemble_briefing(
     )
     for p in patent_rows.scalars().all():
         assignee = (p.assignees or ["Unknown"])[0] if p.assignees else "Unknown"
-        items.append({
-            "type": "notable",
-            "label": "Notable patent",
-            "title": p.title or p.publication_number,
-            "subtext": f"{assignee} · {p.publication_number}",
-            "reason": _patent_reason(p, companies),
-            "source": f"{p.office or 'USPTO'} direct",
-            "freshness": {"updated_at": str(p.publication_date), "relative": _relative_date(p.publication_date)},
-            "confidence": {"level": "medium", "caveat": "AI-generated summary — verify"} if p.summarized_at else None,
-            "href": f"/patents/{p.id}",
-        })
+        items.append(
+            {
+                "type": "notable",
+                "label": "Notable patent",
+                "title": p.title or p.publication_number,
+                "subtext": f"{assignee} · {p.publication_number}",
+                "reason": _patent_reason(p, companies),
+                "source": f"{p.office or 'USPTO'} direct",
+                "freshness": {
+                    "updated_at": str(p.publication_date),
+                    "relative": _relative_date(p.publication_date),
+                },
+                "confidence": {"level": "medium", "caveat": "AI-generated summary — verify"}
+                if p.summarized_at
+                else None,
+                "href": f"/patents/{p.id}",
+            }
+        )
 
     # 3. Company moves
     if companies:
         for c in companies[:3]:
-            items.append({
-                "type": "company",
-                "label": "Company move",
-                "title": f"{c.title()} — recent activity in your follows",
-                "reason": f"You follow {c.title()}",
-                "source": "USPTO · WIPO",
-                "freshness": {"updated_at": now.isoformat(), "relative": "just now"},
-                "href": f"/companies/{c}",
-            })
+            items.append(
+                {
+                    "type": "company",
+                    "label": "Company move",
+                    "title": f"{c.title()} — recent activity in your follows",
+                    "reason": f"You follow {c.title()}",
+                    "source": "USPTO · WIPO",
+                    "freshness": {"updated_at": now.isoformat(), "relative": "just now"},
+                    "href": f"/companies/{c}",
+                }
+            )
 
     # 4. Expiring opportunities
-    items.append({
-        "type": "expiring",
-        "label": "Expiring opportunity",
-        "title": "Expiring patent radar — check your topics",
-        "reason": "Patent expiry creates whitespace opportunities",
-        "source": "USPTO · computed expiry estimates",
-        "freshness": {"updated_at": now.isoformat(), "relative": "updated daily"},
-        "confidence": {"level": "low", "caveat": "Verify with official registers before relying on expiry status"},
-        "href": "/expiry",
-    })
+    items.append(
+        {
+            "type": "expiring",
+            "label": "Expiring opportunity",
+            "title": "Expiring patent radar — check your topics",
+            "reason": "Patent expiry creates whitespace opportunities",
+            "source": "USPTO · computed expiry estimates",
+            "freshness": {"updated_at": now.isoformat(), "relative": "updated daily"},
+            "confidence": {
+                "level": "low",
+                "caveat": "Verify with official registers before relying on expiry status",
+            },
+            "href": "/expiry",
+        }
+    )
 
     # 5. For You stub (honest — no fake AI)
-    items.append({
-        "type": "foryou",
-        "label": "For You · early personalization",
-        "title": "Personalized feed will grow as you follow topics and companies",
-        "reason": "Based on your activity and follows",
-        "source": "Invention Index 8",
-        "freshness": {"updated_at": now.isoformat(), "relative": "just now"},
-        "href": "/themes",
-    })
+    items.append(
+        {
+            "type": "foryou",
+            "label": "For You · early personalization",
+            "title": "Personalized feed will grow as you follow topics and companies",
+            "reason": "Based on your activity and follows",
+            "source": "Invention Index 8",
+            "freshness": {"updated_at": now.isoformat(), "relative": "just now"},
+            "href": "/themes",
+        }
+    )
 
     # ── Persona-aware ranking ──────────────────────────────────
     weights = get_weights(persona)
@@ -161,7 +182,7 @@ async def assemble_briefing(
 
 
 def _trend_reason(trend, companies: list[str]) -> str:
-    top = (getattr(trend, 'top_assignees', None) or [])[:2]
+    top = (getattr(trend, "top_assignees", None) or [])[:2]
     if top and any(c in a.lower() for a in top for c in companies):
         return f"Trending in your followed companies: {', '.join(top[:2])}"
     if top:

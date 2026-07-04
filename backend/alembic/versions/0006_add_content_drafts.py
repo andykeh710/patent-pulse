@@ -7,6 +7,7 @@ Create Date: 2026-05-22
 Adds content_drafts table for user-facing generated content (LinkedIn posts, etc.).
 user_id is a plain string (no FK) matching the watchlist_items convention.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

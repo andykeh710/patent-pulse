@@ -4,6 +4,7 @@ RSS news ingestion + news-patent linking task.
 Runs every 15 minutes. Fetches from curated RSS feed list,
 embeds headlines, links to similar patents via pgvector.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -58,7 +59,9 @@ async def _ingest_news_async() -> dict:
                     continue
 
                 root = ElementTree.fromstring(resp.text)
-                items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
+                items = root.findall(".//item") or root.findall(
+                    ".//{http://www.w3.org/2005/Atom}entry"
+                )
 
                 for item in items[:10]:  # max 10 per feed
                     headline = _text(item, "title")
@@ -71,9 +74,12 @@ async def _ingest_news_async() -> dict:
                     # Check for duplicates by URL
                     async with async_session_maker() as session:
                         from sqlalchemy import select
-                        existing = (await session.execute(
-                            select(NewsItem).where(NewsItem.source_url == link)
-                        )).scalar_one_or_none()
+
+                        existing = (
+                            await session.execute(
+                                select(NewsItem).where(NewsItem.source_url == link)
+                            )
+                        ).scalar_one_or_none()
 
                         if existing:
                             stats["items_skipped"] += 1
@@ -135,11 +141,13 @@ async def _link_to_patents(session, news: NewsItem) -> None:
     )
 
     for row in rows.all():
-        session.add(NewsPatentLink(
-            news_id=news.id,
-            patent_id=row[0],
-            similarity=round(float(row[1]), 4),
-        ))
+        session.add(
+            NewsPatentLink(
+                news_id=news.id,
+                patent_id=row[0],
+                similarity=round(float(row[1]), 4),
+            )
+        )
 
 
 def _text(element, tag: str) -> str:
@@ -161,6 +169,7 @@ def _parse_date(element) -> datetime | None:
     for fmt in ["%a, %d %b %Y %H:%M:%S %z", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S.%f%z"]:
         try:
             from datetime import datetime as dt
+
             return dt.strptime(raw.strip(), fmt)
         except ValueError:
             continue

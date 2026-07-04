@@ -1,4 +1,5 @@
 """Tests for content generation API endpoints."""
+
 from uuid import UUID, uuid4
 
 import pytest
@@ -53,12 +54,16 @@ async def test_generate_linkedin_post_success(client, db_session):
     }
 
     from unittest.mock import AsyncMock, patch
+
     with patch("app.api.v1.content.generate_linkedin_post", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = (fake_data, artifact_id)
-        response = await client.post("/api/v1/content/generate-linkedin", json={
-            "patent_id": str(patent.id),
-            "tone": "analytical",
-        })
+        response = await client.post(
+            "/api/v1/content/generate-linkedin",
+            json={
+                "patent_id": str(patent.id),
+                "tone": "analytical",
+            },
+        )
 
     assert response.status_code == 200
     body = response.json()
@@ -76,9 +81,12 @@ async def test_generate_linkedin_post_success(client, db_session):
 async def test_generate_linkedin_post_patent_not_found(client, db_session):
     """POST with unknown patent_id returns 404."""
     fake_id = str(uuid4())
-    response = await client.post("/api/v1/content/generate-linkedin", json={
-        "patent_id": fake_id,
-    })
+    response = await client.post(
+        "/api/v1/content/generate-linkedin",
+        json={
+            "patent_id": fake_id,
+        },
+    )
     assert response.status_code == 404
 
 
@@ -98,9 +106,12 @@ async def test_generate_linkedin_post_no_title_or_abstract(client, db_session):
     db_session.add(patent)
     await db_session.commit()
 
-    response = await client.post("/api/v1/content/generate-linkedin", json={
-        "patent_id": str(patent.id),
-    })
+    response = await client.post(
+        "/api/v1/content/generate-linkedin",
+        json={
+            "patent_id": str(patent.id),
+        },
+    )
     assert response.status_code == 400
     assert "title or abstract" in response.json()["detail"].lower()
 
@@ -131,11 +142,15 @@ async def test_generate_linkedin_post_creates_draft_row(client, db_session):
     }
 
     from unittest.mock import AsyncMock, patch
+
     with patch("app.api.v1.content.generate_linkedin_post", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = (fake_data, artifact_id)
-        await client.post("/api/v1/content/generate-linkedin", json={
-            "patent_id": str(patent.id),
-        })
+        await client.post(
+            "/api/v1/content/generate-linkedin",
+            json={
+                "patent_id": str(patent.id),
+            },
+        )
 
     result = await db_session.execute(
         select(ContentDraft).where(ContentDraft.source_id == patent.id)
@@ -167,10 +182,21 @@ async def test_generate_linkedin_post_updates_existing_draft(client, db_session)
     artifact_id_1 = await _make_artifact(db_session)
     artifact_id_2 = await _make_artifact(db_session)
 
-    fake_data_1 = {"post_markdown": "First generation.", "hook": "Hook 1", "tone": "analytical", "caveats": []}
-    fake_data_2 = {"post_markdown": "Second generation.", "hook": "Hook 2", "tone": "curiosity", "caveats": []}
+    fake_data_1 = {
+        "post_markdown": "First generation.",
+        "hook": "Hook 1",
+        "tone": "analytical",
+        "caveats": [],
+    }
+    fake_data_2 = {
+        "post_markdown": "Second generation.",
+        "hook": "Hook 2",
+        "tone": "curiosity",
+        "caveats": [],
+    }
 
     from unittest.mock import AsyncMock, patch
+
     with patch("app.api.v1.content.generate_linkedin_post", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = (fake_data_1, artifact_id_1)
         await client.post("/api/v1/content/generate-linkedin", json={"patent_id": str(patent.id)})
@@ -206,9 +232,15 @@ async def test_get_drafts_returns_existing(client, db_session):
 
     artifact_id = await _make_artifact(db_session)
 
-    fake_data = {"post_markdown": "GET endpoint test.", "hook": "GET hook", "tone": "news", "caveats": []}
+    fake_data = {
+        "post_markdown": "GET endpoint test.",
+        "hook": "GET hook",
+        "tone": "news",
+        "caveats": [],
+    }
 
     from unittest.mock import AsyncMock, patch
+
     with patch("app.api.v1.content.generate_linkedin_post", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = (fake_data, artifact_id)
         await client.post("/api/v1/content/generate-linkedin", json={"patent_id": str(patent.id)})

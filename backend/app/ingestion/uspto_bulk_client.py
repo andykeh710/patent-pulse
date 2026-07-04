@@ -22,11 +22,10 @@ the standard patent data dictionary format used by USPTONormalizer.
 """
 
 import logging
-import re
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import date
 from io import BytesIO
 from typing import Any
 
@@ -161,7 +160,9 @@ class USPTOBulkClient:
         if root is None:
             return
 
-        for patent in root.iterfind(".//us:PatentGrant", NS) or root.iterfind(f".//{_ns('pat:PatentGrant')}"):
+        for patent in root.iterfind(".//us:PatentGrant", NS) or root.iterfind(
+            f".//{_ns('pat:PatentGrant')}"
+        ):
             if patent is None:
                 for patent in root.iterfind(".//PatentGrant"):
                     if patent is not None:
@@ -176,7 +177,9 @@ class USPTOBulkClient:
         if root is None:
             return
 
-        for app in root.iterfind(".//us:PatentApplication") or root.iterfind(f".//{_ns('pat:PatentApplication')}"):
+        for app in root.iterfind(".//us:PatentApplication") or root.iterfind(
+            f".//{_ns('pat:PatentApplication')}"
+        ):
             if app is None:
                 for app in root.iterfind(".//PatentApplication"):
                     if app is not None:
@@ -207,23 +210,39 @@ class USPTOBulkClient:
 
     def _extract_patent_data(self, elem: ET.Element, kind_code: str) -> dict[str, Any]:
         """Extract patent fields from XML element."""
-        pub_num = self._text(elem, "us:PatentNumber") or self._text(elem, "pat:PatentNumber") or self._text(elem, "PatentNumber") or ""
-        title = self._text(elem, "us:InventionTitle") or self._text(elem, "pat:InventionTitle") or self._text(elem, "InventionTitle") or ""
+        pub_num = (
+            self._text(elem, "us:PatentNumber")
+            or self._text(elem, "pat:PatentNumber")
+            or self._text(elem, "PatentNumber")
+            or ""
+        )
+        title = (
+            self._text(elem, "us:InventionTitle")
+            or self._text(elem, "pat:InventionTitle")
+            or self._text(elem, "InventionTitle")
+            or ""
+        )
 
         return {
             "patent_number": pub_num,
             "publication_number": pub_num,
-            "application_number": self._text(elem, "us:ApplicationNumber") or self._text(elem, "ApplicationNumber"),
+            "application_number": self._text(elem, "us:ApplicationNumber")
+            or self._text(elem, "ApplicationNumber"),
             "kind_code": kind_code,
             "filing_date": self._text(elem, "us:FilingDate") or self._text(elem, "FilingDate"),
             "issue_date": self._text(elem, "us:GrantDate") or self._text(elem, "GrantDate") or None,
-            "publication_date": self._text(elem, "us:PublicationDate") or self._text(elem, "PublicationDate"),
+            "publication_date": self._text(elem, "us:PublicationDate")
+            or self._text(elem, "PublicationDate"),
             "invention_title": title,
             "abstract_text": self._text(elem, "us:Abstract") or self._text(elem, "Abstract"),
-            "assignees": self._extract_parties(elem, "us:Assignee") or self._extract_parties(elem, "Assignee"),
-            "inventors": self._extract_parties(elem, "us:Inventor") or self._extract_parties(elem, "Inventor"),
-            "cpc_codes": self._extract_classifications(elem, "us:CPC") or self._extract_classifications(elem, "CPC"),
-            "ipc_codes": self._extract_classifications(elem, "us:IPC") or self._extract_classifications(elem, "IPC"),
+            "assignees": self._extract_parties(elem, "us:Assignee")
+            or self._extract_parties(elem, "Assignee"),
+            "inventors": self._extract_parties(elem, "us:Inventor")
+            or self._extract_parties(elem, "Inventor"),
+            "cpc_codes": self._extract_classifications(elem, "us:CPC")
+            or self._extract_classifications(elem, "CPC"),
+            "ipc_codes": self._extract_classifications(elem, "us:IPC")
+            or self._extract_classifications(elem, "IPC"),
         }
 
     def _text(self, elem: ET.Element, tag: str) -> str | None:
@@ -243,7 +262,12 @@ class USPTOBulkClient:
         """Extract assignee/inventor names."""
         parties = []
         for child in elem.iterfind(_ns(tag)):
-            name = self._text(child, "us:PartyName") or self._text(child, "PartyName") or self._text(child, "us:Name") or self._text(child, "Name")
+            name = (
+                self._text(child, "us:PartyName")
+                or self._text(child, "PartyName")
+                or self._text(child, "us:Name")
+                or self._text(child, "Name")
+            )
             if name:
                 field = "assignee_name" if "assignee" in tag.lower() else "inventor_name"
                 parties.append({field: name})

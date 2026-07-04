@@ -11,6 +11,7 @@ Configuration via env vars:
   BACKUP_S3_SECRET_KEY — secret key
   BACKUP_RETENTION_DAYS — keep last N dailies (default 30)
 """
+
 from __future__ import annotations
 
 import gzip
@@ -47,9 +48,12 @@ def backup_database_daily() -> dict:
         dump = subprocess.run(
             [
                 "pg_dump",
-                "-h", db_host,
-                "-U", "patent",
-                "-d", "patent_pulse",
+                "-h",
+                db_host,
+                "-U",
+                "patent",
+                "-d",
+                "patent_pulse",
                 "--no-owner",
                 "--no-acl",
             ],
@@ -72,6 +76,7 @@ def backup_database_daily() -> dict:
     if BACKUP_S3_ENDPOINT and BACKUP_S3_BUCKET:
         try:
             import boto3
+
             s3 = boto3.client(
                 "s3",
                 endpoint_url=BACKUP_S3_ENDPOINT,

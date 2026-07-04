@@ -1,5 +1,5 @@
 """Tests for open/click tracking via Resend webhook (Phase 5 PR 1)."""
-import json
+
 from datetime import datetime, timezone
 
 import pytest
@@ -15,6 +15,7 @@ SECRET = "test-secret-key-for-tests"
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
 
 
@@ -45,9 +46,7 @@ async def test_webhook_open_updates_delivery(client, db_session):
     assert r.status_code == 200
 
     # Re-fetch
-    result = await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.id == delivery.id)
-    )
+    result = await db_session.execute(select(EmailDelivery).where(EmailDelivery.id == delivery.id))
     updated = result.scalar_one()
     assert updated.email_opened_at is not None
     assert updated.webhook_event == "email.opened"
@@ -68,9 +67,7 @@ async def test_webhook_click_updates_delivery(client, db_session):
     r = await client.post("/api/v1/webhooks/resend", json=body)
     assert r.status_code == 200
 
-    result = await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.id == delivery.id)
-    )
+    result = await db_session.execute(select(EmailDelivery).where(EmailDelivery.id == delivery.id))
     updated = result.scalar_one()
     assert updated.email_clicked_at is not None
     assert updated.click_url == "https://inventionindex8.com/pricing"
@@ -93,9 +90,7 @@ async def test_webhook_open_only_first_time(client, db_session):
     r = await client.post("/api/v1/webhooks/resend", json=body)
     assert r.status_code == 200
 
-    result = await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.id == delivery.id)
-    )
+    result = await db_session.execute(select(EmailDelivery).where(EmailDelivery.id == delivery.id))
     updated = result.scalar_one()
     # Should still be the first time, not overwritten
     assert updated.email_opened_at == first_time
@@ -117,9 +112,7 @@ async def test_webhook_click_truncates_url(client, db_session):
     r = await client.post("/api/v1/webhooks/resend", json=body)
     assert r.status_code == 200
 
-    result = await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.id == delivery.id)
-    )
+    result = await db_session.execute(select(EmailDelivery).where(EmailDelivery.id == delivery.id))
     updated = result.scalar_one()
     assert len(updated.click_url) <= 512
 

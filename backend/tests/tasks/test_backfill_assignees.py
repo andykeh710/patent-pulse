@@ -50,17 +50,26 @@ async def _ensure_normalize_function(db_session) -> None:
 @pytest.mark.asyncio(loop_scope="function")
 async def test_backfill_populates_empty_assignees_table(db_session):
     """Fresh assignees table gets populated from patent_publications.assignees."""
-    db_session.add_all([
-        PatentPublication(
-            doc_id="USPTO:AB001", publication_number="AB001", office="USPTO",
-            title="Patent One", assignees=["Acme Corporation"], cpc=["G06F"],
-        ),
-        PatentPublication(
-            doc_id="USPTO:AB002", publication_number="AB002", office="USPTO",
-            title="Patent Two", assignees=["Beta LLC", "Acme Corporation"],
-            cpc=["H04L"],
-        ),
-    ])
+    db_session.add_all(
+        [
+            PatentPublication(
+                doc_id="USPTO:AB001",
+                publication_number="AB001",
+                office="USPTO",
+                title="Patent One",
+                assignees=["Acme Corporation"],
+                cpc=["G06F"],
+            ),
+            PatentPublication(
+                doc_id="USPTO:AB002",
+                publication_number="AB002",
+                office="USPTO",
+                title="Patent Two",
+                assignees=["Beta LLC", "Acme Corporation"],
+                cpc=["H04L"],
+            ),
+        ]
+    )
     await db_session.commit()
 
     from app.tasks.backfill_assignees import backfill_assignees_for_session
@@ -78,8 +87,12 @@ async def test_backfill_is_idempotent(db_session):
     """Running backfill twice produces same count, second run inserts nothing."""
     db_session.add(
         PatentPublication(
-            doc_id="USPTO:AB010", publication_number="AB010", office="USPTO",
-            title="Solo Patent", assignees=["One Corp"], cpc=["G06F"],
+            doc_id="USPTO:AB010",
+            publication_number="AB010",
+            office="USPTO",
+            title="Solo Patent",
+            assignees=["One Corp"],
+            cpc=["G06F"],
         )
     )
     await db_session.commit()
@@ -102,8 +115,12 @@ async def test_backfill_updates_patent_count_on_new_patents(db_session):
     """When new patents are added, re-running updates patent_count correctly."""
     db_session.add(
         PatentPublication(
-            doc_id="USPTO:AB020", publication_number="AB020", office="USPTO",
-            title="First", assignees=["Dual Corp"], cpc=["G06F"],
+            doc_id="USPTO:AB020",
+            publication_number="AB020",
+            office="USPTO",
+            title="First",
+            assignees=["Dual Corp"],
+            cpc=["G06F"],
         )
     )
     await db_session.commit()
@@ -114,16 +131,26 @@ async def test_backfill_updates_patent_count_on_new_patents(db_session):
     await backfill_assignees_for_session(db_session)
 
     # Add more patents for the same normalized assignee
-    db_session.add_all([
-        PatentPublication(
-            doc_id="USPTO:AB021", publication_number="AB021", office="USPTO",
-            title="Second", assignees=["DUAL CORP"], cpc=["H04L"],
-        ),
-        PatentPublication(
-            doc_id="USPTO:AB022", publication_number="AB022", office="USPTO",
-            title="Third", assignees=["Dual Corp."], cpc=["A61B"],
-        ),
-    ])
+    db_session.add_all(
+        [
+            PatentPublication(
+                doc_id="USPTO:AB021",
+                publication_number="AB021",
+                office="USPTO",
+                title="Second",
+                assignees=["DUAL CORP"],
+                cpc=["H04L"],
+            ),
+            PatentPublication(
+                doc_id="USPTO:AB022",
+                publication_number="AB022",
+                office="USPTO",
+                title="Third",
+                assignees=["Dual Corp."],
+                cpc=["A61B"],
+            ),
+        ]
+    )
     await db_session.commit()
 
     # Re-run — should update patent_count from 1 → 3
@@ -134,9 +161,8 @@ async def test_backfill_updates_patent_count_on_new_patents(db_session):
 
     # Verify patent_count in the table
     from sqlalchemy import text
-    result = await db_session.execute(
-        text("SELECT normalized_name, patent_count FROM assignees")
-    )
+
+    result = await db_session.execute(text("SELECT normalized_name, patent_count FROM assignees"))
     rows = result.fetchall()
     assert len(rows) == 1
     # normalize_assignee collapses "Dual Corp", "DUAL CORP", "Dual Corp."
@@ -147,22 +173,34 @@ async def test_backfill_updates_patent_count_on_new_patents(db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_backfill_handles_variant_assignee_spellings(db_session):
     """Different case/suffix variants of same company normalize together."""
-    db_session.add_all([
-        PatentPublication(
-            doc_id="USPTO:AB030", publication_number="AB030", office="USPTO",
-            title="A", assignees=["International Business Machines Corp"],
-            cpc=["G06F"],
-        ),
-        PatentPublication(
-            doc_id="USPTO:AB031", publication_number="AB031", office="USPTO",
-            title="B", assignees=["IBM Corporation"], cpc=["H04L"],
-        ),
-        PatentPublication(
-            doc_id="USPTO:AB032", publication_number="AB032", office="USPTO",
-            title="C", assignees=["INTL BUSINESS MACHINES INC"],
-            cpc=["A61B"],
-        ),
-    ])
+    db_session.add_all(
+        [
+            PatentPublication(
+                doc_id="USPTO:AB030",
+                publication_number="AB030",
+                office="USPTO",
+                title="A",
+                assignees=["International Business Machines Corp"],
+                cpc=["G06F"],
+            ),
+            PatentPublication(
+                doc_id="USPTO:AB031",
+                publication_number="AB031",
+                office="USPTO",
+                title="B",
+                assignees=["IBM Corporation"],
+                cpc=["H04L"],
+            ),
+            PatentPublication(
+                doc_id="USPTO:AB032",
+                publication_number="AB032",
+                office="USPTO",
+                title="C",
+                assignees=["INTL BUSINESS MACHINES INC"],
+                cpc=["A61B"],
+            ),
+        ]
+    )
     await db_session.commit()
 
     from app.tasks.backfill_assignees import backfill_assignees_for_session
@@ -195,7 +233,7 @@ async def test_backfill_normalizes_production_names(db_session):
     for name in names:
         db_session.add(
             PatentPublication(
-                doc_id=f"USPTO:TEST_NORM_{name[:15].replace(' ','_')}",
+                doc_id=f"USPTO:TEST_NORM_{name[:15].replace(' ', '_')}",
                 publication_number=f"TEST_{hash(name) % 1000000:06d}",
                 office="USPTO",
                 title="Test",
@@ -211,8 +249,9 @@ async def test_backfill_normalizes_production_names(db_session):
     assert stats["total_processed"] >= 1
 
     # Verify normalization populated rows (entity_type stays NULL)
-    from app.core.ai_models import Assignee
     from sqlalchemy import select
+
+    from app.core.ai_models import Assignee
 
     result = await db_session.execute(select(Assignee))
     rows = result.scalars().all()

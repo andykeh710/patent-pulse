@@ -7,6 +7,7 @@ as an AIArtifact. Cache-first via :mod:`app.ai.llm_client`.
 Output schema is enforced by the validator below. The prompt lives in
 ``backend/app/ai/prompts/opportunity_narrative_v1.md`` (single source of truth).
 """
+
 from __future__ import annotations
 
 import json
@@ -89,15 +90,20 @@ def build_payload(patent: PatentPublication) -> dict[str, Any]:
         "cpc_codes": ", ".join(patent.cpc or []) or "(no classifications)",
         "legal_status": patent.legal_status or "(unknown)",
         "legal_status_confidence": patent.legal_status_confidence or "unknown",
-        "estimated_expiry": str(patent.estimated_expiry_date) if patent.estimated_expiry_date else "(not estimated)",
-        "opportunity_score": str(patent.opportunity_score) if patent.opportunity_score is not None else "(not scored)",
+        "estimated_expiry": str(patent.estimated_expiry_date)
+        if patent.estimated_expiry_date
+        else "(not estimated)",
+        "opportunity_score": str(patent.opportunity_score)
+        if patent.opportunity_score is not None
+        else "(not scored)",
         "opportunity_breakdown": _format_opportunity_breakdown(breakdown),
         "tags": _format_tags(tags),
         "risk_flags": ", ".join(tags.get("risk_flags", [])) or "(none)",
         "time_horizon": tags.get("time_horizon", "unknown"),
         "industries": ", ".join(tags.get("industries", [])) or "(none)",
         "technology_method": ", ".join(tags.get("technology_method", [])) or "(none)",
-        "novel_application_categories": ", ".join(tags.get("novel_application_categories", [])) or "(none)",
+        "novel_application_categories": ", ".join(tags.get("novel_application_categories", []))
+        or "(none)",
         "opportunity_narrative_context": "",  # reserved for future why_now/trend context
     }
 
@@ -142,7 +148,9 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
             data["risks"] = []
             missing.discard("risks")
         if missing:
-            raise SummarizationError(f"Opportunity Narrative output missing required fields: {missing}")
+            raise SummarizationError(
+                f"Opportunity Narrative output missing required fields: {missing}"
+            )
 
     # opportunity_type
     ot = (data.get("opportunity_type") or "research_signal").strip().lower()

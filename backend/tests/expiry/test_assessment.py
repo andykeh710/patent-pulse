@@ -1,4 +1,5 @@
 """Tests for expiry assessment engine and backfill task."""
+
 from datetime import date, timedelta
 from uuid import uuid4
 
@@ -202,9 +203,7 @@ async def test_backfill_creates_assessments(db_session):
 
     # Verify the assessment row exists.
     result = await db_session.execute(
-        select(ExpiryAssessment).where(
-            ExpiryAssessment.patent_publication_id == patent.id
-        )
+        select(ExpiryAssessment).where(ExpiryAssessment.patent_publication_id == patent.id)
     )
     assessment = result.scalar_one_or_none()
     assert assessment is not None
@@ -244,9 +243,7 @@ async def test_backfill_is_idempotent(db_session):
 
     # Exactly one row per patent.
     result = await db_session.execute(
-        select(ExpiryAssessment).where(
-            ExpiryAssessment.patent_publication_id == patent.id
-        )
+        select(ExpiryAssessment).where(ExpiryAssessment.patent_publication_id == patent.id)
     )
     rows = result.scalars().all()
     assert len(rows) == 1
@@ -374,9 +371,7 @@ async def test_backfill_includes_opportunity_score(db_session):
     assert stats["created"] >= 1
 
     result = await db_session.execute(
-        select(ExpiryAssessment).where(
-            ExpiryAssessment.patent_publication_id == patent.id
-        )
+        select(ExpiryAssessment).where(ExpiryAssessment.patent_publication_id == patent.id)
     )
     assessment = result.scalar_one()
     assert assessment.expiry_opportunity_score is not None

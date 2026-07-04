@@ -11,8 +11,8 @@ import re
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, or_, text, bindparam
 from sqlalchemy import Text as TextType
+from sqlalchemy import bindparam, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
@@ -125,9 +125,7 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
         for keyword in theme.assignee_keywords:
             # assignees is JSONB, cast to text for ILIKE search
             conditions.append(
-                func.cast(PatentPublication.assignees, TextType).ilike(
-                    f"%{keyword}%"
-                )
+                func.cast(PatentPublication.assignees, TextType).ilike(f"%{keyword}%")
             )
 
     if theme.title_keywords:
@@ -137,9 +135,7 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
     if theme.keywords:
         for keyword in theme.keywords:
             conditions.append(PatentPublication.title.ilike(f"%{keyword}%"))
-            conditions.append(
-                func.coalesce(PatentPublication.abstract, "").ilike(f"%{keyword}%")
-            )
+            conditions.append(func.coalesce(PatentPublication.abstract, "").ilike(f"%{keyword}%"))
 
     if not conditions:
         return stats
@@ -180,7 +176,9 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
             stats["matched"] += 1
 
             # Sprint 6: enqueue instant alerts for this match.
-            cnt = await _enqueue_match_alerts(session, theme.id, patent.id, patent.opportunity_score or 0)
+            cnt = await _enqueue_match_alerts(
+                session, theme.id, patent.id, patent.opportunity_score or 0
+            )
             stats["alerts_enqueued"] += cnt
         else:
             stats["skipped"] += 1

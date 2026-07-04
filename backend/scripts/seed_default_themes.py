@@ -2,6 +2,7 @@
 Seed 3 default themes into the database so the subscribe flow can be
 exercised in dev / test environments. Idempotent: skips if themes exist.
 """
+
 import asyncio
 import logging
 import sys
@@ -54,9 +55,7 @@ DEFAULT_THEMES = [
 async def seed_default_themes() -> int:
     """Insert default themes. Returns number created. Skips if themes exist."""
     async with async_session_maker() as session:
-        existing = await session.execute(select(text("1")).where(
-            select(Theme.id).exists()
-        ))
+        existing = await session.execute(select(text("1")).where(select(Theme.id).exists()))
         if existing.scalar():
             logger.info("Themes already exist — skipping seed.")
             return 0

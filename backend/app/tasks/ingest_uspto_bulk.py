@@ -6,13 +6,11 @@ Records every source attempt in source_fetches for observability.
 """
 
 import asyncio
-import logging
 from datetime import date, datetime, timedelta, timezone
 
 from celery.utils.log import get_task_logger
 
 from app.ai.scorer import PatentScorer
-from app.config import settings
 from app.database import async_session_maker
 from app.ingestion.dedup import upsert_patent
 from app.ingestion.normalizer import USPTONormalizer
@@ -112,7 +110,9 @@ def _ingest_week(kind: str, target_date: date) -> dict:
         else:
             files = client.get_application_files(target_date, target_date)
 
-        normalize_fn = normalizer.normalize_grant if kind == "grant" else normalizer.normalize_application
+        normalize_fn = (
+            normalizer.normalize_grant if kind == "grant" else normalizer.normalize_application
+        )
 
         for file_info in files:
             for raw in client.download_and_parse(file_info):
@@ -130,6 +130,7 @@ def _ingest_week(kind: str, target_date: date) -> dict:
                     if r["created"] > 0:
                         # Schedule figure fetch for newly created patents
                         from app.tasks.backfill_figures import fetch_patent_figures
+
                         fetch_patent_figures.delay(batch[0]["publication_number"])
                 except Exception as exc:
                     stats["failed"] += 1
@@ -142,8 +143,10 @@ def _ingest_week(kind: str, target_date: date) -> dict:
     # ── Record source_fetches rows ──
     asyncio.run(_record_source_fetches(kind, target_date, sources, stats))
 
-    logger.info(f"{kind} week {target_date}: {stats['source_status']} "
-                f"({stats['created']} new, {stats['fetched']} fetched)")
+    logger.info(
+        f"{kind} week {target_date}: {stats['source_status']} "
+        f"({stats['created']} new, {stats['fetched']} fetched)"
+    )
     return stats
 
 
@@ -169,8 +172,11 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
         "error_message": None,
     }
     try:
-        files = odp_client.get_grant_files(target_date, target_date) if kind == "grant" \
-                else odp_client.get_application_files(target_date, target_date)
+        files = (
+            odp_client.get_grant_files(target_date, target_date)
+            if kind == "grant"
+            else odp_client.get_application_files(target_date, target_date)
+        )
         if files:
             total_size = sum(f.get("fileSize", 0) for f in files)
             odp_result["status"] = "success"
@@ -186,7 +192,10 @@ def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> d
 
 
 async def _record_source_fetches(
-    kind: str, target_date: date, sources: dict, stats: dict,
+    kind: str,
+    target_date: date,
+    sources: dict,
+    stats: dict,
 ) -> None:
     """Write source_fetches rows for every attempted source."""
     from sqlalchemy import text
@@ -194,7 +203,8 @@ async def _record_source_fetches(
     now = datetime.now(timezone.utc)
     async with async_session_maker() as session:
         for provider, source in sources.items():
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO source_fetches (
                     provider, office, target_type, target_id,
                     status, http_status, records_found,
@@ -204,19 +214,21 @@ async def _record_source_fetches(
                     :status, :http_status, :found,
                     :error, :source_url, :started, :completed
                 )
-            """), {
-                "provider": provider,
-                "office": "USPTO",
-                "target_type": f"{kind}_week",
-                "target_id": target_date.isoformat(),
-                "status": source["status"],
-                "http_status": source.get("http_status"),
-                "found": source.get("records_found", 0),
-                "error": (source.get("error_message") or "")[:500],
-                "source_url": (source.get("source_url") or "")[:1024],
-                "started": now,
-                "completed": now,
-            })
+            """),
+                {
+                    "provider": provider,
+                    "office": "USPTO",
+                    "target_type": f"{kind}_week",
+                    "target_id": target_date.isoformat(),
+                    "status": source["status"],
+                    "http_status": source.get("http_status"),
+                    "found": source.get("records_found", 0),
+                    "error": (source.get("error_message") or "")[:500],
+                    "source_url": (source.get("source_url") or "")[:1024],
+                    "started": now,
+                    "completed": now,
+                },
+            )
         await session.commit()
 
 

@@ -23,11 +23,18 @@ def _cookie(user_id="local-user"):
     import jwt
 
     from app.config import settings
-    return {"auth_session": jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc),
-         "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        settings.auth_secret_key, algorithm="HS256",
-    )}
+
+    return {
+        "auth_session": jwt.encode(
+            {
+                "sub": user_id,
+                "iat": datetime.now(timezone.utc),
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            },
+            settings.auth_secret_key,
+            algorithm="HS256",
+        )
+    }
 
 
 # ── init_sentry tests ────────────────────────────────────────────────
@@ -98,6 +105,7 @@ async def test_debug_sentry_non_admin_gets_403(client: AsyncClient, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = False
     await db_session.commit()
@@ -115,6 +123,7 @@ async def test_debug_sentry_admin_raises_runtime_error(client: AsyncClient, db_s
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()

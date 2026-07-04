@@ -1,4 +1,5 @@
 """Celery tasks for the rules-based opportunity scorer."""
+
 from __future__ import annotations
 
 import asyncio
@@ -37,9 +38,7 @@ async def _score_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
     async with async_session_maker() as session:
         patent = (
             await session.execute(
-                select(PatentPublication).where(
-                    PatentPublication.id == UUID(patent_id)
-                )
+                select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
             )
         ).scalar_one_or_none()
         if not patent:

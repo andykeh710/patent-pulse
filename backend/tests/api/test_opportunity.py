@@ -1,4 +1,5 @@
 """Tests for /api/v1/opportunity list + filters + tab counts."""
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -151,9 +152,7 @@ async def test_list_expired_tab_filters_to_past_expiry(
 
 
 @pytest.mark.asyncio
-async def test_list_legal_review_tab(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_legal_review_tab(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity", params={"tab": "legal_review"})
     data = r.json()
@@ -165,9 +164,7 @@ async def test_list_legal_review_tab(
 
 
 @pytest.mark.asyncio
-async def test_list_cross_industry_tab(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_cross_industry_tab(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity", params={"tab": "cross_industry"})
     data = r.json()
@@ -190,22 +187,16 @@ async def test_list_filter_by_opportunity_tag(
 
 
 @pytest.mark.asyncio
-async def test_list_filter_by_risk_flag(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_filter_by_risk_flag(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
-    r = await client.get(
-        "/api/v1/opportunity", params={"risk_flag": "needs_legal_review"}
-    )
+    r = await client.get("/api/v1/opportunity", params={"risk_flag": "needs_legal_review"})
     data = r.json()
     assert data["total"] == 1
     assert data["items"][0]["doc_id"] == "USPTO:LEGAL"
 
 
 @pytest.mark.asyncio
-async def test_list_filter_by_min_score(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_filter_by_min_score(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity", params={"min_score": 70})
     data = r.json()
@@ -214,9 +205,7 @@ async def test_list_filter_by_min_score(
 
 
 @pytest.mark.asyncio
-async def test_list_sort_expiring_soon(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_sort_expiring_soon(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity", params={"sort": "expiring_soon"})
     data = r.json()
@@ -227,18 +216,14 @@ async def test_list_sort_expiring_soon(
 
 
 @pytest.mark.asyncio
-async def test_list_pagination(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_list_pagination(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity", params={"page_size": 2, "page": 1})
     data = r.json()
     assert data["total"] == 4
     assert data["page"] == 1
     assert len(data["items"]) == 2
-    r2 = await client.get(
-        "/api/v1/opportunity", params={"page_size": 2, "page": 2}
-    )
+    r2 = await client.get("/api/v1/opportunity", params={"page_size": 2, "page": 2})
     data2 = r2.json()
     assert len(data2["items"]) == 2
     # No overlap across pages.
@@ -253,9 +238,7 @@ async def test_list_pagination(
 
 
 @pytest.mark.asyncio
-async def test_tab_counts(
-    db_session: AsyncSession, client: AsyncClient
-) -> None:
+async def test_tab_counts(db_session: AsyncSession, client: AsyncClient) -> None:
     await _seed_opportunity_patents(db_session)
     r = await client.get("/api/v1/opportunity/tab-counts")
     assert r.status_code == 200

@@ -1,4 +1,5 @@
 """Phase 5 PR 3 — OG-image share cards + public sitemap."""
+
 from __future__ import annotations
 
 import io
@@ -6,9 +7,9 @@ import logging
 from datetime import datetime, timezone
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from fastapi.responses import Response
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 from app.config import settings
 from app.database import async_session_maker
@@ -23,16 +24,22 @@ router = APIRouter(tags=["share"])
 async def share_card_company(normalized_name: str) -> Response:
     """Generate a 1200x630 OG-image PNG for a company."""
     async with async_session_maker() as session:
-        row = (await session.execute(
-            text("""
+        row = (
+            (
+                await session.execute(
+                    text("""
                 SELECT assignee_val AS name, COUNT(*) AS patent_count
                 FROM patent_publications p
                 JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
                 WHERE lower(assignee_val) = lower(:name)
                 GROUP BY assignee_val
             """),
-            {"name": normalized_name},
-        )).mappings().first()
+                    {"name": normalized_name},
+                )
+            )
+            .mappings()
+            .first()
+        )
 
     display_name = normalized_name.replace("-", " ").title()
     count = row["patent_count"] if row else 0
@@ -41,22 +48,29 @@ async def share_card_company(normalized_name: str) -> Response:
         headline=f"{display_name}",
         subtext=f"{count:,} patents on Invention Index 8",
     )
-    return Response(content=img_bytes, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=3600"})
+    return Response(
+        content=img_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"}
+    )
 
 
 @router.get("/share/patent/{doc_id}.png")
 async def share_card_patent(doc_id: str) -> Response:
     """Generate a 1200x630 OG-image PNG for a patent."""
     async with async_session_maker() as session:
-        row = (await session.execute(
-            text("""
+        row = (
+            (
+                await session.execute(
+                    text("""
                 SELECT title, assignees
                 FROM patent_publications
                 WHERE doc_id = :doc_id
             """),
-            {"doc_id": doc_id},
-        )).mappings().first()
+                    {"doc_id": doc_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
 
     title = row["title"] if row and row["title"] else doc_id
     assignee = (row["assignees"] or ["Unknown"])[0] if row else ""
@@ -67,8 +81,9 @@ async def share_card_patent(doc_id: str) -> Response:
         headline=title,
         subtext=f"Assignee: {assignee}" if assignee else "Patent on Invention Index 8",
     )
-    return Response(content=img_bytes, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=3600"})
+    return Response(
+        content=img_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"}
+    )
 
 
 @router.get("/share/trend/{cpc_prefix}.png")
@@ -80,8 +95,9 @@ async def share_card_trend(cpc_prefix: str) -> Response:
         headline=f"Patent Trend: {display_area}",
         subtext="Filing activity on Invention Index 8",
     )
-    return Response(content=img_bytes, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=3600"})
+    return Response(
+        content=img_bytes, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"}
+    )
 
 
 def _generate_share_png(*, headline: str, subtext: str) -> bytes:
@@ -152,8 +168,10 @@ BASE_URL = settings.magic_link_base_url.rstrip("/")
 
 async def _company_slugs(limit: int = MAX_SITEMAP_ENTRIES) -> list[str]:
     async with async_session_maker() as session:
-        rows = (await session.execute(
-            text("""
+        rows = (
+            (
+                await session.execute(
+                    text("""
                 SELECT DISTINCT lower(regexp_replace(assignee_val, '[^a-zA-Z0-9]', '-', 'g')) AS slug
                 FROM patent_publications p
                 JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
@@ -162,36 +180,52 @@ async def _company_slugs(limit: int = MAX_SITEMAP_ENTRIES) -> list[str]:
                 ORDER BY COUNT(*) DESC
                 LIMIT :limit
             """),
-            {"limit": limit},
-        )).mappings().all()
+                    {"limit": limit},
+                )
+            )
+            .mappings()
+            .all()
+        )
     return [r["slug"] for r in rows if r["slug"]]
 
 
 async def _theme_slugs() -> list[str]:
     async with async_session_maker() as session:
-        rows = (await session.execute(
-            text("""
+        rows = (
+            (
+                await session.execute(
+                    text("""
                 SELECT regexp_replace(lower(name), '[^a-zA-Z0-9]+', '-', 'g') AS slug
                 FROM themes
                 WHERE is_active = true
                 ORDER BY name
             """)
-        )).mappings().all()
+                )
+            )
+            .mappings()
+            .all()
+        )
     return [r["slug"] for r in rows if r["slug"]]
 
 
 async def _top_patent_ids(limit: int = 5000) -> list[dict]:
     async with async_session_maker() as session:
-        rows = (await session.execute(
-            text("""
+        rows = (
+            (
+                await session.execute(
+                    text("""
                 SELECT id, doc_id
                 FROM patent_publications
                 WHERE opportunity_score IS NOT NULL
                 ORDER BY opportunity_score DESC
                 LIMIT :limit
             """),
-            {"limit": limit},
-        )).mappings().all()
+                    {"limit": limit},
+                )
+            )
+            .mappings()
+            .all()
+        )
     return [{"id": str(r["id"]), "doc_id": r["doc_id"]} for r in rows]
 
 
@@ -216,9 +250,14 @@ def _urlset_element(urls: list[dict]) -> Element:
 
 
 def _sitemap_response(urlset: Element) -> Response:
-    xml = b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(urlset, encoding="unicode").encode("utf-8")
-    return Response(content=xml, media_type="application/xml",
-                    headers={"Cache-Control": "public, max-age=86400"})
+    xml = b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(urlset, encoding="unicode").encode(
+        "utf-8"
+    )
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/sitemap.xml")
@@ -288,5 +327,6 @@ Disallow: /api/
 Disallow: /login
 Sitemap: {BASE_URL}/sitemap.xml
 """
-    return Response(content=txt, media_type="text/plain",
-                    headers={"Cache-Control": "public, max-age=86400"})
+    return Response(
+        content=txt, media_type="text/plain", headers={"Cache-Control": "public, max-age=86400"}
+    )

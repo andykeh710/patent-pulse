@@ -5,6 +5,7 @@ Produces a data-backed narrative for a trend (surface + key) as an
 AIArtifact. Cache-first via :mod:`app.ai.llm_client`. Mirrors
 :mod:`app.ai.why_now`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -133,9 +134,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
         ]
         missing.discard("caveats")
     if missing:
-        raise SummarizationError(
-            f"Trend narrative output missing required fields: {missing}"
-        )
+        raise SummarizationError(f"Trend narrative output missing required fields: {missing}")
 
     # summary: string, stripped
     if not isinstance(data.get("summary"), str):
@@ -196,9 +195,7 @@ async def generate_trend_narrative(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:
-        raise SummarizationError(
-            f"AI API error during trend narrative generation: {e}"
-        ) from e
+        raise SummarizationError(f"AI API error during trend narrative generation: {e}") from e
 
     if response.content_json is None:
         raise SummarizationError(
@@ -209,6 +206,7 @@ async def generate_trend_narrative(
     # Update the artifact with validated data so GET returns clean schema.
     # Use explicit UPDATE since in-place mutation of JSONB doesn't always flush.
     from sqlalchemy import update
+
     await session.execute(
         update(AIArtifact)
         .where(AIArtifact.id == response.artifact_id)

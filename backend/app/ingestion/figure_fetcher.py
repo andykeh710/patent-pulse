@@ -71,6 +71,7 @@ async def fetch_and_store_figures(
     # 1. USPTO (primary — 99% of corpus is US)
     try:
         from app.ingestion.uspto_figure_fetcher import fetch_uspto_figures
+
         _rate_limit("uspto_odp")
         images = fetch_uspto_figures(pub_num)
         if images:
@@ -170,9 +171,7 @@ async def fetch_and_store_figures(
     return stats
 
 
-async def _update_figures_status(
-    session: AsyncSession, patent_id: str, status: str
-) -> None:
+async def _update_figures_status(session: AsyncSession, patent_id: str, status: str) -> None:
     await session.execute(
         update(PatentPublication)
         .where(PatentPublication.id == uuid.UUID(patent_id))

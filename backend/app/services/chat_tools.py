@@ -231,18 +231,23 @@ async def _search_patents(
         assignees = row[3] or []
         similarity = float(row[5]) if row[5] is not None else 0.0
 
-        results.append({
-            "doc_id": row[0],
-            "title": row[1] or "Untitled",
-            "abstract_excerpt": abstract_excerpt,
-            "similarity": round(similarity, 3),
-            "assignees": assignees[:3],
-            "publication_date": str(row[4]) if row[4] else "unknown",
-        })
+        results.append(
+            {
+                "doc_id": row[0],
+                "title": row[1] or "Untitled",
+                "abstract_excerpt": abstract_excerpt,
+                "similarity": round(similarity, 3),
+                "assignees": assignees[:3],
+                "publication_date": str(row[4]) if row[4] else "unknown",
+            }
+        )
 
     logger.info(
         "search_patents tool: q='%s' → %d results (limit=%d, min_sim=%.2f)",
-        query[:80], len(results), limit, min_similarity,
+        query[:80],
+        len(results),
+        limit,
+        min_similarity,
     )
     return {"results": results, "count": len(results)}
 
@@ -398,40 +403,47 @@ async def _compare_companies(
         if not name or name in seen:
             continue
         seen.add(name)
-        companies.append({
-            "company": name,
-            "total_patents": int(row[1]) if row[1] else 0,
-            "recent_patents_3y": int(row[2]) if row[2] else 0,
-            "avg_opportunity_score": float(row[3]) if row[3] is not None else 0.0,
-            "top_opportunity_score": float(row[4]) if row[4] is not None else 0.0,
-            "top_patent_id": row[5],
-            "top_patent_title": row[6] or "Untitled",
-        })
+        companies.append(
+            {
+                "company": name,
+                "total_patents": int(row[1]) if row[1] else 0,
+                "recent_patents_3y": int(row[2]) if row[2] else 0,
+                "avg_opportunity_score": float(row[3]) if row[3] is not None else 0.0,
+                "top_opportunity_score": float(row[4]) if row[4] is not None else 0.0,
+                "top_patent_id": row[5],
+                "top_patent_title": row[6] or "Untitled",
+            }
+        )
 
     # If any requested names weren't found, include them with zeros
     for name in names:
         if name not in seen:
-            companies.append({
-                "company": name,
-                "total_patents": 0,
-                "recent_patents_3y": 0,
-                "avg_opportunity_score": 0.0,
-                "top_opportunity_score": 0.0,
-                "top_patent_id": None,
-                "top_patent_title": None,
-            })
+            companies.append(
+                {
+                    "company": name,
+                    "total_patents": 0,
+                    "recent_patents_3y": 0,
+                    "avg_opportunity_score": 0.0,
+                    "top_opportunity_score": 0.0,
+                    "top_patent_id": None,
+                    "top_patent_title": None,
+                }
+            )
 
     logger.info(
         "compare_companies tool: %d names → %d matched",
-        len(names), len([c for c in companies if c["total_patents"] > 0]),
+        len(names),
+        len([c for c in companies if c["total_patents"] > 0]),
     )
     return {"companies": companies, "compared": len(names)}
 
 
 # ── Register handlers ──────────────────────────────────────────────
 
-TOOL_HANDLERS.update({
-    "search_patents": _search_patents,
-    "open_patent": _open_patent,
-    "compare_companies": _compare_companies,
-})
+TOOL_HANDLERS.update(
+    {
+        "search_patents": _search_patents,
+        "open_patent": _open_patent,
+        "compare_companies": _compare_companies,
+    }
+)

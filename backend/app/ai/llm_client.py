@@ -25,6 +25,7 @@ All LLM access in the codebase is expected to flow through
 ``app/ai/*`` and ``app/tasks/*`` is being phased out as modules are
 ported.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -114,13 +115,10 @@ def estimate_tokens(text: str) -> int:
     return int(math.ceil(len(text) / CHARS_PER_TOKEN))
 
 
-def estimate_cost_usd(
-    *, model: str, input_tokens: int, output_tokens: int
-) -> float:
+def estimate_cost_usd(*, model: str, input_tokens: int, output_tokens: int) -> float:
     in_rate, out_rate = _pricing_for_model(model)
     return round(
-        (input_tokens / 1_000_000) * in_rate
-        + (output_tokens / 1_000_000) * out_rate,
+        (input_tokens / 1_000_000) * in_rate + (output_tokens / 1_000_000) * out_rate,
         6,
     )
 
@@ -210,9 +208,7 @@ class LLMClient:
     def _get_anthropic(self) -> anthropic.Anthropic:
         if self._anthropic is None:
             if not self._api_key:
-                raise RuntimeError(
-                    "API key is not configured; cannot make live calls"
-                )
+                raise RuntimeError("API key is not configured; cannot make live calls")
             self._anthropic = anthropic.Anthropic(
                 api_key=self._api_key,
                 base_url=settings.anthropic_base_url,
@@ -288,9 +284,7 @@ class LLMClient:
             error_message=error,
         )
 
-    async def complete(
-        self, session: AsyncSession, request: LLMRequest
-    ) -> LLMResponse:
+    async def complete(self, session: AsyncSession, request: LLMRequest) -> LLMResponse:
         """Run an LLM call (or return cached artifact) and persist to DB."""
         spec = get_prompt(request.prompt_name, request.prompt_version)
         mode: LLMMode = request.mode or self._default_mode
@@ -336,7 +330,9 @@ class LLMClient:
         user_prompt = (
             request.rendered_user_prompt
             if request.rendered_user_prompt is not None
-            else _render_user_prompt(spec.user_template, request.input_payload, spec.schema_description)
+            else _render_user_prompt(
+                spec.user_template, request.input_payload, spec.schema_description
+            )
         )
         system_prompt = spec.system
         if request.extra_system:
@@ -353,10 +349,16 @@ class LLMClient:
                     max_tokens=request.max_tokens,
                 )
             except httpx.HTTPStatusError as e:
-                logger.error(f"DeepSeek API error for {request.artifact_type}: {e} {e.response.text[:500]}")
+                logger.error(
+                    f"DeepSeek API error for {request.artifact_type}: {e} {e.response.text[:500]}"
+                )
                 failed = self._make_failed_artifact(
-                    session=session, request=request, spec=spec,
-                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                    session=session,
+                    request=request,
+                    spec=spec,
+                    model=model,
+                    input_hash=input_hash,
+                    error=str(e)[:4000],
                 )
                 session.add(failed)
                 await session.commit()
@@ -364,8 +366,12 @@ class LLMClient:
             except Exception as e:
                 logger.error(f"DeepSeek call failed for {request.artifact_type}: {e}")
                 failed = self._make_failed_artifact(
-                    session=session, request=request, spec=spec,
-                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                    session=session,
+                    request=request,
+                    spec=spec,
+                    model=model,
+                    input_hash=input_hash,
+                    error=str(e)[:4000],
                 )
                 session.add(failed)
                 await session.commit()
@@ -383,8 +389,12 @@ class LLMClient:
             except anthropic.APIError as e:
                 logger.error(f"Anthropic API error for {request.artifact_type}: {e}")
                 failed = self._make_failed_artifact(
-                    session=session, request=request, spec=spec,
-                    model=model, input_hash=input_hash, error=str(e)[:4000],
+                    session=session,
+                    request=request,
+                    spec=spec,
+                    model=model,
+                    input_hash=input_hash,
+                    error=str(e)[:4000],
                 )
                 session.add(failed)
                 await session.commit()
@@ -531,9 +541,7 @@ class LLMClient:
             .limit(1)
         )
         if patent_publication_id is not None:
-            stmt = stmt.where(
-                AIArtifact.patent_publication_id == patent_publication_id
-            )
+            stmt = stmt.where(AIArtifact.patent_publication_id == patent_publication_id)
         elif subject_key is not None:
             stmt = stmt.where(AIArtifact.subject_key == subject_key)
         else:
@@ -677,9 +685,7 @@ async def record_rules_artifact(
             AIArtifact.patent_publication_id == request.patent_publication_id
         )
     elif request.subject_key is not None:
-        version_stmt = version_stmt.where(
-            AIArtifact.subject_key == request.subject_key
-        )
+        version_stmt = version_stmt.where(AIArtifact.subject_key == request.subject_key)
     latest = (await session.execute(version_stmt)).scalar_one_or_none()
     next_version = (latest or 0) + 1
 

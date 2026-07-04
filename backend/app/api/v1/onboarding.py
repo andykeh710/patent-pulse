@@ -51,7 +51,7 @@ class OnboardingCompleteResponse(BaseModel):
 
 class OnboardingConfirmRequest(BaseModel):
     company_ids: list[str]  # normalized_name values
-    theme_ids: list[str]    # UUID strings
+    theme_ids: list[str]  # UUID strings
 
 
 class OnboardingConfirmResponse(BaseModel):
@@ -119,9 +119,7 @@ async def onboarding_complete(
     themes: list[SuggestedTheme] = []
     if cpc_prefixes:
         # Use ANY to match JSON array
-        like_clauses = " OR ".join(
-            [f"cpc_prefixes::text ILIKE '%{cpc}%'" for cpc in cpc_prefixes]
-        )
+        like_clauses = " OR ".join([f"cpc_prefixes::text ILIKE '%{cpc}%'" for cpc in cpc_prefixes])
         theme_rows = await db.execute(
             text(
                 f"""
@@ -210,9 +208,7 @@ async def onboarding_status(
     db=Depends(get_db),
 ):
     """Check whether the current user has completed onboarding."""
-    result = await db.execute(
-        select(User.onboarded_at, User.persona).where(User.id == user_id)
-    )
+    result = await db.execute(select(User.onboarded_at, User.persona).where(User.id == user_id))
     row = result.one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")

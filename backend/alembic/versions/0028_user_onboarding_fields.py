@@ -10,7 +10,6 @@ Adds three columns to track onboarding state:
 - onboarded_at: timestamp when wizard was completed (null = not onboarded)
 """
 
-
 from alembic import op
 
 revision = "0028"
@@ -20,18 +19,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-        "industry_focus VARCHAR(64)"
-    )
-    op.execute(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-        "interests_freetext TEXT"
-    )
-    op.execute(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-        "onboarded_at TIMESTAMP"
-    )
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS industry_focus VARCHAR(64)")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS interests_freetext TEXT")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded_at TIMESTAMP")
 
 
 def downgrade() -> None:

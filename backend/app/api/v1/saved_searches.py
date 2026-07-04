@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -86,10 +85,7 @@ async def list_saved_searches(
     """List saved searches for the authenticated user, newest first."""
     rows = (
         await db.execute(
-            text(
-                "SELECT * FROM saved_searches WHERE user_id = :uid "
-                "ORDER BY updated_at DESC"
-            ),
+            text("SELECT * FROM saved_searches WHERE user_id = :uid ORDER BY updated_at DESC"),
             {"uid": user_id},
         )
     ).fetchall()
@@ -162,9 +158,7 @@ async def delete_saved_search(
 ) -> dict:
     """Delete a saved search. Only the owner can delete."""
     result = await db.execute(
-        text(
-            "DELETE FROM saved_searches WHERE id = :id AND user_id = :uid"
-        ),
+        text("DELETE FROM saved_searches WHERE id = :id AND user_id = :uid"),
         {"id": search_id, "uid": user_id},
     )
     await db.commit()

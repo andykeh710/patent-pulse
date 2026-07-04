@@ -1,4 +1,5 @@
 """Tests for webhook config + alerts endpoints (Phase 5 PR 2)."""
+
 import pytest
 from sqlalchemy import select
 
@@ -8,6 +9,7 @@ SECRET = "test-secret-key-for-tests"
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
 
 
@@ -20,6 +22,7 @@ def _make_session_cookie(user_id="local-user"):
     from datetime import datetime, timedelta, timezone
 
     import jwt
+
     token = jwt.encode(
         {
             "sub": user_id,
@@ -50,15 +53,17 @@ async def test_set_webhook_config_lifetime(client, db_session):
     """Lifetime users can configure webhooks."""
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "lifetime"
     await db_session.commit()
 
     r = await client.post(
         "/api/v1/account/webhook-config",
-        json={"webhook_url": "https://example.com/hook", "secret_key": "secret123", "enabled": True},
+        json={
+            "webhook_url": "https://example.com/hook",
+            "secret_key": "secret123",
+            "enabled": True,
+        },
         cookies=_make_session_cookie(),
     )
     assert r.status_code == 200
@@ -75,9 +80,7 @@ async def test_set_webhook_config_free_returns_402(client, db_session):
     """Free tier users cannot configure webhooks."""
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
 
@@ -103,17 +106,18 @@ async def test_list_alerts_empty(client):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_list_alerts_with_data(client, db_session):
     """Alerts list returns expected shape."""
-    from datetime import datetime, timezone
 
     from app.core.alert_models import Alert
 
-    db_session.add(Alert(
-        user_id="local-user",
-        type="assignee_filed",
-        payload={"title": "Test Alert"},
-        status="sent",
-        delivery_method="webhook",
-    ))
+    db_session.add(
+        Alert(
+            user_id="local-user",
+            type="assignee_filed",
+            payload={"title": "Test Alert"},
+            status="sent",
+            delivery_method="webhook",
+        )
+    )
     await db_session.commit()
 
     r = await client.get(

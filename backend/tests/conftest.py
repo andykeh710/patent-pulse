@@ -80,22 +80,51 @@ async def db_session(test_settings: Settings) -> AsyncGenerator[AsyncSession, No
     async with async_session() as session:
         # Seed default test users
         from app.core.ai_models import User
-        session.add_all([
-            User(id="local-user", email="test@example.com", display_name="Test User", tier="basic"),
-            User(id="local-user-2", email="test2@example.com", display_name="Test User 2"),
-            User(id="alert-idem-user", email="idem@example.com", display_name="Idem"),
-            User(id="alert-happy-user", email="happy@example.com", display_name="Happy"),
-            User(id="alert-hook-user-1", email="hook1@example.com", display_name="Hook1"),
-            User(id="alert-hook-user-2", email="hook2@example.com", display_name="Hook2"),
-            User(id="alert-skip-user", email="skip@example.com", display_name="Skip"),
-        ])
+
+        session.add_all(
+            [
+                User(
+                    id="local-user",
+                    email="test@example.com",
+                    display_name="Test User",
+                    tier="basic",
+                ),
+                User(id="local-user-2", email="test2@example.com", display_name="Test User 2"),
+                User(id="alert-idem-user", email="idem@example.com", display_name="Idem"),
+                User(id="alert-happy-user", email="happy@example.com", display_name="Happy"),
+                User(id="alert-hook-user-1", email="hook1@example.com", display_name="Hook1"),
+                User(id="alert-hook-user-2", email="hook2@example.com", display_name="Hook2"),
+                User(id="alert-skip-user", email="skip@example.com", display_name="Skip"),
+            ]
+        )
         # Seed default themes for subscription tests
         from app.core.theme_models import Theme
-        session.add_all([
-            Theme(name="AI/ML", is_active=True, cpc_prefixes=["G06N"], keywords=["ai"], assignee_keywords=["AI"]),
-            Theme(name="Semiconductor", is_active=True, cpc_prefixes=["H01L"], keywords=["chip"], assignee_keywords=["Intel"]),
-            Theme(name="Medical Devices", is_active=True, cpc_prefixes=["A61B"], keywords=["implant"], assignee_keywords=["Medtronic"]),
-        ])
+
+        session.add_all(
+            [
+                Theme(
+                    name="AI/ML",
+                    is_active=True,
+                    cpc_prefixes=["G06N"],
+                    keywords=["ai"],
+                    assignee_keywords=["AI"],
+                ),
+                Theme(
+                    name="Semiconductor",
+                    is_active=True,
+                    cpc_prefixes=["H01L"],
+                    keywords=["chip"],
+                    assignee_keywords=["Intel"],
+                ),
+                Theme(
+                    name="Medical Devices",
+                    is_active=True,
+                    cpc_prefixes=["A61B"],
+                    keywords=["implant"],
+                    assignee_keywords=["Medtronic"],
+                ),
+            ]
+        )
         await session.commit()
         yield session
         await session.rollback()

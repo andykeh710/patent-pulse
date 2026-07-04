@@ -9,6 +9,7 @@ Hourly scan for 4 alert types:
 
 Delivery: webhook (HMAC-signed) for Lifetime+, email fallback otherwise.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,7 +26,7 @@ from app.core.ai_models import User, UserCompanyFollow
 from app.core.alert_models import Alert, UserWebhookConfig
 from app.core.models import PatentPublication
 from app.core.subscription_models import TopicSubscription
-from app.core.theme_models import Theme, ThemeMatch
+from app.core.theme_models import Theme
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 
@@ -95,22 +96,18 @@ async def _scan_with_session(session) -> dict:
     since = now_utc - timedelta(hours=24)
 
     for user_id, sub_list in user_subs.items():
-        user = (await session.execute(
-            select(User).where(User.id == user_id)
-        )).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
         if not user:
             continue
 
         # Collected themes + CPC prefixes
         theme_ids = [s.theme_id for s in sub_list]
-        themes_result = await session.execute(
-            select(Theme).where(Theme.id.in_(theme_ids))
-        )
+        themes_result = await session.execute(select(Theme).where(Theme.id.in_(theme_ids)))
         themes = list(themes_result.scalars().all())
 
         all_cpc_prefixes: list[str] = []
         for t in themes:
-            for prefix in (t.cpc_prefixes or []):
+            for prefix in t.cpc_prefixes or []:
                 # Match any CPC starting with the prefix
                 all_cpc_prefixes.append(prefix)
 
@@ -118,9 +115,7 @@ async def _scan_with_session(session) -> dict:
         follows_result = await session.execute(
             select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id)
         )
-        followed_companies = [
-            f.company_normalized_name for f in follows_result.scalars().all()
-        ]
+        followed_companies = [f.company_normalized_name for f in follows_result.scalars().all()]
 
         # ── 1. assignee_filed ──
         if followed_companies:
@@ -155,7 +150,9 @@ async def _scan_with_session(session) -> dict:
                     payload={
                         "patent_id": patent.doc_id,
                         "title": patent.title or patent.doc_id,
-                        "expiry_date": str(patent.estimated_expiry_date) if patent.estimated_expiry_date else "unknown",
+                        "expiry_date": str(patent.estimated_expiry_date)
+                        if patent.estimated_expiry_date
+                        else "unknown",
                         "assignee": (patent.assignees or ["unknown"])[0],
                         "url": f"{settings.magic_link_base_url}/patents/{patent.id}",
                     },
@@ -182,9 +179,7 @@ async def _scan_with_session(session) -> dict:
 
         # ── 4. high_opportunity ──
         if all_cpc_prefixes:
-            high_opp = await _find_high_opportunity_patents(
-                session, all_cpc_prefixes, since
-            )
+            high_opp = await _find_high_opportunity_patents(session, all_cpc_prefixes, since)
             for patent in high_opp:
                 await _create_alert(
                     session,
@@ -209,14 +204,16 @@ async def _create_alert(session, *, user_id: str, alert_type: str, payload: dict
     # Simple dedup: check if same user+type+patent_id exists in last 24h
     patent_id = payload.get("patent_id")
     if patent_id:
-        existing = (await session.execute(
-            select(Alert).where(
-                Alert.user_id == user_id,
-                Alert.type == alert_type,
-                Alert.created_at >= datetime.now(timezone.utc) - timedelta(hours=24),
-                Alert.payload["patent_id"].astext == patent_id,
+        existing = (
+            await session.execute(
+                select(Alert).where(
+                    Alert.user_id == user_id,
+                    Alert.type == alert_type,
+                    Alert.created_at >= datetime.now(timezone.utc) - timedelta(hours=24),
+                    Alert.payload["patent_id"].astext == patent_id,
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
         if existing:
             return existing
 
@@ -246,9 +243,11 @@ async def _find_new_assignee_patents(
         patterns.append(company[:30])
 
     result = await session.execute(
-        select(PatentPublication).where(
+        select(PatentPublication)
+        .where(
             PatentPublication.publication_date >= since.date(),
-        ).limit(50)
+        )
+        .limit(50)
     )
     patents = result.scalars().all()
 
@@ -259,7 +258,7 @@ async def _find_new_assignee_patents(
         for company in followed_companies:
             if company.lower() in " ".join(assignees_lower):
                 # Check CPC match
-                for cpc in (p.cpc or []):
+                for cpc in p.cpc or []:
                     for prefix in cpc_prefixes:
                         if cpc.startswith(prefix):
                             matches.append(p)
@@ -278,18 +277,22 @@ async def _find_expiring_patents(
     cutoff = (now + timedelta(days=EXPIRY_WINDOW_DAYS)).date()
 
     # Build query
-    query = select(PatentPublication).where(
-        PatentPublication.estimated_expiry_date.isnot(None),
-        PatentPublication.estimated_expiry_date <= cutoff,
-        PatentPublication.estimated_expiry_date >= now.date(),
-    ).limit(50)
+    query = (
+        select(PatentPublication)
+        .where(
+            PatentPublication.estimated_expiry_date.isnot(None),
+            PatentPublication.estimated_expiry_date <= cutoff,
+            PatentPublication.estimated_expiry_date >= now.date(),
+        )
+        .limit(50)
+    )
 
     result = await session.execute(query)
     patents = result.scalars().all()
 
     matches = []
     for p in patents:
-        for cpc in (p.cpc or []):
+        for cpc in p.cpc or []:
             for prefix in cpc_prefixes:
                 if cpc.startswith(prefix):
                     matches.append(p)
@@ -300,9 +303,7 @@ async def _find_expiring_patents(
     return matches[:10]
 
 
-async def _find_trend_spikes(
-    session, cpc_prefixes: list[str], since: datetime
-) -> list[dict]:
+async def _find_trend_spikes(session, cpc_prefixes: list[str], since: datetime) -> list[dict]:
     """Find CPC areas with >2x filing increase in last 24h vs prior month daily avg."""
     # Compute new filings in last 24h per CPC section
     now = datetime.now(timezone.utc)
@@ -332,12 +333,14 @@ async def _find_trend_spikes(
         baseline_avg = baseline_total / 29 if baseline_total > 0 else 0.5
 
         if baseline_avg > 0 and new_count / baseline_avg >= SPIKE_THRESHOLD and new_count >= 3:
-            spikes.append({
-                "cpc": prefix,
-                "new_count": new_count,
-                "baseline_count": round(baseline_avg, 1),
-                "ratio": round(new_count / baseline_avg, 2),
-            })
+            spikes.append(
+                {
+                    "cpc": prefix,
+                    "new_count": new_count,
+                    "baseline_count": round(baseline_avg, 1),
+                    "ratio": round(new_count / baseline_avg, 2),
+                }
+            )
 
     return spikes[:5]
 
@@ -347,9 +350,11 @@ async def _find_high_opportunity_patents(
 ) -> list[PatentPublication]:
     """New patents with opportunity_score > 80 in watched CPC areas."""
     result = await session.execute(
-        select(PatentPublication).where(
+        select(PatentPublication)
+        .where(
             PatentPublication.publication_date >= since.date(),
-        ).limit(100)
+        )
+        .limit(100)
     )
     patents = result.scalars().all()
 
@@ -359,7 +364,7 @@ async def _find_high_opportunity_patents(
         summary = p.summary or {}
         opp_score = summary.get("opportunity_score", 0)
         if isinstance(opp_score, (int, float)) and opp_score > HIGH_OPPORTUNITY_THRESHOLD:
-            for cpc in (p.cpc or []):
+            for cpc in p.cpc or []:
                 for prefix in cpc_prefixes:
                     if cpc.startswith(prefix):
                         matches.append(p)
@@ -418,17 +423,25 @@ async def _deliver_with_session(session) -> dict:
     stats = {"sent_webhook": 0, "sent_email": 0, "failed": 0, "skipped": 0}
 
     # Get all pending alerts (not yet sent, under max retries)
-    pending = (await session.execute(
-        select(Alert).where(
-            Alert.status == PENDING_STATUS,
-            Alert.retry_count < MAX_RETRIES,
-        ).limit(200)
-    )).scalars().all()
+    pending = (
+        (
+            await session.execute(
+                select(Alert)
+                .where(
+                    Alert.status == PENDING_STATUS,
+                    Alert.retry_count < MAX_RETRIES,
+                )
+                .limit(200)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     for alert in pending:
-        user = (await session.execute(
-            select(User).where(User.id == alert.user_id)
-        )).scalar_one_or_none()
+        user = (
+            await session.execute(select(User).where(User.id == alert.user_id))
+        ).scalar_one_or_none()
         if not user:
             alert.status = FAILED_STATUS
             stats["failed"] += 1
@@ -506,7 +519,9 @@ async def _deliver_via_webhook(alert: Alert, config: UserWebhookConfig) -> bool:
             else:
                 logger.warning(
                     "Webhook returned %d for alert=%s url=%s",
-                    resp.status_code, alert.id, config.webhook_url,
+                    resp.status_code,
+                    alert.id,
+                    config.webhook_url,
                 )
                 return False
     except Exception as e:
@@ -520,6 +535,7 @@ async def _deliver_via_email(alert: Alert, user: User) -> bool:
         return False
     try:
         from app.email.sender import send_email
+
         result = await send_email(
             db_session=None,  # We'll handle session outside
             to=user.email,

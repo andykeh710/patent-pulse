@@ -1,10 +1,17 @@
 """Tests for Sprint 5 scoring engine."""
+
 from datetime import date, timedelta
 
 from app.usage.scoring import compute_usage_signal_score
 
 
-def _evidence(tier="medium", assignee="Acme", filing_days_ago=1000, cpc_overlap=1, source_type="forward_citation"):
+def _evidence(
+    tier="medium",
+    assignee="Acme",
+    filing_days_ago=1000,
+    cpc_overlap=1,
+    source_type="forward_citation",
+):
     return {
         "evidence_tier": tier,
         "source_type": source_type,

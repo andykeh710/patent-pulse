@@ -5,6 +5,7 @@ Processes patents in batches: collects evidence, scores, and
 upserts patent_usage_signals rows. Idempotent — safe to run
 repeatedly.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -127,9 +128,7 @@ async def backfill_usage_signals(
 ) -> dict[str, Any]:
     """Production wrapper — opens its own session."""
     async with async_session_maker() as session:
-        return await backfill_usage_signals_for_session(
-            session, limit=limit, offset=offset
-        )
+        return await backfill_usage_signals_for_session(session, limit=limit, offset=offset)
 
 
 @celery_app.task(
@@ -185,10 +184,9 @@ def _update_signal_row(
 
     if result.get("most_recent_date"):
         from datetime import date as date_type
+
         try:
-            row.most_recent_evidence_date = date_type.fromisoformat(
-                result["most_recent_date"]
-            )
+            row.most_recent_evidence_date = date_type.fromisoformat(result["most_recent_date"])
         except (ValueError, TypeError):
             pass
 

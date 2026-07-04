@@ -17,6 +17,7 @@ front-matter-free sectioned format:
 whitespace or wording change creates a new cache key and forces a
 regeneration (see ``app.ai.llm_client``).
 """
+
 from __future__ import annotations
 
 import hashlib

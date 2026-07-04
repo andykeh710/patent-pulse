@@ -36,17 +36,21 @@ def _cookie(user_id: str = "local-user") -> dict:
         )
     }
 
+
 # ---------------------------------------------------------------------------
 # List / get
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio(loop_scope="function")
 async def test_list_themes_includes_system_and_user(client, db_session):
     """List endpoint returns both system themes (user_id=None) and user topics."""
-    db_session.add_all([
-        Theme(name="System Theme", cpc_prefixes=["G06F"], user_id=None),
-        Theme(name="User Topic", cpc_prefixes=["H04L"], user_id="anonymous"),
-    ])
+    db_session.add_all(
+        [
+            Theme(name="System Theme", cpc_prefixes=["G06F"], user_id=None),
+            Theme(name="User Topic", cpc_prefixes=["H04L"], user_id="anonymous"),
+        ]
+    )
     await db_session.commit()
 
     response = await client.get("/api/v1/themes")
@@ -64,11 +68,15 @@ async def test_list_themes_includes_system_and_user(client, db_session):
 @pytest.mark.asyncio
 async def test_get_topic_by_id(client, db_session):
     """Round-trip: create via POST, GET by id matches."""
-    response = await client.post("/api/v1/themes", json={
-        "name": "Roundtrip Topic",
-        "cpc_prefixes": ["G06N"],
-        "keywords": ["neural", "transformer"],
-    }, cookies=_cookie())
+    response = await client.post(
+        "/api/v1/themes",
+        json={
+            "name": "Roundtrip Topic",
+            "cpc_prefixes": ["G06N"],
+            "keywords": ["neural", "transformer"],
+        },
+        cookies=_cookie(),
+    )
     assert response.status_code == 200
     created = response.json()
 
@@ -92,18 +100,23 @@ async def test_get_topic_404(client, db_session):
 # Create
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_create_topic_with_keywords(client, db_session):
     """POST with keywords, opportunity_tags, min_opportunity_score echoes all
     fields and scopes the topic to the authenticated user."""
-    response = await client.post("/api/v1/themes", json={
-        "name": "AI Safety",
-        "description": "Alignment and safety research",
-        "cpc_prefixes": ["G06N", "G06F"],
-        "keywords": ["alignment", "safety", "RLHF"],
-        "opportunity_tags": ["startup", "enterprise"],
-        "min_opportunity_score": 35,
-    }, cookies=_cookie())
+    response = await client.post(
+        "/api/v1/themes",
+        json={
+            "name": "AI Safety",
+            "description": "Alignment and safety research",
+            "cpc_prefixes": ["G06N", "G06F"],
+            "keywords": ["alignment", "safety", "RLHF"],
+            "opportunity_tags": ["startup", "enterprise"],
+            "min_opportunity_score": 35,
+        },
+        cookies=_cookie(),
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "AI Safety"
@@ -126,10 +139,14 @@ async def test_create_topic_requires_auth(client, db_session):
 @pytest.mark.asyncio
 async def test_create_topic_ignores_body_user_id(client, db_session):
     """A body user_id cannot reassign ownership — the session user wins."""
-    response = await client.post("/api/v1/themes", json={
-        "name": "Alice's Topic",
-        "user_id": "alice",
-    }, cookies=_cookie("local-user"))
+    response = await client.post(
+        "/api/v1/themes",
+        json={
+            "name": "Alice's Topic",
+            "user_id": "alice",
+        },
+        cookies=_cookie("local-user"),
+    )
     assert response.status_code == 200
     assert response.json()["user_id"] == "local-user"
 
@@ -147,22 +164,31 @@ async def test_create_topic_duplicate_name_fails(client, db_session):
 # Update
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_update_topic_partial(client, db_session):
     """PATCH a single field, others remain unchanged."""
     # Create
-    response = await client.post("/api/v1/themes", json={
-        "name": "Orig Name",
-        "description": "Orig desc",
-        "cpc_prefixes": ["A61K"],
-        "keywords": ["crispr"],
-    }, cookies=_cookie())
+    response = await client.post(
+        "/api/v1/themes",
+        json={
+            "name": "Orig Name",
+            "description": "Orig desc",
+            "cpc_prefixes": ["A61K"],
+            "keywords": ["crispr"],
+        },
+        cookies=_cookie(),
+    )
     topic_id = response.json()["id"]
 
     # Patch description only
-    response = await client.patch(f"/api/v1/themes/{topic_id}", json={
-        "description": "Updated desc",
-    }, cookies=_cookie())
+    response = await client.patch(
+        f"/api/v1/themes/{topic_id}",
+        json={
+            "description": "Updated desc",
+        },
+        cookies=_cookie(),
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "Orig Name"
@@ -174,15 +200,23 @@ async def test_update_topic_partial(client, db_session):
 @pytest.mark.asyncio
 async def test_update_topic_keywords_replaces_list(client, db_session):
     """PATCH keywords fully replaces the prior list (not append)."""
-    response = await client.post("/api/v1/themes", json={
-        "name": "Keyword Topic",
-        "keywords": ["a", "b", "c"],
-    }, cookies=_cookie())
+    response = await client.post(
+        "/api/v1/themes",
+        json={
+            "name": "Keyword Topic",
+            "keywords": ["a", "b", "c"],
+        },
+        cookies=_cookie(),
+    )
     topic_id = response.json()["id"]
 
-    response = await client.patch(f"/api/v1/themes/{topic_id}", json={
-        "keywords": ["x", "y"],
-    }, cookies=_cookie())
+    response = await client.patch(
+        f"/api/v1/themes/{topic_id}",
+        json={
+            "keywords": ["x", "y"],
+        },
+        cookies=_cookie(),
+    )
     assert response.status_code == 200
     assert response.json()["keywords"] == ["x", "y"]
 
@@ -195,9 +229,7 @@ async def test_update_topic_requires_auth(client, db_session):
     )
     topic_id = response.json()["id"]
 
-    response = await client.patch(
-        f"/api/v1/themes/{topic_id}", json={"description": "no auth"}
-    )
+    response = await client.patch(f"/api/v1/themes/{topic_id}", json={"description": "no auth"})
     assert response.status_code == 401
 
 
@@ -237,9 +269,7 @@ async def test_update_system_theme_allowed_for_admin(client, db_session):
     """An admin may edit system themes (admin edit path)."""
     from app.core.ai_models import User
 
-    admin = (
-        await db_session.execute(select(User).where(User.id == "local-user"))
-    ).scalar_one()
+    admin = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     admin.is_admin = True
     sys_theme = Theme(name="System Admin Editable", cpc_prefixes=["G06F"], user_id=None)
     db_session.add(sys_theme)
@@ -257,6 +287,7 @@ async def test_update_system_theme_allowed_for_admin(client, db_session):
 # ---------------------------------------------------------------------------
 # Delete
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_delete_topic(client, db_session):
@@ -283,6 +314,7 @@ async def test_delete_nonexistent_topic_404(client, db_session):
 # ---------------------------------------------------------------------------
 # Theme matcher — keyword matching
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_theme_matcher_uses_keywords(client, db_session):
@@ -327,18 +359,26 @@ async def test_theme_matcher_uses_keywords(client, db_session):
     match = result.scalar_one_or_none()
     assert match is not None
     assert match.match_score > 0
-    assert any("quantum" in reason.lower() for reason in match.match_reasons), \
+    assert any("quantum" in reason.lower() for reason in match.match_reasons), (
         f"Expected keyword reason in {match.match_reasons}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Theme matcher — false-positive prevention (whole-word matching)
 # ---------------------------------------------------------------------------
 
+
 def _patent(**kw) -> PatentPublication:
     base = dict(
-        doc_id="USPTO:FP001", office="USPTO", publication_number="FP001",
-        assignees=[], cpc=[], title="", abstract="", legal_status="GRANTED",
+        doc_id="USPTO:FP001",
+        office="USPTO",
+        publication_number="FP001",
+        assignees=[],
+        cpc=[],
+        title="",
+        abstract="",
+        legal_status="GRANTED",
     )
     base.update(kw)
     return PatentPublication(**base)
@@ -351,8 +391,9 @@ def test_short_keyword_does_not_substring_match_assignee():
         title="Automotive hot gas heat pump system",
         cpc=["F25B30/00"],
     )
-    theme = Theme(name="AI", assignee_keywords=["AI"], title_keywords=[],
-                  keywords=[], cpc_prefixes=[])
+    theme = Theme(
+        name="AI", assignee_keywords=["AI"], title_keywords=[], keywords=[], cpc_prefixes=[]
+    )
     score, reasons = _calculate_match_score(patent, theme)
     assert score == 0.0, f"AI should not match Hyundai; got {reasons}"
 
@@ -360,8 +401,9 @@ def test_short_keyword_does_not_substring_match_assignee():
 def test_short_keyword_does_not_substring_match_title():
     """A 'die' keyword must not match 'studied' / 'diesel' in a title."""
     patent = _patent(title="A diesel engine studied under load", cpc=[])
-    theme = Theme(name="Chip", keywords=["die"], cpc_prefixes=[],
-                  assignee_keywords=[], title_keywords=[])
+    theme = Theme(
+        name="Chip", keywords=["die"], cpc_prefixes=[], assignee_keywords=[], title_keywords=[]
+    )
     score, _ = _calculate_match_score(patent, theme)
     assert score == 0.0
 
@@ -374,8 +416,10 @@ def test_whole_word_keyword_still_matches():
         cpc=["G06N3/08"],
     )
     theme = Theme(
-        name="AI / Machine Learning", cpc_prefixes=["G06N"],
-        assignee_keywords=["AI"], title_keywords=["neural network"],
+        name="AI / Machine Learning",
+        cpc_prefixes=["G06N"],
+        assignee_keywords=["AI"],
+        title_keywords=["neural network"],
         keywords=["deep learning"],
     )
     score, reasons = _calculate_match_score(patent, theme)

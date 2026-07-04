@@ -16,6 +16,7 @@ cached vs uncached, est input/output tokens, est cost USD.
 Exits with status 0 on success and 2 on argument errors so it composes
 with shell pipelines.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -69,9 +69,7 @@ async def backfill_assignees() -> dict[str, Any]:
 
     async with async_session_maker() as session:
         # Count rows before
-        before = await session.execute(
-            text("SELECT COUNT(*) FROM assignees")
-        )
+        before = await session.execute(text("SELECT COUNT(*) FROM assignees"))
         before_count = before.scalar() or 0
 
         # Run the upsert
@@ -79,9 +77,7 @@ async def backfill_assignees() -> dict[str, Any]:
         await session.commit()
 
         # Count rows after
-        after = await session.execute(
-            text("SELECT COUNT(*) FROM assignees")
-        )
+        after = await session.execute(text("SELECT COUNT(*) FROM assignees"))
         after_count = after.scalar() or 0
 
         stats["total_processed"] = after_count
@@ -107,17 +103,13 @@ async def backfill_assignees_for_session(
     """
     stats: dict[str, int] = {"total_processed": 0, "inserted": 0, "updated": 0}
 
-    before = await session.execute(
-        text("SELECT COUNT(*) FROM assignees")
-    )
+    before = await session.execute(text("SELECT COUNT(*) FROM assignees"))
     before_count = before.scalar() or 0
 
     await session.execute(text(BACKFILL_SQL))
     await session.commit()
 
-    after = await session.execute(
-        text("SELECT COUNT(*) FROM assignees")
-    )
+    after = await session.execute(text("SELECT COUNT(*) FROM assignees"))
     after_count = after.scalar() or 0
 
     stats["total_processed"] = after_count

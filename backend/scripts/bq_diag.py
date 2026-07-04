@@ -1,6 +1,6 @@
 """Validate BigQuery patent dataset freshness."""
+
 from google.cloud import bigquery
-from datetime import date
 
 client = bigquery.Client(project="patent-signals")
 
@@ -25,7 +25,7 @@ q2 = """
     LIMIT 10
 """
 rows = list(client.query(q2))
-print(f"2. Counts by date since May 28:")
+print("2. Counts by date since May 28:")
 for r in rows:
     print(f"   {r['publication_date']}: {r['cnt']}")
 
@@ -41,7 +41,7 @@ q3 = """
     LIMIT 10
 """
 rows = list(client.query(q3))
-print(f"3. Kind codes:")
+print("3. Kind codes:")
 for r in rows:
     print(f"   {r['kind']}: {r['cnt']}")
 
@@ -77,7 +77,7 @@ q6 = """
     LIMIT 10
 """
 rows = list(client.query(q6))
-print(f"6. Any rows globally since Jun 12:")
+print("6. Any rows globally since Jun 12:")
 for r in rows:
     print(f"   {r['publication_date']} ({r['country_code']}): {r['cnt']}")
 

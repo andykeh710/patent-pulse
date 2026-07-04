@@ -5,6 +5,7 @@ doesn't match the task's declared `name=` (e.g. patentsview/bigquery backfills
 were namespaced under app.tasks.enrich_abstracts.*). Such entries silently fail
 at runtime with "Received unregistered task of type ...".
 """
+
 from app.tasks.celery_app import celery_app
 
 
@@ -19,7 +20,6 @@ def test_all_beat_tasks_are_registered():
         if entry["task"] not in registered
     }
 
-    assert not missing, (
-        "Beat schedule references unregistered tasks: "
-        + ", ".join(f"{k} -> {v}" for k, v in sorted(missing.items()))
+    assert not missing, "Beat schedule references unregistered tasks: " + ", ".join(
+        f"{k} -> {v}" for k, v in sorted(missing.items())
     )

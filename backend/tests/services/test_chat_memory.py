@@ -12,6 +12,7 @@ from app.services.chat_memory import (
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _mock_redis():
     """Return an AsyncMock that looks like redis.asyncio.Redis."""
     redis = AsyncMock()
@@ -46,10 +47,12 @@ class TestNewConversationId:
 @pytest.mark.asyncio(loop_scope="function")
 async def test_append_and_get_roundtrip():
     redis = _mock_redis()
-    redis.lrange = AsyncMock(return_value=[
-        '{"role": "user", "content": "hello"}',
-        '{"role": "assistant", "content": "hi there"}',
-    ])
+    redis.lrange = AsyncMock(
+        return_value=[
+            '{"role": "user", "content": "hello"}',
+            '{"role": "assistant", "content": "hi there"}',
+        ]
+    )
 
     store = ConversationStore(redis)
 
@@ -112,9 +115,11 @@ async def test_different_users_isolated():
     redis = _mock_redis()
 
     # User 1's history
-    redis.lrange = AsyncMock(return_value=[
-        '{"role": "user", "content": "user1 msg"}',
-    ])
+    redis.lrange = AsyncMock(
+        return_value=[
+            '{"role": "user", "content": "user1 msg"}',
+        ]
+    )
 
     store = ConversationStore(redis)
     history = await store.get_history("user-1", "conv-shared")
@@ -152,11 +157,13 @@ async def test_same_conversation_id_different_users_have_separate_keys():
 @pytest.mark.asyncio(loop_scope="function")
 async def test_get_history_skips_corrupt_messages():
     redis = _mock_redis()
-    redis.lrange = AsyncMock(return_value=[
-        '{"role": "user", "content": "good"}',
-        'not valid json {{{',
-        '{"role": "assistant", "content": "also good"}',
-    ])
+    redis.lrange = AsyncMock(
+        return_value=[
+            '{"role": "user", "content": "good"}',
+            "not valid json {{{",
+            '{"role": "assistant", "content": "also good"}',
+        ]
+    )
 
     store = ConversationStore(redis)
     history = await store.get_history("user-1", "conv-1")
@@ -171,11 +178,13 @@ async def test_get_history_skips_corrupt_messages():
 @pytest.mark.asyncio(loop_scope="function")
 async def test_get_history_returns_correct_message_format():
     redis = _mock_redis()
-    redis.lrange = AsyncMock(return_value=[
-        '{"role": "user", "content": "first question"}',
-        '{"role": "assistant", "content": "first answer"}',
-        '{"role": "user", "content": "second question"}',
-    ])
+    redis.lrange = AsyncMock(
+        return_value=[
+            '{"role": "user", "content": "first question"}',
+            '{"role": "assistant", "content": "first answer"}',
+            '{"role": "user", "content": "second question"}',
+        ]
+    )
 
     store = ConversationStore(redis)
     history = await store.get_history("user-1", "conv-1")

@@ -1,4 +1,5 @@
 """Phase 6 PR 2 — Blog post model."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -31,11 +32,11 @@ class BlogPost(Base):
     related_patent_doc_ids: Mapped[list[str]] = mapped_column(JSONB, default=list)
     related_theme_slugs: Mapped[list[str]] = mapped_column(JSONB, default=list)
     related_company_names: Mapped[list[str]] = mapped_column(JSONB, default=list)
-    published_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, server_default=text("now()"),
+        DateTime(timezone=True),
+        default=_utcnow,
+        server_default=text("now()"),
         onupdate=_utcnow,
     )
     status: Mapped[str] = mapped_column(

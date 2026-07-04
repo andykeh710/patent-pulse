@@ -1,4 +1,5 @@
 """Tests for CSV export endpoint (Sprint 7)."""
+
 import csv
 import io
 
@@ -11,9 +12,15 @@ def _make_cookie(user_id="local-user"):
     import jwt
 
     from app.config import settings
+
     return jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        settings.auth_secret_key, algorithm="HS256",
+        {
+            "sub": user_id,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=30),
+        },
+        settings.auth_secret_key,
+        algorithm="HS256",
     )
 
 
@@ -22,6 +29,7 @@ async def test_free_user_gets_402(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
@@ -35,6 +43,7 @@ async def test_basic_user_gets_csv(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
@@ -64,9 +73,11 @@ async def test_export_row_written(client, db_session):
     r = await client.get("/api/v1/exports/expiry.csv", cookies={"auth_session": _make_cookie()})
     assert r.status_code == 200
 
-    export = (await db_session.execute(
-        select(Export).where(Export.user_id == "local-user")
-    )).scalars().first()
+    export = (
+        (await db_session.execute(select(Export).where(Export.user_id == "local-user")))
+        .scalars()
+        .first()
+    )
     assert export is not None
     assert export.export_type == "csv"
     assert export.scope == "expiry_list"
@@ -77,11 +88,15 @@ async def test_empty_result_returns_header_only(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
 
-    r = await client.get("/api/v1/exports/expiry.csv?expiry_status=nonexistent", cookies={"auth_session": _make_cookie()})
+    r = await client.get(
+        "/api/v1/exports/expiry.csv?expiry_status=nonexistent",
+        cookies={"auth_session": _make_cookie()},
+    )
     assert r.status_code == 200
     lines = r.text.strip().split("\n")
     assert len(lines) == 1

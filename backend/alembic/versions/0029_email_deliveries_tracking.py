@@ -4,11 +4,12 @@ Revision ID: 0029
 Revises: 0028_user_onboarding_fields
 Create Date: 2026-06-08
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0029"

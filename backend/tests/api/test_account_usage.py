@@ -1,4 +1,5 @@
 """Tests for GET /api/v1/account/usage (Phase 4 PR 3)."""
+
 import pytest
 
 SECRET = "test-secret-key-for-tests"
@@ -9,6 +10,7 @@ pytestmark = pytest.mark.xfail(reason="KI-001: test DB schema incomplete — mis
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
     global_settings.resend_api_key = "re_test"
     global_settings.email_from_address = "test@example.com"
@@ -24,6 +26,7 @@ def _make_session_cookie(user_id="local-user"):
     from datetime import datetime, timedelta, timezone
 
     import jwt
+
     token = jwt.encode(
         {
             "sub": user_id,
@@ -46,11 +49,10 @@ async def test_usage_no_auth_returns_401(client):
 async def test_usage_returns_expected_shape_free(client, db_session):
     """Free tier user gets expected shape with limits."""
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
 
@@ -86,11 +88,10 @@ async def test_usage_returns_expected_shape_free(client, db_session):
 async def test_usage_basic_tier_has_higher_limits(client, db_session):
     """Basic tier gets 50 chat, unlimited themes/companies."""
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
 
@@ -112,11 +113,10 @@ async def test_usage_basic_tier_has_higher_limits(client, db_session):
 async def test_usage_lifetime_unlimited_chat(client, db_session):
     """Lifetime tier gets unlimited chat."""
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "lifetime"
     await db_session.commit()
 
@@ -136,13 +136,12 @@ async def test_usage_lifetime_unlimited_chat(client, db_session):
 async def test_usage_counts_themes(client, db_session):
     """Theme count reflects actual TopicSubscription rows."""
     from sqlalchemy import select
+
     from app.core.ai_models import User
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
 
@@ -175,11 +174,10 @@ async def test_usage_counts_themes(client, db_session):
 async def test_usage_counts_companies(client, db_session):
     """Company count reflects actual UserCompanyFollow rows."""
     from sqlalchemy import select
+
     from app.core.ai_models import User, UserCompanyFollow
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
 
@@ -207,13 +205,13 @@ async def test_usage_counts_companies(client, db_session):
 async def test_usage_includes_renews_at(client, db_session):
     """renews_at is present when billing subscription has current_period_end."""
     from datetime import datetime, timedelta, timezone
+
     from sqlalchemy import select
+
     from app.core.ai_models import User
     from app.core.billing_models import BillingSubscription
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
 

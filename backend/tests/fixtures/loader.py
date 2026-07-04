@@ -14,6 +14,7 @@ Tests opt in via::
 The fixture file is intentionally pre-populated with patents that have
 ``summary`` fields so the AI cache-hit path can be exercised.
 """
+
 from __future__ import annotations
 
 import json

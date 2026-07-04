@@ -125,9 +125,7 @@ async def retrieve_patents(
                 "title": title,
                 "abstract_excerpt": abstract_excerpt,
                 "assignees": assignees[:3],  # max 3 assignees
-                "publication_date": (
-                    str(pub_date) if pub_date else "unknown"
-                ),
+                "publication_date": (str(pub_date) if pub_date else "unknown"),
                 "similarity": round(similarity, 3),
             }
         )

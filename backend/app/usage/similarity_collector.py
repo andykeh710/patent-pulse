@@ -5,6 +5,7 @@ Uses pgvector to find newer patents that are semantically
 similar to the target. Returns dicts ready for insertion into
 usage_evidence — no DB writes.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -80,7 +81,7 @@ async def collect_similar_evidence(
     # Use pgvector cosine distance via SQLAlchemy.
     # 1 - (embedding <=> target) = cosine similarity.
     # Convert numpy array to list — pgvector expects list input.
-    emb_list = embedding.tolist() if hasattr(embedding, 'tolist') else list(embedding)
+    emb_list = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
     similarity_expr = 1.0 - PatentPublication.embedding.cosine_distance(emb_list)
 
     stmt = (
@@ -117,21 +118,23 @@ async def collect_similar_evidence(
         if tier == "excluded":
             continue
 
-        evidence_rows.append({
-            "patent_publication_id": patent_id,
-            "source_type": "similar_newer_patent",
-            "source_patent_id": source.id,
-            "source_patent_doc_id": source.doc_id,
-            "source_patent_title": source.title,
-            "source_patent_assignee": (source.assignees or [None])[0],
-            "source_patent_filing_date": source.filing_date,
-            "source_patent_cpc": source.cpc or [],
-            "matched_cpc": shared_cpc,
-            "cpc_overlap_count": len(shared_cpc),
-            "similarity_score": sim,
-            "citation_direction": None,
-            "evidence_tier": tier,
-            "evidence_confidence": confidence,
-        })
+        evidence_rows.append(
+            {
+                "patent_publication_id": patent_id,
+                "source_type": "similar_newer_patent",
+                "source_patent_id": source.id,
+                "source_patent_doc_id": source.doc_id,
+                "source_patent_title": source.title,
+                "source_patent_assignee": (source.assignees or [None])[0],
+                "source_patent_filing_date": source.filing_date,
+                "source_patent_cpc": source.cpc or [],
+                "matched_cpc": shared_cpc,
+                "cpc_overlap_count": len(shared_cpc),
+                "similarity_score": sim,
+                "citation_direction": None,
+                "evidence_tier": tier,
+                "evidence_confidence": confidence,
+            }
+        )
 
     return evidence_rows

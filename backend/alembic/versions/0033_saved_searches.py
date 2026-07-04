@@ -5,8 +5,9 @@ down_revision = "0032"
 branch_labels = None
 depends_on = None
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 
 def upgrade() -> None:
@@ -20,8 +21,12 @@ def upgrade() -> None:
         sa.Column("filters_json", sa.dialects.postgresql.JSONB, nullable=True),
         sa.Column("sort_by", sa.String(), nullable=False, server_default="relevance"),
         sa.Column("sort_order", sa.String(), nullable=False, server_default="desc"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+        ),
         sa.Column("last_opened_at", sa.DateTime(timezone=True), nullable=True),
     )
 

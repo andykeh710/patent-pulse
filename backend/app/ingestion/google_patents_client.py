@@ -50,9 +50,7 @@ class GooglePatentsClient:
     def close(self):
         self._client.close()
 
-    def fetch_patent_fulltext(
-        self, publication_number: str, kind_code: str = "B2"
-    ) -> dict:
+    def fetch_patent_fulltext(self, publication_number: str, kind_code: str = "B2") -> dict:
         """
         Fetch abstract, claims, and description for a US patent from Google Patents.
 
@@ -82,9 +80,7 @@ class GooglePatentsClient:
 
         # Deduplicate while preserving order
         seen = set()
-        kind_codes_to_try = [
-            k for k in kind_codes_to_try if not (k in seen or seen.add(k))
-        ]
+        kind_codes_to_try = [k for k in kind_codes_to_try if not (k in seen or seen.add(k))]
 
         html = None
         for kind in kind_codes_to_try:
@@ -93,9 +89,7 @@ class GooglePatentsClient:
                 response = self._client.get(url)
                 if response.status_code == 200 and len(response.text) > 5000:
                     html = response.text
-                    logger.debug(
-                        f"Found patent US{clean_number}{kind} on Google Patents"
-                    )
+                    logger.debug(f"Found patent US{clean_number}{kind} on Google Patents")
                     break
             except Exception as e:
                 logger.debug(f"Error fetching US{clean_number}{kind}: {e}")

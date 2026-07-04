@@ -9,6 +9,7 @@ to expiry_assessments. These are deterministic (not LLM-produced) scores
 that assess how valuable an expired/expiring patent is for opportunity
 discovery.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

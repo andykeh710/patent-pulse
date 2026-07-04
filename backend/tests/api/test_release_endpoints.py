@@ -6,6 +6,7 @@ defaults and takes down the *entire* FastAPI app, so every endpoint returns
 500. This suite asserts that the previously-failing endpoints never 500 and
 that auth-gated endpoints return 401 (not 500) when logged out.
 """
+
 from datetime import datetime, timedelta, timezone
 
 import jwt

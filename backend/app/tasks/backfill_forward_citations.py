@@ -7,6 +7,7 @@ B.citations_forward (dedup by doc_id). Pure SQL — no API calls.
 
 Run once; idempotent.
 """
+
 from __future__ import annotations
 
 import logging

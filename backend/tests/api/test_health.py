@@ -18,6 +18,7 @@ async def test_health_returns_all_probes(client):
 async def test_health_db_unreachable_reported(client, monkeypatch):
     async def failing_db(db):
         return "unreachable"
+
     monkeypatch.setattr("app.api.health._check_db", failing_db)
     r = await client.get("/health")
     assert r.json()["db"] == "unreachable"
@@ -64,6 +65,7 @@ async def test_health_resend_unreachable(client, monkeypatch):
 
     async def failing_check():
         return "unreachable"
+
     monkeypatch.setattr("app.api.health._check_resend", failing_check)
     r = await client.get("/health")
     assert r.json()["resend"] == "unreachable"

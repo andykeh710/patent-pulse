@@ -1,4 +1,5 @@
 """Phase 6 PR 2 — Blog API (admin CRUD + public read + seed)."""
+
 from __future__ import annotations
 
 import logging
@@ -86,12 +87,18 @@ class BlogPostListItem(BaseModel):
 async def list_blog_posts() -> list[BlogPostListItem]:
     """Public: list published posts, newest first."""
     async for db in get_db():
-        rows = (await db.execute(
-            select(BlogPost)
-            .where(BlogPost.status == "published")
-            .order_by(BlogPost.published_at.desc())
-            .limit(50)
-        )).scalars().all()
+        rows = (
+            (
+                await db.execute(
+                    select(BlogPost)
+                    .where(BlogPost.status == "published")
+                    .order_by(BlogPost.published_at.desc())
+                    .limit(50)
+                )
+            )
+            .scalars()
+            .all()
+        )
         return [
             BlogPostListItem(
                 slug=r.slug,
@@ -113,9 +120,11 @@ async def list_blog_posts() -> list[BlogPostListItem]:
 async def get_blog_post(slug: str) -> BlogPostResponse:
     """Public: get a single published post by slug."""
     async for db in get_db():
-        row = (await db.execute(
-            select(BlogPost).where(BlogPost.slug == slug, BlogPost.status == "published")
-        )).scalar_one_or_none()
+        row = (
+            await db.execute(
+                select(BlogPost).where(BlogPost.slug == slug, BlogPost.status == "published")
+            )
+        ).scalar_one_or_none()
         if not row:
             raise HTTPException(404, "Post not found")
         return BlogPostResponse(
@@ -143,6 +152,7 @@ async def get_blog_post(slug: str) -> BlogPostResponse:
 
 async def _require_admin(user_id: str, db):
     from app.core.ai_models import User
+
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user or not user.is_admin:
         raise HTTPException(403, "Admin required")
@@ -157,9 +167,9 @@ async def admin_create_post(
 ):
     await _require_admin(user_id, db)
 
-    existing = (await db.execute(
-        select(BlogPost).where(BlogPost.slug == body.slug)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(BlogPost).where(BlogPost.slug == body.slug))
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(409, f"Slug '{body.slug}' already exists")
 
@@ -181,14 +191,20 @@ async def admin_create_post(
     db.add(post)
     await db.commit()
     return BlogPostResponse(
-        slug=post.slug, title=post.title, subtitle=post.subtitle,
-        excerpt=post.excerpt, content_markdown=post.content_markdown,
-        hero_image_url=post.hero_image_url, author_name=post.author_name,
-        author_role=post.author_role, tags=post.tags or [],
+        slug=post.slug,
+        title=post.title,
+        subtitle=post.subtitle,
+        excerpt=post.excerpt,
+        content_markdown=post.content_markdown,
+        hero_image_url=post.hero_image_url,
+        author_name=post.author_name,
+        author_role=post.author_role,
+        tags=post.tags or [],
         related_patent_doc_ids=post.related_patent_doc_ids or [],
         related_theme_slugs=post.related_theme_slugs or [],
         related_company_names=post.related_company_names or [],
-        published_at=None, status=post.status,
+        published_at=None,
+        status=post.status,
         created_at=post.created_at.isoformat(),
     )
 
@@ -202,9 +218,7 @@ async def admin_update_post(
 ):
     await _require_admin(user_id, db)
 
-    post = (await db.execute(
-        select(BlogPost).where(BlogPost.slug == slug)
-    )).scalar_one_or_none()
+    post = (await db.execute(select(BlogPost).where(BlogPost.slug == slug))).scalar_one_or_none()
     if not post:
         raise HTTPException(404, "Post not found")
 
@@ -214,10 +228,15 @@ async def admin_update_post(
     await db.commit()
 
     return BlogPostResponse(
-        slug=post.slug, title=post.title, subtitle=post.subtitle,
-        excerpt=post.excerpt, content_markdown=post.content_markdown,
-        hero_image_url=post.hero_image_url, author_name=post.author_name,
-        author_role=post.author_role, tags=post.tags or [],
+        slug=post.slug,
+        title=post.title,
+        subtitle=post.subtitle,
+        excerpt=post.excerpt,
+        content_markdown=post.content_markdown,
+        hero_image_url=post.hero_image_url,
+        author_name=post.author_name,
+        author_role=post.author_role,
+        tags=post.tags or [],
         related_patent_doc_ids=post.related_patent_doc_ids or [],
         related_theme_slugs=post.related_theme_slugs or [],
         related_company_names=post.related_company_names or [],
@@ -235,9 +254,7 @@ async def admin_publish_post(
 ):
     await _require_admin(user_id, db)
 
-    post = (await db.execute(
-        select(BlogPost).where(BlogPost.slug == slug)
-    )).scalar_one_or_none()
+    post = (await db.execute(select(BlogPost).where(BlogPost.slug == slug))).scalar_one_or_none()
     if not post:
         raise HTTPException(404, "Post not found")
 
@@ -247,10 +264,15 @@ async def admin_publish_post(
     await db.commit()
 
     return BlogPostResponse(
-        slug=post.slug, title=post.title, subtitle=post.subtitle,
-        excerpt=post.excerpt, content_markdown=post.content_markdown,
-        hero_image_url=post.hero_image_url, author_name=post.author_name,
-        author_role=post.author_role, tags=post.tags or [],
+        slug=post.slug,
+        title=post.title,
+        subtitle=post.subtitle,
+        excerpt=post.excerpt,
+        content_markdown=post.content_markdown,
+        hero_image_url=post.hero_image_url,
+        author_name=post.author_name,
+        author_role=post.author_role,
+        tags=post.tags or [],
         related_patent_doc_ids=post.related_patent_doc_ids or [],
         related_theme_slugs=post.related_theme_slugs or [],
         related_company_names=post.related_company_names or [],
@@ -266,8 +288,6 @@ async def admin_publish_post(
 async def seed_blog_posts() -> int:
     """Load content/blog/*.md into blog_posts if not already present.
     Called at app startup. Returns count of posts seeded."""
-    import os
-    import re
     from pathlib import Path
 
     blog_dir = Path(__file__).resolve().parent.parent.parent.parent / "content" / "blog"
@@ -282,9 +302,9 @@ async def seed_blog_posts() -> int:
             slug = md_file.stem
 
             # Check if already exists
-            existing = (await db.execute(
-                select(BlogPost).where(BlogPost.slug == slug)
-            )).scalar_one_or_none()
+            existing = (
+                await db.execute(select(BlogPost).where(BlogPost.slug == slug))
+            ).scalar_one_or_none()
             if existing:
                 continue
 
@@ -324,7 +344,7 @@ def _parse_frontmatter(text: str) -> dict | None:
     if not match:
         return None
     fm_str = match.group(1)
-    body = text[match.end():]
+    body = text[match.end() :]
 
     fm: dict = {}
     current_key = None

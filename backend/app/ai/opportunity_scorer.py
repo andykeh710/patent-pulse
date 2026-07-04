@@ -23,6 +23,7 @@ triggers recomputation on next access.
 The score breakdown is the canonical content_json: callers (and the UI)
 read individual component contributions from there.
 """
+
 from __future__ import annotations
 
 import logging
@@ -251,9 +252,7 @@ def extract_features(
         industries=list(tags.get("industries") or []),
         technology_method=list(tags.get("technology_method") or []),
         materials=list(tags.get("materials") or []),
-        novel_application_categories=list(
-            tags.get("novel_application_categories") or []
-        ),
+        novel_application_categories=list(tags.get("novel_application_categories") or []),
         time_horizon=tags.get("time_horizon") or "unknown",
         risk_flags=list(tags.get("risk_flags") or []),
         opportunity_tags=list(tags.get("opportunity_tags") or []),
@@ -315,7 +314,15 @@ def _score_cross_industry(f: OpportunityFeatures) -> float:
 
 
 def _score_ai_software(f: OpportunityFeatures) -> float:
-    keys = {"machine_learning", "computer_vision", "nlp", "signal_processing", "automation", "control_systems", "robotics"}
+    keys = {
+        "machine_learning",
+        "computer_vision",
+        "nlp",
+        "signal_processing",
+        "automation",
+        "control_systems",
+        "robotics",
+    }
     overlap = set(f.technology_method) & keys
     if not overlap:
         return 0.2 if "computing" in f.industries or "ai_ml" in f.industries else 0.0
@@ -346,7 +353,10 @@ def _score_market_relevance(f: OpportunityFeatures) -> float:
     if not f.industries:
         return 0.3  # was 0.2: CPC sections still provide signal
     base = 0.4
-    if any(t in {"startup_opportunity", "enterprise_automation", "manufacturing_reuse"} for t in f.opportunity_tags):
+    if any(
+        t in {"startup_opportunity", "enterprise_automation", "manufacturing_reuse"}
+        for t in f.opportunity_tags
+    ):
         base += 0.3
     base += 0.1 * min(len(f.novel_application_categories), 3)
     return min(base, 1.0)
@@ -450,7 +460,11 @@ def compute_score(
         sub = float(fn(features))
         ww = float(w.get(name, 0.0))
         contrib = sub * ww
-        components[name] = {"sub_score": round(sub, 4), "weight": ww, "contribution": round(contrib, 4)}
+        components[name] = {
+            "sub_score": round(sub, 4),
+            "weight": ww,
+            "contribution": round(contrib, 4),
+        }
         weighted_total += contrib
         weight_total += ww
     # Normalize in case the weights don't sum to exactly 1.0.

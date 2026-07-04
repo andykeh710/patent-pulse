@@ -14,6 +14,7 @@ Two entry points are exposed:
 * :func:`summarize_patent` (async) — preferred entry point. Returns the
   parsed summary dict AND the produced ``AIArtifact`` id.
 """
+
 from __future__ import annotations
 
 import logging
@@ -99,8 +100,7 @@ def build_summary_payload(patent: PatentPublication) -> dict[str, Any]:
     return {
         "title": patent.title or "(no title provided)",
         "abstract": patent.abstract or "(no abstract provided)",
-        "claims_text": extract_independent_claims(patent.claims_text)
-        or "(no claims available)",
+        "claims_text": extract_independent_claims(patent.claims_text) or "(no claims available)",
         "description_excerpt": (patent.description_text or "")[:2000]
         or "(no description available)",
         "cpc_codes": ", ".join(patent.cpc or []) or "(no classifications)",
@@ -200,9 +200,7 @@ class MockSummarizer:
             "how_it_works": "Test mechanism",
             "commercial_significance": "Test significance",
             "who_should_care": ["Test role 1", "Test role 2"],
-            "novel_applications": [
-                {"application": "Test application", "label": "SPECULATIVE"}
-            ],
+            "novel_applications": [{"application": "Test application", "label": "SPECULATIVE"}],
             "confidence_note": "This is a mock summary for testing",
             "source_spans": [],
         }

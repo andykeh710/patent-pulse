@@ -4,6 +4,7 @@ Usage signal narrative generator (Sprint 5).
 Produces a hedged, evidence-backed narrative for patents with usage signals.
 On-demand via AIArtifact cache. Mirrors trend_narrative.py pattern.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +22,13 @@ logger = logging.getLogger(__name__)
 USAGE_NARRATIVE_PROMPT_NAME = "usage_signal_narrative"
 USAGE_NARRATIVE_PROMPT_VERSION = 1
 
-REQUIRED_FIELDS = {"summary", "evidence_summary", "market_categories", "related_companies", "limitations"}
+REQUIRED_FIELDS = {
+    "summary",
+    "evidence_summary",
+    "market_categories",
+    "related_companies",
+    "limitations",
+}
 
 # ── Forbidden phrases (scope doc §4) ─────────────────────────────────
 
@@ -152,8 +159,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
         hits = _contains_forbidden(text)
         if hits:
             raise SummarizationError(
-                f"Forbidden phrases found in {key}: {hits}. "
-                f"Regenerate with stricter hedging."
+                f"Forbidden phrases found in {key}: {hits}. Regenerate with stricter hedging."
             )
 
     # Schema defaults.
@@ -189,9 +195,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
     # limitations: list of strings, ensure first is standard disclaimer.
     lims = data.get("limitations") or []
     if not lims:
-        lims = [
-            "Evidence is patent-based only — no product-level verification has been performed."
-        ]
+        lims = ["Evidence is patent-based only — no product-level verification has been performed."]
     # Ensure the disclaimer is first.
     disclaimer = "Evidence is patent-based only — no product-level verification has been performed."
     if disclaimer not in lims:
@@ -217,7 +221,8 @@ async def generate_usage_narrative(
     Returns (validated_dict, artifact_id). Cached via AIArtifact.
     """
     payload = build_payload(
-        signal_summary, top_evidence,
+        signal_summary,
+        top_evidence,
         patent_title=patent_title,
         patent_assignee=patent_assignee,
         expiry_status=expiry_status,
@@ -243,8 +248,8 @@ async def generate_usage_narrative(
             input_payload={**payload, "_strict_prefix": strict_prefix},
             subject_key=subject_key,
             tier="summary",  # Sonnet — matches trend_narrative. Haiku produced
-                             # unstable JSON envelopes on structured narrative
-                             # schemas in Sprint 4 diagnosis.
+            # unstable JSON envelopes on structured narrative
+            # schemas in Sprint 4 diagnosis.
             max_tokens=2048,
             expected_output_tokens=500,
         )
@@ -252,9 +257,7 @@ async def generate_usage_narrative(
         try:
             response = await client.complete(session, request)
         except anthropic.APIError as e:
-            raise SummarizationError(
-                f"AI API error during usage narrative generation: {e}"
-            ) from e
+            raise SummarizationError(f"AI API error during usage narrative generation: {e}") from e
 
         if response.content_json is None:
             raise SummarizationError(
@@ -267,7 +270,9 @@ async def generate_usage_narrative(
             if "Forbidden phrases" in str(e) and attempt < MAX_RETRIES:
                 logger.warning(
                     "Forbidden phrase detected (attempt %d/%d): %s",
-                    attempt + 1, MAX_RETRIES + 1, e,
+                    attempt + 1,
+                    MAX_RETRIES + 1,
+                    e,
                 )
                 continue
             # Last retry exhausted or different error — use fallback.
@@ -278,6 +283,7 @@ async def generate_usage_narrative(
         from sqlalchemy import update
 
         from app.core.ai_models import AIArtifact
+
         await session.execute(
             update(AIArtifact)
             .where(AIArtifact.id == response.artifact_id)

@@ -1,4 +1,5 @@
 """Sprint 7 — Billing API endpoints (Stripe Checkout + Webhooks)."""
+
 from __future__ import annotations
 
 import logging
@@ -61,13 +62,11 @@ async def get_subscription(
     """Return the current user's billing subscription. Never 404s."""
     from sqlalchemy import select
 
-    existing = (await db.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(BillingSubscription).where(BillingSubscription.user_id == user_id))
+    ).scalar_one_or_none()
 
-    user = (await db.execute(
-        select(User).where(User.id == user_id)
-    )).scalar_one_or_none()
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
 
     tier = user.tier if user else "free"
 
@@ -97,9 +96,9 @@ async def start_checkout(
 
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one()
 
-    existing = (await db.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(BillingSubscription).where(BillingSubscription.user_id == user_id))
+    ).scalar_one_or_none()
 
     customer_id = existing.stripe_customer_id if existing else None
     base_url = str(request.base_url).rstrip("/") if request else settings.magic_link_base_url
@@ -120,9 +119,9 @@ async def start_portal(
     db=Depends(get_db),
     request: Request = None,
 ):
-    existing = (await db.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(BillingSubscription).where(BillingSubscription.user_id == user_id))
+    ).scalar_one_or_none()
 
     if not existing or not existing.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No Stripe customer found")
@@ -187,9 +186,9 @@ async def _handle_checkout_completed(db, session_data: dict) -> None:
     payment_intent_id = session_data.get("payment_intent")
     mode = session_data.get("mode")
 
-    existing = (await db.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == user_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(BillingSubscription).where(BillingSubscription.user_id == user_id))
+    ).scalar_one_or_none()
 
     row = existing or BillingSubscription(user_id=user_id)
     row.tier = tier
@@ -218,11 +217,13 @@ async def _handle_invoice_paid(db, invoice: dict) -> None:
     subscription_id = invoice.get("subscription")
     if not subscription_id:
         return
-    existing = (await db.execute(
-        select(BillingSubscription).where(
-            BillingSubscription.stripe_subscription_id == subscription_id
+    existing = (
+        await db.execute(
+            select(BillingSubscription).where(
+                BillingSubscription.stripe_subscription_id == subscription_id
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if existing:
         existing.status = "active"
         existing.updated_at = datetime.now(timezone.utc)
@@ -233,11 +234,13 @@ async def _handle_invoice_failed(db, invoice: dict) -> None:
     subscription_id = invoice.get("subscription")
     if not subscription_id:
         return
-    existing = (await db.execute(
-        select(BillingSubscription).where(
-            BillingSubscription.stripe_subscription_id == subscription_id
+    existing = (
+        await db.execute(
+            select(BillingSubscription).where(
+                BillingSubscription.stripe_subscription_id == subscription_id
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if existing:
         existing.status = "past_due"
         existing.updated_at = datetime.now(timezone.utc)
@@ -248,18 +251,20 @@ async def _handle_subscription_deleted(db, subscription: dict) -> None:
     sub_id = subscription.get("id")
     if not sub_id:
         return
-    existing = (await db.execute(
-        select(BillingSubscription).where(
-            BillingSubscription.stripe_subscription_id == sub_id
+    existing = (
+        await db.execute(
+            select(BillingSubscription).where(BillingSubscription.stripe_subscription_id == sub_id)
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if existing:
         existing.tier = "free"
         existing.status = "canceled"
         existing.updated_at = datetime.now(timezone.utc)
         await db.commit()
 
-        user = (await db.execute(select(User).where(User.id == existing.user_id))).scalar_one_or_none()
+        user = (
+            await db.execute(select(User).where(User.id == existing.user_id))
+        ).scalar_one_or_none()
         if user:
             user.tier = "free"
             await db.commit()
@@ -269,11 +274,11 @@ async def _handle_subscription_updated(db, subscription: dict) -> None:
     sub_id = subscription.get("id")
     if not sub_id:
         return
-    existing = (await db.execute(
-        select(BillingSubscription).where(
-            BillingSubscription.stripe_subscription_id == sub_id
+    existing = (
+        await db.execute(
+            select(BillingSubscription).where(BillingSubscription.stripe_subscription_id == sub_id)
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if existing and subscription.get("status") == "active":
         existing.status = "active"
         existing.updated_at = datetime.now(timezone.utc)

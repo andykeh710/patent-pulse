@@ -13,6 +13,7 @@ Design decisions (from the V1 plan):
    and Phase 3.7 Assignee Strategy. Free-text ``PatentPublication.assignees``
    remains for backcompat until backfill is run.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -46,7 +47,9 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(__import__("uuid").uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(64), primary_key=True, default=lambda: str(__import__("uuid").uuid4())
+    )
     display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     email: Mapped[str | None] = mapped_column(String(256))
     tier: Mapped[str] = mapped_column(String(16), default="free", index=True)
@@ -59,15 +62,23 @@ class User(Base):
     industry_focus: Mapped[str | None] = mapped_column(String(64), nullable=True)
     interests_freetext: Mapped[str | None] = mapped_column(Text, nullable=True)
     use_case: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    digest_frequency: Mapped[str] = mapped_column(String(16), default="weekly", server_default="weekly")
+    digest_frequency: Mapped[str] = mapped_column(
+        String(16), default="weekly", server_default="weekly"
+    )
     digest_topics_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     digest_min_opp_score: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     onboarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    last_today_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    previous_today_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_today_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    previous_today_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    company_follows = relationship("UserCompanyFollow", back_populates="user", cascade="all, delete-orphan")
+    company_follows = relationship(
+        "UserCompanyFollow", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - repr only
         return f"<User {self.id}>"
@@ -76,10 +87,14 @@ class User(Base):
 class UserCompanyFollow(Base):
     __tablename__ = "user_company_follows"
 
-    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     company_normalized_name: Mapped[str] = mapped_column(Text, primary_key=True)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     user = relationship("User", back_populates="company_follows")
 
@@ -102,7 +117,9 @@ class Assignee(Base):
     display_name: Mapped[str] = mapped_column(String(256))
     aliases: Mapped[list[str]] = mapped_column(JSONB, default=list)
     country: Mapped[str | None] = mapped_column(String(8))
-    entity_type: Mapped[str | None] = mapped_column(String(32))  # corporation|university|sme|individual|gov
+    entity_type: Mapped[str | None] = mapped_column(
+        String(32)
+    )  # corporation|university|sme|individual|gov
     patent_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -286,9 +303,7 @@ class ContentDraft(Base):
     __tablename__ = "content_drafts"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[str] = mapped_column(
-        String(64), index=True, default="anonymous"
-    )
+    user_id: Mapped[str] = mapped_column(String(64), index=True, default="anonymous")
     source_type: Mapped[str] = mapped_column(
         String(16), index=True
     )  # "patent" | "topic" | "trend" | "company"
@@ -297,16 +312,12 @@ class ContentDraft(Base):
         String(32), index=True
     )  # "linkedin_post" | "content_idea"
     content_text: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(
-        String(16), default="draft", server_default="draft"
-    )
+    status: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
     prompt_hash: Mapped[str | None] = mapped_column(String(64))
     artifact_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ai_artifacts.id", ondelete="SET NULL"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default="now()"
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, onupdate=datetime.utcnow, server_default="now()"
     )
@@ -347,9 +358,7 @@ class ExpiryAssessment(Base):
     )
     maintenance_status_source: Mapped[str | None] = mapped_column(String(64))
 
-    active_family_risk: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default="false"
-    )
+    active_family_risk: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     active_family_risk_reason: Mapped[str | None] = mapped_column(Text)
 
     terminal_disclaimer_flag: Mapped[bool] = mapped_column(
@@ -365,12 +374,8 @@ class ExpiryAssessment(Base):
     expiry_opportunity_score: Mapped[float | None] = mapped_column(Float)
     expiry_opportunity_breakdown: Mapped[dict | None] = mapped_column(JSONB)
 
-    computed_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default="now()"
-    )
-    source_updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default="now()"
-    )
+    computed_at: Mapped[datetime] = mapped_column(DateTime, server_default="now()")
+    source_updated_at: Mapped[datetime] = mapped_column(DateTime, server_default="now()")
 
 
 class CrossIndustrySnapshot(Base):

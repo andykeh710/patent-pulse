@@ -4,6 +4,7 @@ Trends API.
 Surfaces aggregate trend data from ``trend_snapshots``, ``convergence_signals``,
 and ``patent_cliff_clusters`` tables. Designed for the /trends frontend page.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -88,27 +89,24 @@ class TrendsSummary(BaseModel):
 @router.get("/summary", response_model=TrendsSummary)
 async def trends_summary(db: DbSession) -> TrendsSummary:
     """High-level overview of available trend intelligence."""
-    total = (await db.execute(
-        select(func.count()).select_from(TrendSnapshot)
-    )).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(TrendSnapshot))).scalar_one()
 
-    surface_rows = (await db.execute(
-        select(TrendSnapshot.surface, func.count())
-        .group_by(TrendSnapshot.surface)
-    )).all()
+    surface_rows = (
+        await db.execute(
+            select(TrendSnapshot.surface, func.count()).group_by(TrendSnapshot.surface)
+        )
+    ).all()
     surfaces = {r[0]: r[1] for r in surface_rows}
 
-    conv_count = (await db.execute(
-        select(func.count()).select_from(ConvergenceSignal)
-    )).scalar_one()
+    conv_count = (
+        await db.execute(select(func.count()).select_from(ConvergenceSignal))
+    ).scalar_one()
 
-    cliff_count = (await db.execute(
-        select(func.count()).select_from(PatentCliffCluster)
-    )).scalar_one()
+    cliff_count = (
+        await db.execute(select(func.count()).select_from(PatentCliffCluster))
+    ).scalar_one()
 
-    last = (await db.execute(
-        select(func.max(TrendSnapshot.created_at))
-    )).scalar_one()
+    last = (await db.execute(select(func.max(TrendSnapshot.created_at)))).scalar_one()
 
     return TrendsSummary(
         total_trend_rows=total,
@@ -152,9 +150,11 @@ async def growing_trends(
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TrendListResponse:
     """Trends ranked by growth percentage (recent velocity vs baseline)."""
-    stmt = select(TrendSnapshot).where(
-        TrendSnapshot.count_4w >= 3
-    ).order_by(TrendSnapshot.growth_pct.desc())
+    stmt = (
+        select(TrendSnapshot)
+        .where(TrendSnapshot.count_4w >= 3)
+        .order_by(TrendSnapshot.growth_pct.desc())
+    )
 
     if surface:
         stmt = stmt.where(TrendSnapshot.surface == surface)
@@ -162,9 +162,7 @@ async def growing_trends(
     stmt = stmt.limit(limit)
     rows = (await db.execute(stmt)).scalars().all()
 
-    count_stmt = select(func.count()).select_from(TrendSnapshot).where(
-        TrendSnapshot.count_4w >= 3
-    )
+    count_stmt = select(func.count()).select_from(TrendSnapshot).where(TrendSnapshot.count_4w >= 3)
     if surface:
         count_stmt = count_stmt.where(TrendSnapshot.surface == surface)
     total = (await db.execute(count_stmt)).scalar_one()
@@ -182,12 +180,18 @@ async def convergence_signals(
     limit: int = Query(default=30, ge=1, le=100),
 ) -> list[ConvergenceItem]:
     """Technology convergence signals: CPC pairs with accelerating co-occurrence."""
-    rows = (await db.execute(
-        select(ConvergenceSignal)
-        .where(ConvergenceSignal.growth_ratio >= min_growth_ratio)
-        .order_by(ConvergenceSignal.growth_ratio.desc())
-        .limit(limit)
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(ConvergenceSignal)
+                .where(ConvergenceSignal.growth_ratio >= min_growth_ratio)
+                .order_by(ConvergenceSignal.growth_ratio.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     return [ConvergenceItem.model_validate(r) for r in rows]
 
@@ -200,9 +204,11 @@ async def patent_cliffs(
     limit: int = Query(default=30, ge=1, le=100),
 ) -> CliffListResponse:
     """Patent cliff clusters: groups of expiring patents by CPC area."""
-    stmt = select(PatentCliffCluster).where(
-        PatentCliffCluster.patent_count >= min_patents
-    ).order_by(PatentCliffCluster.patent_count.desc())
+    stmt = (
+        select(PatentCliffCluster)
+        .where(PatentCliffCluster.patent_count >= min_patents)
+        .order_by(PatentCliffCluster.patent_count.desc())
+    )
 
     if window_months is not None:
         stmt = stmt.where(PatentCliffCluster.window_months == window_months)
@@ -210,8 +216,10 @@ async def patent_cliffs(
     stmt = stmt.limit(limit)
     rows = (await db.execute(stmt)).scalars().all()
 
-    count_stmt = select(func.count()).select_from(PatentCliffCluster).where(
-        PatentCliffCluster.patent_count >= min_patents
+    count_stmt = (
+        select(func.count())
+        .select_from(PatentCliffCluster)
+        .where(PatentCliffCluster.patent_count >= min_patents)
     )
     if window_months is not None:
         count_stmt = count_stmt.where(PatentCliffCluster.window_months == window_months)
@@ -230,12 +238,14 @@ async def trend_detail(
     key: str,
 ) -> TrendItem:
     """Get the latest trend snapshot for a specific surface+key."""
-    row = (await db.execute(
-        select(TrendSnapshot)
-        .where(and_(TrendSnapshot.surface == surface, TrendSnapshot.key == key))
-        .order_by(TrendSnapshot.week_start.desc())
-        .limit(1)
-    )).scalar_one_or_none()
+    row = (
+        await db.execute(
+            select(TrendSnapshot)
+            .where(and_(TrendSnapshot.surface == surface, TrendSnapshot.key == key))
+            .order_by(TrendSnapshot.week_start.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
     if not row:
         raise HTTPException(status_code=404, detail=f"Trend not found for {surface}/{key}")
@@ -273,9 +283,7 @@ class TrendNarrativeResponse(BaseModel):
 # ── helper ────────────────────────────────────────────────────────────
 
 
-async def _get_latest_trend_snapshot(
-    db: DbSession, surface: str, key: str
-) -> TrendSnapshot:
+async def _get_latest_trend_snapshot(db: DbSession, surface: str, key: str) -> TrendSnapshot:
     """Fetch the latest TrendSnapshot for a surface+key, or 404."""
     row = await db.execute(
         select(TrendSnapshot)
@@ -361,9 +369,7 @@ async def trend_assignees(
 
     uuids = [UUID(pid) for pid in patent_ids[:500]]
     result = await db.execute(
-        select(PatentPublication.assignees).where(
-            PatentPublication.id.in_(uuids)
-        )
+        select(PatentPublication.assignees).where(PatentPublication.id.in_(uuids))
     )
     rows = result.all()
 
@@ -374,10 +380,7 @@ async def trend_assignees(
             counter[name] = counter.get(name, 0) + 1
 
     sorted_assignees = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-    items = [
-        TrendAssigneeItem(assignee=name, count=count)
-        for name, count in sorted_assignees[:20]
-    ]
+    items = [TrendAssigneeItem(assignee=name, count=count) for name, count in sorted_assignees[:20]]
 
     return TrendDrilldownAssigneesResponse(
         items=items,
@@ -434,21 +437,22 @@ async def generate_trend_narrative(
         from uuid import UUID
 
         from app.core.models import PatentPublication
+
         result = await db.execute(
             select(PatentPublication).where(
-                PatentPublication.id.in_(
-                    [UUID(pid) for pid in trend.top_patent_ids[:5]]
-                )
+                PatentPublication.id.in_([UUID(pid) for pid in trend.top_patent_ids[:5]])
             )
         )
         for patent in result.scalars().all():
             abstract = (patent.abstract or "")[:200]
-            top_patents.append({
-                "title": patent.title or patent.doc_id or "",
-                "abstract_snippet": abstract.strip(),
-                "primary_assignee": (patent.assignees or [""])[0],
-                "cpc_codes": ", ".join(patent.cpc or []) or "N/A",
-            })
+            top_patents.append(
+                {
+                    "title": patent.title or patent.doc_id or "",
+                    "abstract_snippet": abstract.strip(),
+                    "primary_assignee": (patent.assignees or [""])[0],
+                    "cpc_codes": ", ".join(patent.cpc or []) or "N/A",
+                }
+            )
 
     from app.ai.trend_narrative import generate_trend_narrative as _gen
 

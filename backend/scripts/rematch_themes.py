@@ -17,6 +17,7 @@ Usage:
   # optionally target only specific themes by name:
   docker compose exec backend python scripts/rematch_themes.py "AI / Machine Learning"
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -48,9 +49,7 @@ async def rematch_system_themes(only: list[str] | None = None) -> None:
 
             theme = (
                 await session.execute(
-                    select(Theme).where(
-                        Theme.name == spec["name"], Theme.user_id.is_(None)
-                    )
+                    select(Theme).where(Theme.name == spec["name"], Theme.user_id.is_(None))
                 )
             ).scalar_one_or_none()
             if theme is None:
@@ -66,9 +65,7 @@ async def rematch_system_themes(only: list[str] | None = None) -> None:
             theme.keywords = spec.get("keywords")
 
             # 2. Clear stale matches for this theme.
-            await session.execute(
-                delete(ThemeMatch).where(ThemeMatch.theme_id == theme.id)
-            )
+            await session.execute(delete(ThemeMatch).where(ThemeMatch.theme_id == theme.id))
             await session.flush()
 
             # 3. Re-match with the whole-word matcher.

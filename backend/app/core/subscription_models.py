@@ -1,4 +1,5 @@
 """Sprint 6 — Subscription, auth, and email delivery ORM models."""
+
 from __future__ import annotations
 
 import uuid
@@ -34,12 +35,8 @@ class TopicSubscription(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
     )
-    user_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id", ondelete="CASCADE")
-    )
-    theme_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("themes.id", ondelete="CASCADE")
-    )
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
+    theme_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("themes.id", ondelete="CASCADE"))
     mode: Mapped[str] = mapped_column(String(16))
     min_score: Mapped[float | None] = mapped_column(Float)
     last_delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -52,7 +49,9 @@ class TopicSubscription(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("user_id", "theme_id", "mode", name="uq_topic_subscriptions_user_theme_mode"),
+        UniqueConstraint(
+            "user_id", "theme_id", "mode", name="uq_topic_subscriptions_user_theme_mode"
+        ),
         Index("ix_topic_subscriptions_user_id", "user_id"),
         Index("ix_topic_subscriptions_theme_id", "theme_id"),
     )
@@ -64,9 +63,7 @@ class AuthMagicLinkToken(Base):
     __tablename__ = "auth_magic_link_tokens"
 
     token_hash: Mapped[str] = mapped_column(String(128), primary_key=True)
-    user_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id", ondelete="CASCADE")
-    )
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     email: Mapped[str] = mapped_column(String(256))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -74,9 +71,7 @@ class AuthMagicLinkToken(Base):
         DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
 
-    __table_args__ = (
-        Index("ix_auth_magic_link_tokens_user_id", "user_id"),
-    )
+    __table_args__ = (Index("ix_auth_magic_link_tokens_user_id", "user_id"),)
 
 
 class EmailDelivery(Base):
@@ -99,9 +94,7 @@ class EmailDelivery(Base):
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
-    artifact_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("ai_artifacts.id")
-    )
+    artifact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ai_artifacts.id"))
     # Resend webhook fields
     webhook_event: Mapped[str | None] = mapped_column(String(32), nullable=True)
     webhook_received_at: Mapped[datetime | None] = mapped_column(
@@ -112,9 +105,7 @@ class EmailDelivery(Base):
     subject_variant: Mapped[str | None] = mapped_column(String(1), nullable=True)
 
     # Phase 5: Open + click tracking via Resend webhook
-    email_opened_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    email_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_clicked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

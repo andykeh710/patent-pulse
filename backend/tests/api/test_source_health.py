@@ -31,18 +31,12 @@ async def test_source_health_requires_admin(client, db_session, monkeypatch):
     from app.core.ai_models import User
 
     monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "")
-    await client.post(
-        "/api/v1/auth/request-link", json={"email": "normal@example.com"}
-    )
+    await client.post("/api/v1/auth/request-link", json={"email": "normal@example.com"})
     user = (
-        await db_session.execute(
-            select(User).where(User.email == "normal@example.com")
-        )
+        await db_session.execute(select(User).where(User.email == "normal@example.com"))
     ).scalar_one()
 
-    r = await client.get(
-        "/api/v1/admin/source-health", cookies=_admin_cookie(user.id)
-    )
+    r = await client.get("/api/v1/admin/source-health", cookies=_admin_cookie(user.id))
     assert r.status_code == 403
 
 
@@ -54,21 +48,13 @@ async def test_source_health_returns_data_for_admin(client, db_session, monkeypa
     from app.core.ai_models import User
 
     # Create admin user
-    monkeypatch.setattr(
-        "app.api.v1.auth.settings.admin_emails", "admin@example.com"
-    )
-    await client.post(
-        "/api/v1/auth/request-link", json={"email": "admin@example.com"}
-    )
+    monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "admin@example.com")
+    await client.post("/api/v1/auth/request-link", json={"email": "admin@example.com"})
     user = (
-        await db_session.execute(
-            select(User).where(User.email == "admin@example.com")
-        )
+        await db_session.execute(select(User).where(User.email == "admin@example.com"))
     ).scalar_one()
 
-    r = await client.get(
-        "/api/v1/admin/source-health", cookies=_admin_cookie(user.id)
-    )
+    r = await client.get("/api/v1/admin/source-health", cookies=_admin_cookie(user.id))
     assert r.status_code == 200
     data = r.json()
     assert "total_patents" in data
@@ -84,18 +70,12 @@ async def test_source_fetches_requires_admin(client, db_session, monkeypatch):
     from app.core.ai_models import User
 
     monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "")
-    await client.post(
-        "/api/v1/auth/request-link", json={"email": "plain@example.com"}
-    )
+    await client.post("/api/v1/auth/request-link", json={"email": "plain@example.com"})
     user = (
-        await db_session.execute(
-            select(User).where(User.email == "plain@example.com")
-        )
+        await db_session.execute(select(User).where(User.email == "plain@example.com"))
     ).scalar_one()
 
-    r = await client.get(
-        "/api/v1/admin/source-fetches", cookies=_admin_cookie(user.id)
-    )
+    r = await client.get("/api/v1/admin/source-fetches", cookies=_admin_cookie(user.id))
     assert r.status_code == 403
 
 
@@ -107,13 +87,9 @@ async def test_retry_grant_week_requires_admin(client, db_session, monkeypatch):
     from app.core.ai_models import User
 
     monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "")
-    await client.post(
-        "/api/v1/auth/request-link", json={"email": "plain@example.com"}
-    )
+    await client.post("/api/v1/auth/request-link", json={"email": "plain@example.com"})
     user = (
-        await db_session.execute(
-            select(User).where(User.email == "plain@example.com")
-        )
+        await db_session.execute(select(User).where(User.email == "plain@example.com"))
     ).scalar_one()
 
     r = await client.post(

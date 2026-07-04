@@ -65,11 +65,13 @@ async def get_suggested_companies(
         )
         recent = row.scalar() or 0
 
-        result.append({
-            "name": company_name,
-            "patent_count": total,
-            "last_12mo_count": recent,
-        })
+        result.append(
+            {
+                "name": company_name,
+                "patent_count": total,
+                "last_12mo_count": recent,
+            }
+        )
 
     result.sort(key=lambda c: c["patent_count"], reverse=True)
     return result[:limit]

@@ -4,6 +4,7 @@ Resend email sender with send-mode guard (Sprint 6).
 Modes: dev | dry_run | production (gated behind EMAIL_PRODUCTION_ACKNOWLEDGED).
 Every send writes an EmailDelivery row for the audit trail.
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,8 +64,13 @@ async def send_email(
                 to,
             )
             await _write_delivery(
-                db_session, user_id, email_type, subscription_id, artifact_id,
-                status="refused", detail="Production not acknowledged",
+                db_session,
+                user_id,
+                email_type,
+                subscription_id,
+                artifact_id,
+                status="refused",
+                detail="Production not acknowledged",
                 subject_variant=subject_variant,
             )
             return {"status": "refused", "detail": "Production not acknowledged"}
@@ -75,8 +81,13 @@ async def send_email(
     except Exception as e:
         logger.error("Template error (%s): %s", template_name, e)
         await _write_delivery(
-            db_session, user_id, email_type, subscription_id, artifact_id,
-            status="failed", detail=str(e),
+            db_session,
+            user_id,
+            email_type,
+            subscription_id,
+            artifact_id,
+            status="failed",
+            detail=str(e),
             subject_variant=subject_variant,
         )
         return {"status": "failed", "detail": str(e)}
@@ -91,20 +102,29 @@ async def send_email(
         if settings.resend_api_key:
             try:
                 import resend
+
                 resend.api_key = settings.resend_api_key
-                r = resend.Emails.send({
-                    "from": settings.email_from_address,
-                    "to": [dev_to],
-                    "subject": subject,
-                    "html": html,
-                })
+                r = resend.Emails.send(
+                    {
+                        "from": settings.email_from_address,
+                        "to": [dev_to],
+                        "subject": subject,
+                        "html": html,
+                    }
+                )
                 resend_id = str(r.get("id", "dev"))
             except Exception as e:
                 logger.error("Resend API error (dev): %s", e)
 
         await _write_delivery(
-            db_session, user_id, email_type, subscription_id, artifact_id,
-            status="dev", detail="Redirected to dev recipient", resend_id=resend_id,
+            db_session,
+            user_id,
+            email_type,
+            subscription_id,
+            artifact_id,
+            status="dev",
+            detail="Redirected to dev recipient",
+            resend_id=resend_id,
             subject_variant=subject_variant,
         )
         return {"status": "dev", "detail": resend_id or "Logged"}
@@ -113,8 +133,13 @@ async def send_email(
     if mode == "dry_run":
         _log_preview(subject, to, html)
         await _write_delivery(
-            db_session, user_id, email_type, subscription_id, artifact_id,
-            status="dry_run", detail="Template rendered",
+            db_session,
+            user_id,
+            email_type,
+            subscription_id,
+            artifact_id,
+            status="dry_run",
+            detail="Template rendered",
             subject_variant=subject_variant,
         )
         return {"status": "dry_run", "detail": "Template rendered"}
@@ -123,34 +148,53 @@ async def send_email(
     if mode == "production" and settings.resend_api_key:
         try:
             import resend
+
             resend.api_key = settings.resend_api_key
-            r = resend.Emails.send({
-                "from": settings.email_from_address,
-                "to": [to],
-                "subject": subject,
-                "html": html,
-            })
+            r = resend.Emails.send(
+                {
+                    "from": settings.email_from_address,
+                    "to": [to],
+                    "subject": subject,
+                    "html": html,
+                }
+            )
             resend_id = str(r.get("id", "sent"))
         except Exception as e:
             logger.error("Resend API error (production): %s", e)
             await _write_delivery(
-                db_session, user_id, email_type, subscription_id, artifact_id,
-                status="failed", detail=str(e),
+                db_session,
+                user_id,
+                email_type,
+                subscription_id,
+                artifact_id,
+                status="failed",
+                detail=str(e),
                 subject_variant=subject_variant,
             )
             return {"status": "failed", "detail": str(e)}
 
         await _write_delivery(
-            db_session, user_id, email_type, subscription_id, artifact_id,
-            status="sent", detail="", resend_id=resend_id,
+            db_session,
+            user_id,
+            email_type,
+            subscription_id,
+            artifact_id,
+            status="sent",
+            detail="",
+            resend_id=resend_id,
             subject_variant=subject_variant,
         )
         return {"status": "sent", "detail": resend_id}
 
     logger.error("No Resend API key configured or unknown mode '%s'", mode)
     await _write_delivery(
-        db_session, user_id, email_type, subscription_id, artifact_id,
-        status="failed", detail="No API key or unknown mode",
+        db_session,
+        user_id,
+        email_type,
+        subscription_id,
+        artifact_id,
+        status="failed",
+        detail="No API key or unknown mode",
         subject_variant=subject_variant,
     )
     return {"status": "failed", "detail": "No API key or unknown mode"}

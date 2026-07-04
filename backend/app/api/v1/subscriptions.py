@@ -1,4 +1,5 @@
 """Sprint 6 — Subscription management endpoints."""
+
 from __future__ import annotations
 
 import hashlib
@@ -50,9 +51,7 @@ class SubscriptionResponse(BaseModel):
             min_score=row.min_score,
             paused=row.paused,
             last_delivered_at=(
-                row.last_delivered_at.isoformat()
-                if row.last_delivered_at
-                else None
+                row.last_delivered_at.isoformat() if row.last_delivered_at else None
             ),
         )
 
@@ -87,9 +86,7 @@ async def list_subscriptions(
     db=Depends(get_db),
 ):
     """List current user's subscriptions."""
-    result = await db.execute(
-        select(TopicSubscription).where(TopicSubscription.user_id == user_id)
-    )
+    result = await db.execute(select(TopicSubscription).where(TopicSubscription.user_id == user_id))
     rows = result.scalars().all()
     return [SubscriptionResponse.from_row(r) for r in rows]
 
@@ -102,6 +99,7 @@ async def create_subscription(
 ):
     """Create a subscription to a theme."""
     from app.quotas.limits import check_topic_quota
+
     await check_topic_quota(user_id, db)
 
     if body.mode not in ALLOWED_MODES:
@@ -197,9 +195,7 @@ async def unsubscribe(
     if not _verify_unsubscribe_token(subscription, token):
         raise HTTPException(status_code=400, detail="Invalid unsubscribe link")
 
-    result = await db.execute(
-        select(TopicSubscription).where(TopicSubscription.id == subscription)
-    )
+    result = await db.execute(select(TopicSubscription).where(TopicSubscription.id == subscription))
     sub = result.scalar_one_or_none()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")

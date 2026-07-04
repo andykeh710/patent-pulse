@@ -9,6 +9,7 @@ Usage::
     python -m scripts.llm_cache_stats --days 30
     python -m scripts.llm_cache_stats --json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -45,8 +46,14 @@ async def _gather(days: int) -> dict[str, Any]:
         for r in rows:
             entry = artifact_breakdown.setdefault(
                 r.artifact_type,
-                {"complete": 0, "failed": 0, "pending": 0, "usd": 0.0,
-                 "input_tokens": 0, "output_tokens": 0},
+                {
+                    "complete": 0,
+                    "failed": 0,
+                    "pending": 0,
+                    "usd": 0.0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                },
             )
             entry[r.status] = entry.get(r.status, 0) + r.count
             if r.status == "complete":
@@ -105,13 +112,17 @@ def main() -> int:
         return 0
 
     print(f"Window:     last {data['window_days']} days (since {data['since'][:10]})")
-    print(f"Artifacts:  {data['total_completed_artifacts']:,} complete, "
-          f"{data['total_failed_artifacts']:,} failed")
+    print(
+        f"Artifacts:  {data['total_completed_artifacts']:,} complete, "
+        f"{data['total_failed_artifacts']:,} failed"
+    )
     print(f"Total spend: ${data['total_actual_cost_usd']:.4f}")
     print()
     print("Per artifact type:")
-    print(f"  {'type':28s} {'complete':>8s} {'failed':>7s} "
-          f"{'in_tok':>10s} {'out_tok':>10s} {'usd':>10s}")
+    print(
+        f"  {'type':28s} {'complete':>8s} {'failed':>7s} "
+        f"{'in_tok':>10s} {'out_tok':>10s} {'usd':>10s}"
+    )
     for atype, v in sorted(data["by_artifact_type"].items()):
         print(
             f"  {atype:28s} {v['complete']:>8d} {v['failed']:>7d} "

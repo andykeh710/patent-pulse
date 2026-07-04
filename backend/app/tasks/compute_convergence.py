@@ -7,6 +7,7 @@ signals industry convergence -- e.g. AI + Healthcare, or Energy + Materials.
 
 Populates the ``convergence_signals`` table.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -74,15 +75,17 @@ async def _compute_signals() -> dict[str, Any]:
             if growth_ratio <= 0.5:
                 continue
 
-            signals.append({
-                "cpc_a": cpc_a,
-                "cpc_b": cpc_b,
-                "window_start": ws,
-                "window_months": RECENT_WINDOW_MONTHS,
-                "joint_count": joint_count,
-                "baseline_count": baseline_count,
-                "growth_ratio": round(growth_ratio, 4),
-            })
+            signals.append(
+                {
+                    "cpc_a": cpc_a,
+                    "cpc_b": cpc_b,
+                    "window_start": ws,
+                    "window_months": RECENT_WINDOW_MONTHS,
+                    "joint_count": joint_count,
+                    "baseline_count": baseline_count,
+                    "growth_ratio": round(growth_ratio, 4),
+                }
+            )
 
         if signals:
             await _upsert_signals(session, signals)
@@ -98,7 +101,8 @@ async def _cpc_pair_counts(
     session: AsyncSession, start: date, end: date
 ) -> dict[tuple[str, str], int]:
     """Count co-occurrences of CPC prefix pairs on the same patent."""
-    rows = await session.execute(text("""
+    rows = await session.execute(
+        text("""
         WITH patent_prefixes AS (
             SELECT p.id,
                    substr(c.val, 1, :plen) AS prefix
@@ -117,19 +121,19 @@ async def _cpc_pair_counts(
         HAVING count(DISTINCT a.id) >= :min_count
         ORDER BY cnt DESC
         LIMIT 500
-    """), {
-        "plen": CPC_PREFIX_LENGTH,
-        "start": start,
-        "end": end,
-        "min_count": MIN_BASELINE_COUNT,
-    })
+    """),
+        {
+            "plen": CPC_PREFIX_LENGTH,
+            "start": start,
+            "end": end,
+            "min_count": MIN_BASELINE_COUNT,
+        },
+    )
 
     return {(r[0], r[1]): r[2] for r in rows}
 
 
-async def _upsert_signals(
-    session: AsyncSession, signals: list[dict[str, Any]]
-) -> None:
+async def _upsert_signals(session: AsyncSession, signals: list[dict[str, Any]]) -> None:
     for sig in signals:
         stmt = pg_insert(ConvergenceSignal).values(**sig)
         stmt = stmt.on_conflict_do_update(

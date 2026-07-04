@@ -1,7 +1,10 @@
 """Tests for alert webhook system (Phase 5 PR 2)."""
-import json
+
 import pytest
-pytestmark = pytest.mark.xfail(reason="KI-001: test DB schema incomplete — missing alerts/alert_intents/users tables")
+
+pytestmark = pytest.mark.xfail(
+    reason="KI-001: test DB schema incomplete — missing alerts/alert_intents/users tables"
+)
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -23,6 +26,7 @@ SECRET = "test-secret-key-for-tests"
 @pytest.fixture(autouse=True, scope="session")
 def _patch_settings():
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
     global_settings.resend_api_key = "re_test"
     global_settings.email_from_address = "test@example.com"
@@ -71,7 +75,7 @@ async def test_scan_creates_assignee_filed_alert(db_session):
     """A followed company filing a patent in a watched CPC area creates an alert."""
     from app.core.ai_models import User, UserCompanyFollow
     from app.core.subscription_models import TopicSubscription
-    from app.core.theme_models import Theme, ThemeMatch
+    from app.core.theme_models import Theme
 
     # Set up user
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
@@ -83,34 +87,38 @@ async def test_scan_creates_assignee_filed_alert(db_session):
     await db_session.flush()
 
     # Subscription
-    db_session.add(TopicSubscription(
-        user_id="local-user", theme_id=theme.id, mode="weekly_digest"
-    ))
+    db_session.add(TopicSubscription(user_id="local-user", theme_id=theme.id, mode="weekly_digest"))
 
     # Followed company
-    db_session.add(UserCompanyFollow(
-        user_id="local-user", company_normalized_name="acme", display_name="Acme Corp"
-    ))
+    db_session.add(
+        UserCompanyFollow(
+            user_id="local-user", company_normalized_name="acme", display_name="Acme Corp"
+        )
+    )
 
     # Patent filed today by Acme in AI/ML CPC
-    db_session.add(PatentPublication(
-        doc_id="USPTO:US20240000001",
-        office="USPTO",
-        publication_number="20240000001",
-        publication_date=datetime.now(timezone.utc).date(),
-        assignees=["Acme Corp"],
-        cpc=["G06N 3/08"],
-        title="Neural Network Training System",
-    ))
+    db_session.add(
+        PatentPublication(
+            doc_id="USPTO:US20240000001",
+            office="USPTO",
+            publication_number="20240000001",
+            publication_date=datetime.now(timezone.utc).date(),
+            assignees=["Acme Corp"],
+            cpc=["G06N 3/08"],
+            title="Neural Network Training System",
+        )
+    )
     await db_session.commit()
 
     stats = await _scan_with_session(db_session)
     assert stats["assignee_filed"] >= 1
 
     # Verify alert row
-    alerts = (await db_session.execute(
-        select(Alert).where(Alert.user_id == "local-user")
-    )).scalars().all()
+    alerts = (
+        (await db_session.execute(select(Alert).where(Alert.user_id == "local-user")))
+        .scalars()
+        .all()
+    )
     assert len(alerts) >= 1
     assert alerts[0].type == "assignee_filed"
     assert alerts[0].payload.get("assignee") == "Acme Corp"
@@ -129,22 +137,22 @@ async def test_scan_creates_expiring_alert(db_session):
     db_session.add(theme)
     await db_session.flush()
 
-    db_session.add(TopicSubscription(
-        user_id="local-user", theme_id=theme.id, mode="weekly_digest"
-    ))
+    db_session.add(TopicSubscription(user_id="local-user", theme_id=theme.id, mode="weekly_digest"))
 
     # Patent expiring in 30 days
     expiry = (datetime.now(timezone.utc) + timedelta(days=30)).date()
-    db_session.add(PatentPublication(
-        doc_id="USPTO:US20240000002",
-        office="USPTO",
-        publication_number="20240000002",
-        publication_date=datetime.now(timezone.utc).date(),
-        assignees=["Intel Corp"],
-        cpc=["H01L 21/02"],
-        title="Semiconductor Process",
-        estimated_expiry_date=expiry,
-    ))
+    db_session.add(
+        PatentPublication(
+            doc_id="USPTO:US20240000002",
+            office="USPTO",
+            publication_number="20240000002",
+            publication_date=datetime.now(timezone.utc).date(),
+            assignees=["Intel Corp"],
+            cpc=["H01L 21/02"],
+            title="Semiconductor Process",
+            estimated_expiry_date=expiry,
+        )
+    )
     await db_session.commit()
 
     stats = await _scan_with_session(db_session)
@@ -164,20 +172,20 @@ async def test_scan_creates_high_opportunity_alert(db_session):
     db_session.add(theme)
     await db_session.flush()
 
-    db_session.add(TopicSubscription(
-        user_id="local-user", theme_id=theme.id, mode="weekly_digest"
-    ))
+    db_session.add(TopicSubscription(user_id="local-user", theme_id=theme.id, mode="weekly_digest"))
 
-    db_session.add(PatentPublication(
-        doc_id="USPTO:US20240000003",
-        office="USPTO",
-        publication_number="20240000003",
-        publication_date=datetime.now(timezone.utc).date(),
-        assignees=["Moderna"],
-        cpc=["C12N 15/10"],
-        title="mRNA Vaccine Platform",
-        summary={"opportunity_score": 92},
-    ))
+    db_session.add(
+        PatentPublication(
+            doc_id="USPTO:US20240000003",
+            office="USPTO",
+            publication_number="20240000003",
+            publication_date=datetime.now(timezone.utc).date(),
+            assignees=["Moderna"],
+            cpc=["C12N 15/10"],
+            title="mRNA Vaccine Platform",
+            summary={"opportunity_score": 92},
+        )
+    )
     await db_session.commit()
 
     stats = await _scan_with_session(db_session)
@@ -301,9 +309,7 @@ async def test_alert_retry_increments_on_failure(db_session):
         await _deliver_with_session(db_session)
 
     # Re-fetch
-    result = await db_session.execute(
-        select(Alert).where(Alert.id == alert.id)
-    )
+    result = await db_session.execute(select(Alert).where(Alert.id == alert.id))
     updated = result.scalar_one()
     assert updated.retry_count >= 1
     assert updated.status in ("pending", "failed")
@@ -364,35 +370,39 @@ async def test_alert_dedup_same_patent(db_session):
     db_session.add(theme)
     await db_session.flush()
 
-    db_session.add(TopicSubscription(
-        user_id="local-user", theme_id=theme.id, mode="weekly_digest"
-    ))
-    db_session.add(UserCompanyFollow(
-        user_id="local-user", company_normalized_name="acme", display_name="Acme"
-    ))
+    db_session.add(TopicSubscription(user_id="local-user", theme_id=theme.id, mode="weekly_digest"))
+    db_session.add(
+        UserCompanyFollow(user_id="local-user", company_normalized_name="acme", display_name="Acme")
+    )
 
-    db_session.add(PatentPublication(
-        doc_id="USPTO:US20240000004",
-        office="USPTO",
-        publication_number="20240000004",
-        publication_date=datetime.now(timezone.utc).date(),
-        assignees=["Acme"],
-        cpc=["G06N 3/08"],
-        title="AI System",
-    ))
+    db_session.add(
+        PatentPublication(
+            doc_id="USPTO:US20240000004",
+            office="USPTO",
+            publication_number="20240000004",
+            publication_date=datetime.now(timezone.utc).date(),
+            assignees=["Acme"],
+            cpc=["G06N 3/08"],
+            title="AI System",
+        )
+    )
     await db_session.commit()
 
     # First scan
     await _scan_with_session(db_session)
-    count1 = (await db_session.execute(
-        select(Alert).where(Alert.user_id == "local-user")
-    )).scalars().all()
+    count1 = (
+        (await db_session.execute(select(Alert).where(Alert.user_id == "local-user")))
+        .scalars()
+        .all()
+    )
 
     # Second scan (same data)
     await _scan_with_session(db_session)
-    count2 = (await db_session.execute(
-        select(Alert).where(Alert.user_id == "local-user")
-    )).scalars().all()
+    count2 = (
+        (await db_session.execute(select(Alert).where(Alert.user_id == "local-user")))
+        .scalars()
+        .all()
+    )
 
     # Should be same count (dedup worked)
     assert len(count1) == len(count2)

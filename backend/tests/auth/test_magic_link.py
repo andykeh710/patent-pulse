@@ -1,4 +1,5 @@
 """Tests for magic-link auth flow."""
+
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -48,6 +49,7 @@ async def test_verify_consumed_token_fails(db_session):
 async def test_verify_expired_token_fails(db_session):
     raw, h = generate_token()
     from app.core.subscription_models import AuthMagicLinkToken
+
     token_row = AuthMagicLinkToken(
         token_hash=h,
         user_id="local-user",

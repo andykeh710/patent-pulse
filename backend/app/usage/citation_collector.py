@@ -4,6 +4,7 @@ Forward citation evidence collector (Sprint 5).
 Collects usage signal evidence from PatentPublication.citations_forward.
 Returns dicts ready for insertion into usage_evidence — no DB writes.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -78,9 +79,7 @@ async def collect_citation_evidence(
 
         # Look up the citing patent by doc_id.
         source_result = await session.execute(
-            select(PatentPublication).where(
-                PatentPublication.doc_id == doc_id
-            )
+            select(PatentPublication).where(PatentPublication.doc_id == doc_id)
         )
         source = source_result.scalar_one_or_none()
         if not source:
@@ -100,21 +99,23 @@ async def collect_citation_evidence(
         if tier == "excluded":
             continue
 
-        evidence_rows.append({
-            "patent_publication_id": patent_id,
-            "source_type": "forward_citation",
-            "source_patent_id": source.id,
-            "source_patent_doc_id": source.doc_id,
-            "source_patent_title": source.title,
-            "source_patent_assignee": (source.assignees or [None])[0],
-            "source_patent_filing_date": source.filing_date,
-            "source_patent_cpc": source.cpc or [],
-            "matched_cpc": shared,
-            "cpc_overlap_count": shared_count,
-            "similarity_score": None,
-            "citation_direction": "forward",
-            "evidence_tier": tier,
-            "evidence_confidence": confidence,
-        })
+        evidence_rows.append(
+            {
+                "patent_publication_id": patent_id,
+                "source_type": "forward_citation",
+                "source_patent_id": source.id,
+                "source_patent_doc_id": source.doc_id,
+                "source_patent_title": source.title,
+                "source_patent_assignee": (source.assignees or [None])[0],
+                "source_patent_filing_date": source.filing_date,
+                "source_patent_cpc": source.cpc or [],
+                "matched_cpc": shared,
+                "cpc_overlap_count": shared_count,
+                "similarity_score": None,
+                "citation_direction": "forward",
+                "evidence_tier": tier,
+                "evidence_confidence": confidence,
+            }
+        )
 
     return evidence_rows

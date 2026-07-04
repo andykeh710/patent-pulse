@@ -66,11 +66,13 @@ def fetch_uspto_figures(publication_number: str, timeout: int = 30) -> list[dict
 
         doc.close()
 
-        return [{
-            "raw_bytes": png_bytes,
-            "source_url": url,
-            "figure_label": f"US {clean_num} — page 1",
-        }]
+        return [
+            {
+                "raw_bytes": png_bytes,
+                "source_url": url,
+                "figure_label": f"US {clean_num} — page 1",
+            }
+        ]
     except Exception as e:
         logger.warning("USPTO PDF extraction failed for %s: %s", clean_num, e)
         return []

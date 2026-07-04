@@ -5,8 +5,9 @@ down_revision = "0033"
 branch_labels = None
 depends_on = None
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 
 def upgrade() -> None:
@@ -21,7 +22,9 @@ def upgrade() -> None:
         sa.Column("object_type", sa.String(64), nullable=True),
         sa.Column("object_id", sa.String(64), nullable=True),
         sa.Column("metadata_json", sa.dialects.postgresql.JSONB, nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+        ),
     )
 
     op.create_table(
@@ -31,7 +34,9 @@ def upgrade() -> None:
         sa.Column("alert_type", sa.String(), nullable=False),
         sa.Column("query_or_filter_json", sa.dialects.postgresql.JSONB, nullable=True),
         sa.Column("frequency", sa.String(), nullable=False, server_default="weekly"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+        ),
     )
 
 

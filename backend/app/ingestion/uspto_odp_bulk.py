@@ -18,12 +18,11 @@ Workflow:
 5. Feed into existing USPTONormalizer + upsert pipeline
 """
 
-import json
 import logging
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterator
-from datetime import date, datetime, timezone
+from datetime import date
 from io import BytesIO
 from typing import Any
 
@@ -55,15 +54,11 @@ class USPTOBulkDatasetClient:
 
     # ── Product file discovery ──────────────────────────────────────────
 
-    def get_grant_files(
-        self, start_date: date, end_date: date
-    ) -> list[dict[str, Any]]:
+    def get_grant_files(self, start_date: date, end_date: date) -> list[dict[str, Any]]:
         """Discover PTGRXML (Patent Grant XML) files in the date range."""
         return self._get_product_files("PTGRXML", start_date, end_date)
 
-    def get_application_files(
-        self, start_date: date, end_date: date
-    ) -> list[dict[str, Any]]:
+    def get_application_files(self, start_date: date, end_date: date) -> list[dict[str, Any]]:
         """Discover APPXML (Patent Application XML) files in the date range."""
         return self._get_product_files("APPXML", start_date, end_date)
 
@@ -100,23 +95,23 @@ class USPTOBulkDatasetClient:
             file_to = f.get("fileDataToDate", "")
             # File must overlap with our date range
             if file_to >= str(start_date) and file_from <= str(end_date):
-                matched.append({
-                    "fileName": f["fileName"],
-                    "fileSize": f.get("fileSize", 0),
-                    "fileDownloadURI": f["fileDownloadURI"],
-                    "fileDataFromDate": file_from,
-                    "fileDataToDate": file_to,
-                    "productIdentifier": product_id,
-                })
+                matched.append(
+                    {
+                        "fileName": f["fileName"],
+                        "fileSize": f.get("fileSize", 0),
+                        "fileDownloadURI": f["fileDownloadURI"],
+                        "fileDataFromDate": file_from,
+                        "fileDataToDate": file_to,
+                        "productIdentifier": product_id,
+                    }
+                )
 
         self.stats["files_discovered"] += len(matched)
         return matched
 
     # ── File download + parsing ─────────────────────────────────────────
 
-    def download_and_parse(
-        self, file_info: dict[str, Any]
-    ) -> Iterator[dict[str, Any]]:
+    def download_and_parse(self, file_info: dict[str, Any]) -> Iterator[dict[str, Any]]:
         """
         Download a ZIP file containing patent XML and yield parsed records.
 
@@ -162,9 +157,7 @@ class USPTOBulkDatasetClient:
             logger.error(f"ZIP parse failed: {e}")
             self.stats["files_failed"] += 1
 
-    def _parse_xml(
-        self, content: bytes, file_info: dict
-    ) -> Iterator[dict[str, Any]]:
+    def _parse_xml(self, content: bytes, file_info: dict) -> Iterator[dict[str, Any]]:
         """
         Parse USPTO grant/application XML into bibliographic records.
         Handles concatenated XML (multiple root elements).
@@ -233,9 +226,7 @@ class USPTOBulkDatasetClient:
 
         yield self._extract_biblio_common(biblio, kind_default="A1")
 
-    def _extract_biblio_common(
-        self, biblio: ET.Element, kind_default: str
-    ) -> dict[str, Any]:
+    def _extract_biblio_common(self, biblio: ET.Element, kind_default: str) -> dict[str, Any]:
         """Extract common bibliographic fields from any USPTO XML bibliographic data."""
 
         # Publication reference
@@ -246,15 +237,9 @@ class USPTOBulkDatasetClient:
         country = "US"
         if pub_ref is not None:
             doc_id = pub_ref.find(".//doc-number")
-            pub_num = (
-                doc_id.text.strip() if doc_id is not None and doc_id.text else ""
-            )
+            pub_num = doc_id.text.strip() if doc_id is not None and doc_id.text else ""
             date_elem = pub_ref.find(".//date")
-            pub_date = (
-                date_elem.text.strip()
-                if date_elem is not None and date_elem.text
-                else ""
-            )
+            pub_date = date_elem.text.strip() if date_elem is not None and date_elem.text else ""
             kind_elem = pub_ref.find(".//kind")
             if kind_elem is not None and kind_elem.text:
                 kind = kind_elem.text.strip()
@@ -268,17 +253,9 @@ class USPTOBulkDatasetClient:
         app_ref = biblio.find("application-reference")
         if app_ref is not None:
             app_doc = app_ref.find(".//doc-number")
-            app_num = (
-                app_doc.text.strip()
-                if app_doc is not None and app_doc.text
-                else ""
-            )
+            app_num = app_doc.text.strip() if app_doc is not None and app_doc.text else ""
             app_date = app_ref.find(".//date")
-            filing_date = (
-                app_date.text.strip()
-                if app_date is not None and app_date.text
-                else ""
-            )
+            filing_date = app_date.text.strip() if app_date is not None and app_date.text else ""
 
         # Title
         title = ""

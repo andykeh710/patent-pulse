@@ -1,4 +1,5 @@
 """Tests for app.ai.tagger validation + payload building + cache flow."""
+
 from __future__ import annotations
 
 import pytest
@@ -140,12 +141,16 @@ async def test_tag_patent_writes_artifact_via_cache(
     assert "machine_learning" in tags["technology_method"]
 
     rows = (
-        await db_session.execute(
-            select(AIArtifact)
-            .where(AIArtifact.patent_publication_id == p.id)
-            .where(AIArtifact.artifact_type == "tags")
+        (
+            await db_session.execute(
+                select(AIArtifact)
+                .where(AIArtifact.patent_publication_id == p.id)
+                .where(AIArtifact.artifact_type == "tags")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].id == artifact_id
     assert rows[0].status == "complete"
@@ -155,8 +160,12 @@ async def test_tag_patent_writes_artifact_via_cache(
     tags2, artifact_id2 = await cached_tag_patent(db_session, p)
     assert artifact_id2 == artifact_id
     rows2 = (
-        await db_session.execute(
-            select(AIArtifact).where(AIArtifact.patent_publication_id == p.id)
+        (
+            await db_session.execute(
+                select(AIArtifact).where(AIArtifact.patent_publication_id == p.id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows2) == 1

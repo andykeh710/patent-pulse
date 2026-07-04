@@ -11,9 +11,9 @@ Revises: 0038
 from collections.abc import Sequence
 from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision: str = "0039"
 down_revision: Union[str, None] = "0038"
@@ -44,7 +44,9 @@ def upgrade() -> None:
         sa.Column("figure_label", sa.String(256), nullable=True),
         sa.Column("fetched_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
     )
-    op.create_index("ix_patent_figures_patent_ordinal", "patent_figures", ["patent_id", "ordinal"], unique=True)
+    op.create_index(
+        "ix_patent_figures_patent_ordinal", "patent_figures", ["patent_id", "ordinal"], unique=True
+    )
 
     # ── patent_publications columns ─────────────────────────────
     op.add_column("patent_publications", sa.Column("thumbnail_url", sa.String(512), nullable=True))

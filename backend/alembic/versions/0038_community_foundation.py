@@ -11,9 +11,10 @@ Revises: 0037
 from collections.abc import Sequence
 from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
+
+from alembic import op
 
 revision: str = "0038"
 down_revision: Union[str, None] = "0037"
@@ -47,9 +48,22 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
-    op.create_index("ix_intelligence_items_slug", "intelligence_items", ["slug"], unique=True, postgresql_where=sa.text("slug IS NOT NULL"))
-    op.create_index("ix_intelligence_items_visibility", "intelligence_items", ["visibility", "published_at"], postgresql_where=sa.text("visibility = 'public'"))
-    op.create_index("ix_intelligence_items_owner", "intelligence_items", ["owner_user_id", "created_at"])
+    op.create_index(
+        "ix_intelligence_items_slug",
+        "intelligence_items",
+        ["slug"],
+        unique=True,
+        postgresql_where=sa.text("slug IS NOT NULL"),
+    )
+    op.create_index(
+        "ix_intelligence_items_visibility",
+        "intelligence_items",
+        ["visibility", "published_at"],
+        postgresql_where=sa.text("visibility = 'public'"),
+    )
+    op.create_index(
+        "ix_intelligence_items_owner", "intelligence_items", ["owner_user_id", "created_at"]
+    )
 
     # ── evidence_items ─────────────────────────────────────────────
     op.create_table(
@@ -85,7 +99,9 @@ def upgrade() -> None:
         sa.Column("resolved_at", sa.DateTime(timezone=True)),
     )
     op.create_index("ix_moderation_events_status", "moderation_events", ["status", "created_at"])
-    op.create_index("ix_moderation_events_object", "moderation_events", ["object_type", "object_id"])
+    op.create_index(
+        "ix_moderation_events_object", "moderation_events", ["object_type", "object_id"]
+    )
 
     # ── feature flag (env-var based, see app.config) ────────────────
     # COMMUNITY_PUBLIC_ENABLED controls public community feature exposure.

@@ -1,4 +1,5 @@
 """Tests for quota limits (Sprint 7)."""
+
 from datetime import datetime, timezone
 
 import pytest
@@ -21,10 +22,19 @@ async def test_free_user_with_0_topics_passes(db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_free_user_with_1_topic_fails(db_session):
     from app.core.subscription_models import TopicSubscription
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     # Create 1 existing subscription
-    themes = (await db_session.execute(select(__import__("app.core.theme_models", fromlist=["Theme"]).Theme).limit(1))).scalars().all()
+    themes = (
+        (
+            await db_session.execute(
+                select(__import__("app.core.theme_models", fromlist=["Theme"]).Theme).limit(1)
+            )
+        )
+        .scalars()
+        .all()
+    )
     sub = TopicSubscription(user_id="local-user", theme_id=themes[0].id, mode="weekly_digest")
     db_session.add(sub)
     await db_session.commit()
@@ -54,13 +64,21 @@ async def test_free_user_alert_quota_under_limit(db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_free_user_alert_quota_exhausted(db_session):
     from app.core.subscription_models import EmailDelivery
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
 
     # Create 5 recent deliveries
     for i in range(5):
-        db_session.add(EmailDelivery(user_id="local-user", email_type="instant_alert", status="dev", sent_at=datetime.now(timezone.utc)))
+        db_session.add(
+            EmailDelivery(
+                user_id="local-user",
+                email_type="instant_alert",
+                status="dev",
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
     await db_session.commit()
 
     assert await check_alert_quota(db_session, "local-user") is False
@@ -69,12 +87,20 @@ async def test_free_user_alert_quota_exhausted(db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_basic_user_alert_quota_unlimited(db_session):
     from app.core.subscription_models import EmailDelivery
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "basic"
     await db_session.commit()
 
     for i in range(100):
-        db_session.add(EmailDelivery(user_id="local-user", email_type="instant_alert", status="dev", sent_at=datetime.now(timezone.utc)))
+        db_session.add(
+            EmailDelivery(
+                user_id="local-user",
+                email_type="instant_alert",
+                status="dev",
+                sent_at=datetime.now(timezone.utc),
+            )
+        )
     await db_session.commit()
 
     assert await check_alert_quota(db_session, "local-user") is True
@@ -87,5 +113,6 @@ def test_require_tier_rejects_free():
 
 def test_tier_limits_dict():
     from app.quotas.limits import TIER_LIMITS
+
     assert TIER_LIMITS["free"]["max_topics"] == 1
     assert TIER_LIMITS["basic"]["max_topics"] is None

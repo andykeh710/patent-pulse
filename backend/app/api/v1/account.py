@@ -39,7 +39,7 @@ class DeleteAccountBody(BaseModel):
 async def delete_account(
     body: DeleteAccountBody,
     user_id: str = Depends(current_user),
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Permanently delete the authenticated user's account.
 
@@ -61,9 +61,7 @@ async def delete_account(
     if user.id:
         billing = (
             await db.execute(
-                select(BillingSubscription).where(
-                    BillingSubscription.user_id == user.id
-                )
+                select(BillingSubscription).where(BillingSubscription.user_id == user.id)
             )
         ).scalar_one_or_none()
         if billing and billing.stripe_customer_id:
@@ -71,13 +69,9 @@ async def delete_account(
 
     # ── Anonymize audit rows ──────────────────────────────────────
     await db.execute(
-        update(EmailDelivery)
-        .where(EmailDelivery.user_id == user.id)
-        .values(user_id=None)
+        update(EmailDelivery).where(EmailDelivery.user_id == user.id).values(user_id=None)
     )
-    await db.execute(
-        update(AIRun).where(AIRun.created_by == user.id).values(created_by=None)
-    )
+    await db.execute(update(AIRun).where(AIRun.created_by == user.id).values(created_by=None))
 
     # ── Delete user (FK CASCADE handles subscriptions, api_keys,   ──
     #    billing_subscriptions, magic_link_tokens, exports)         ──
@@ -263,7 +257,8 @@ async def get_account_usage(
     from datetime import date
 
     import redis.asyncio as aioredis
-    from sqlalchemy import func, select as sa_select
+    from sqlalchemy import func
+    from sqlalchemy import select as sa_select
 
     from app.core.ai_models import User, UserCompanyFollow
     from app.core.billing_models import BillingSubscription
@@ -302,9 +297,9 @@ async def get_account_usage(
 
     # ── Themes (topic subscriptions) ─────────────────────────────
     themes_used_raw = await db.execute(
-        sa_select(func.count()).select_from(_TopicSubscription).where(
-            _TopicSubscription.user_id == user_id
-        )
+        sa_select(func.count())
+        .select_from(_TopicSubscription)
+        .where(_TopicSubscription.user_id == user_id)
     )
     themes_used = themes_used_raw.scalar() or 0
     themes_limit = 1 if tier == "free" else None
@@ -315,9 +310,9 @@ async def get_account_usage(
 
     # ── Companies followed ───────────────────────────────────────
     companies_used_raw = await db.execute(
-        sa_select(func.count()).select_from(UserCompanyFollow).where(
-            UserCompanyFollow.user_id == user_id
-        )
+        sa_select(func.count())
+        .select_from(UserCompanyFollow)
+        .where(UserCompanyFollow.user_id == user_id)
     )
     companies_used = companies_used_raw.scalar() or 0
     companies_limit = 3 if tier == "free" else None
@@ -328,9 +323,11 @@ async def get_account_usage(
 
     # ── Renews_at from billing ───────────────────────────────────
     renews_at: str | None = None
-    billing_sub = (await db.execute(
-        sa_select(BillingSubscription).where(BillingSubscription.user_id == user_id)
-    )).scalar_one_or_none()
+    billing_sub = (
+        await db.execute(
+            sa_select(BillingSubscription).where(BillingSubscription.user_id == user_id)
+        )
+    ).scalar_one_or_none()
     if billing_sub and billing_sub.current_period_end:
         renews_at = billing_sub.current_period_end.isoformat()
 
@@ -387,9 +384,9 @@ async def get_webhook_config(
     """Return the user's webhook config (no secret)."""
     from app.core.alert_models import UserWebhookConfig
 
-    config = (await db.execute(
-        select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id)
-    )).scalar_one_or_none()
+    config = (
+        await db.execute(select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id))
+    ).scalar_one_or_none()
 
     if not config:
         return WebhookConfigResponse()
@@ -419,9 +416,9 @@ async def set_webhook_config(
     if tier not in ("lifetime", "enterprise"):
         raise HTTPException(402, "Webhook alerts require Lifetime or Enterprise tier")
 
-    existing = (await db.execute(
-        select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id))
+    ).scalar_one_or_none()
 
     if existing:
         existing.webhook_url = body.webhook_url
@@ -455,21 +452,22 @@ async def test_webhook_config(
     from datetime import datetime, timezone
 
     from app.core.alert_models import Alert, UserWebhookConfig
-    from app.tasks.alerts import _compute_hmac, _deliver_via_webhook
+    from app.tasks.alerts import _deliver_via_webhook
 
-    config = (await db.execute(
-        select(UserWebhookConfig).where(
-            UserWebhookConfig.user_id == user_id,
-            UserWebhookConfig.enabled == True,  # noqa: E712
-            UserWebhookConfig.webhook_url.isnot(None),
+    config = (
+        await db.execute(
+            select(UserWebhookConfig).where(
+                UserWebhookConfig.user_id == user_id,
+                UserWebhookConfig.enabled == True,  # noqa: E712
+                UserWebhookConfig.webhook_url.isnot(None),
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
 
     if not config:
         raise HTTPException(400, "No webhook configured. Set webhook URL and enable it first.")
 
     # Create a temporary alert object for the test
-    from app.core.alert_models import Alert
 
     test_alert = Alert(
         user_id=user_id,
@@ -506,12 +504,21 @@ async def list_alerts(
     from app.core.alert_models import Alert
 
     since = datetime.now(timezone.utc) - timedelta(days=30)
-    rows = (await db.execute(
-        select(Alert).where(
-            Alert.user_id == user_id,
-            Alert.created_at >= since,
-        ).order_by(Alert.created_at.desc()).limit(limit)
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(Alert)
+                .where(
+                    Alert.user_id == user_id,
+                    Alert.created_at >= since,
+                )
+                .order_by(Alert.created_at.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     return [
         {

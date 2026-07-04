@@ -5,6 +5,7 @@ Revises: 0011
 Create Date: 2026-05-24
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -42,9 +43,7 @@ def upgrade() -> None:
         sa.Column("mode", sa.String(16), nullable=False),
         sa.Column("min_score", sa.Float, nullable=True),
         sa.Column("last_delivered_at", sa.DateTime, nullable=True),
-        sa.Column(
-            "paused", sa.Boolean, nullable=False, server_default="false"
-        ),
+        sa.Column("paused", sa.Boolean, nullable=False, server_default="false"),
         sa.Column(
             "created_at",
             sa.DateTime,

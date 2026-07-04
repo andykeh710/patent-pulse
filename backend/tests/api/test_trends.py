@@ -1,4 +1,5 @@
 """Tests for Sprint 4 trend drilldown endpoints."""
+
 from datetime import datetime
 from uuid import uuid4
 
@@ -66,9 +67,7 @@ async def test_trend_patents_returns_patents(client, db_session):
     db_session.add(patent)
     await db_session.commit()
 
-    insert = _make_trend_snapshot(
-        db_session, top_patent_ids=[str(patent.id)]
-    )
+    insert = _make_trend_snapshot(db_session, top_patent_ids=[str(patent.id)])
     await insert()
 
     resp = await client.get("/api/v1/trends/cpc/G06F/patents")
@@ -115,9 +114,7 @@ async def test_trend_assignees_returns_grouped(client, db_session):
     db_session.add(p2)
     await db_session.commit()
 
-    insert = _make_trend_snapshot(
-        db_session, top_patent_ids=[str(p1.id), str(p2.id)]
-    )
+    insert = _make_trend_snapshot(db_session, top_patent_ids=[str(p1.id), str(p2.id)])
     await insert()
 
     resp = await client.get("/api/v1/trends/cpc/G06F/assignees")
@@ -157,8 +154,7 @@ async def test_narrative_get_returns_none_when_no_cache(client, db_session):
 
 
 @pytest.mark.xfail(
-    reason="LLM summary length varies; >30 char assertion fails "
-           "~3% of full-suite runs. Tracked.",
+    reason="LLM summary length varies; >30 char assertion fails ~3% of full-suite runs. Tracked.",
     strict=False,
 )
 @pytest.mark.asyncio
@@ -203,16 +199,17 @@ async def test_narrative_post_returns_valid_schema(client, db_session):
     assert len(data["summary"]) > 30, (
         f"Summary too short ({len(data['summary'])} chars): {data['summary'][:100]!r}"
     )
-    assert len(data["caveats"]) >= 1, (
-        f"Expected at least 1 caveat, got {len(data['caveats'])}"
-    )
+    assert len(data["caveats"]) >= 1, f"Expected at least 1 caveat, got {len(data['caveats'])}"
     caveat_text = " ".join(data["caveats"]).lower()
-    assert any(
-        kw in caveat_text for kw in ["patent", "trend", "filing", "data"]
-    ), f"No keyword found in caveats: {data['caveats']}"
+    assert any(kw in caveat_text for kw in ["patent", "trend", "filing", "data"]), (
+        f"No keyword found in caveats: {data['caveats']}"
+    )
 
 
-@pytest.mark.xfail(reason="Pre-existing LLM-variability flaky test. Fails on stashed clean code (no Sprint 6 changes). Needs LLM mock.", strict=False)
+@pytest.mark.xfail(
+    reason="Pre-existing LLM-variability flaky test. Fails on stashed clean code (no Sprint 6 changes). Needs LLM mock.",
+    strict=False,
+)
 @pytest.mark.asyncio
 async def test_narrative_get_returns_cached_after_post(client, db_session):
     """GET narrative returns the artifact after POST creates it."""
@@ -233,7 +230,7 @@ async def test_narrative_get_returns_cached_after_post(client, db_session):
 
 @pytest.mark.xfail(
     reason="LLM response varies; assertion on keyword presence "
-           "fails ~5% of full-suite runs. Tracked.",
+    "fails ~5% of full-suite runs. Tracked.",
     strict=False,
 )
 @pytest.mark.asyncio
@@ -298,6 +295,5 @@ async def test_narrative_uses_patent_context(client, db_session):
     keywords = ["quantum", "photonic", "transformer", "inference", "neural"]
     matches = [kw for kw in keywords if kw in combined]
     assert len(matches) >= 1 or len(data["summary"]) >= 20, (
-        f"Narrative doesn't reference any patent-title keywords. "
-        f"Text: {combined[:300]}"
+        f"Narrative doesn't reference any patent-title keywords. Text: {combined[:300]}"
     )

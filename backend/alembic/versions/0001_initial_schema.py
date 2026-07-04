@@ -43,13 +43,25 @@ def upgrade() -> None:
         sa.Column("abstract", sa.Text(), nullable=True),
         sa.Column("claims_text", sa.Text(), nullable=True),
         sa.Column("description_text", sa.Text(), nullable=True),
-        sa.Column("citations_backward", sa.dialects.postgresql.JSONB(), nullable=False, server_default="[]"),
-        sa.Column("family_members", sa.dialects.postgresql.JSONB(), nullable=False, server_default="[]"),
+        sa.Column(
+            "citations_backward",
+            sa.dialects.postgresql.JSONB(),
+            nullable=False,
+            server_default="[]",
+        ),
+        sa.Column(
+            "family_members", sa.dialects.postgresql.JSONB(), nullable=False, server_default="[]"
+        ),
         sa.Column("legal_status", sa.String(32), nullable=True),
         sa.Column("maintenance_status", sa.String(32), nullable=True),
         sa.Column("estimated_expiry_date", sa.Date(), nullable=True),
         sa.Column("summary", sa.JSON(), nullable=True),
-        sa.Column("novel_applications", sa.dialects.postgresql.JSONB(), nullable=False, server_default="[]"),
+        sa.Column(
+            "novel_applications",
+            sa.dialects.postgresql.JSONB(),
+            nullable=False,
+            server_default="[]",
+        ),
         sa.Column("interesting_score", sa.Float(), nullable=True),
         sa.Column("score_breakdown", sa.JSON(), nullable=True),
         sa.Column("embedding", Vector(1536), nullable=True),

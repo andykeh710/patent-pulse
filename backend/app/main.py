@@ -14,10 +14,20 @@ from app.api.health import router as health_router
 from app.api.v1.router import v1_router
 from app.api.v1.share import (
     robots_txt as _robots_endpoint,
+)
+from app.api.v1.share import (
     sitemap_companies as _sitemap_companies,
+)
+from app.api.v1.share import (
     sitemap_index as _sitemap_endpoint,
+)
+from app.api.v1.share import (
     sitemap_pages as _sitemap_pages,
+)
+from app.api.v1.share import (
     sitemap_patents as _sitemap_patents,
+)
+from app.api.v1.share import (
     sitemap_themes as _sitemap_themes,
 )
 from app.api.v1.webhooks import public_router
@@ -63,6 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Phase 6: seed blog posts from content/blog/*.md
     try:
         from app.api.v1.blog import seed_blog_posts
+
         count = await seed_blog_posts()
         if count:
             logger.info("Seeded %d blog posts from content/blog/", count)

@@ -49,7 +49,9 @@ def ingest_wipo_bigquery_recent(
 
     logger.info(
         "Starting WIPO BigQuery ingestion: %s to %s (max %d)",
-        start_date, end_date, max_results,
+        start_date,
+        end_date,
+        max_results,
     )
 
     normalizer = WIPONormalizer()
@@ -98,12 +100,15 @@ def ingest_wipo_bigquery_recent(
     if failed_ids:
         logger.warning(
             "WIPO BigQuery ingest: %d failures: %s",
-            len(failed_ids), failed_ids[:10],
+            len(failed_ids),
+            failed_ids[:10],
         )
 
     logger.info(
         "WIPO BigQuery ingestion complete: %d created, %d updated, %d failed",
-        stats["created"], stats["updated"], stats["failed"],
+        stats["created"],
+        stats["updated"],
+        stats["failed"],
     )
 
     return stats

@@ -43,6 +43,7 @@ async def _epo_source_fetch(
     """Fire-and-forget source_fetch recording for EPO API calls."""
     try:
         from app.ingestion.source_fetch import record_source_fetch_async
+
         await record_source_fetch_async(
             provider="epo_ops",
             office="EP",
@@ -292,6 +293,7 @@ class EPOClient:
             Raw publication data dictionary
         """
         import asyncio
+
         path = f"/published-data/publication/epodoc/{publication_number}/biblio"
         result = self._request("GET", path)
         try:
@@ -350,6 +352,7 @@ class EPOClient:
         # The raw response may be base64-encoded or binary text
         try:
             import base64
+
             data = base64.b64decode(raw)
         except Exception:
             # Try treating as latin-1 encoded binary
@@ -405,6 +408,7 @@ class EPOClient:
             try:
                 import asyncio
                 import time as _time
+
                 _start = _time.monotonic()
                 response = self._request("GET", path, params=params)
                 _duration = int((_time.monotonic() - _start) * 1000)
@@ -412,13 +416,15 @@ class EPOClient:
 
                 # Record source_fetch for this page
                 try:
-                    asyncio.ensure_future(_epo_source_fetch(
-                        target_type="search_by_date",
-                        target_id=date_str,
-                        status="success",
-                        records_found=len(publications),
-                        duration_ms=_duration,
-                    ))
+                    asyncio.ensure_future(
+                        _epo_source_fetch(
+                            target_type="search_by_date",
+                            target_id=date_str,
+                            status="success",
+                            records_found=len(publications),
+                            duration_ms=_duration,
+                        )
+                    )
                 except RuntimeError:
                     pass
 
@@ -436,12 +442,15 @@ class EPOClient:
 
             except IngestionError:
                 import asyncio as _aio
+
                 try:
-                    _aio.ensure_future(_epo_source_fetch(
-                        target_type="search_by_date",
-                        target_id=date_str,
-                        status="failed",
-                    ))
+                    _aio.ensure_future(
+                        _epo_source_fetch(
+                            target_type="search_by_date",
+                            target_id=date_str,
+                            status="failed",
+                        )
+                    )
                 except RuntimeError:
                     pass
                 break
@@ -475,9 +484,7 @@ class EPOClient:
     def _extract_publications(self, response: dict) -> list[dict]:
         """Extract publication records from search response."""
         try:
-            search_result = response.get("ops:world-patent-data", {}).get(
-                "ops:biblio-search", {}
-            )
+            search_result = response.get("ops:world-patent-data", {}).get("ops:biblio-search", {})
             search_result = search_result.get("ops:search-result", {})
             publications = search_result.get("exchange-documents", [])
 
@@ -504,15 +511,11 @@ class EPOClient:
         """Normalize EPO bibliographic data to common format."""
         biblio = doc.get("bibliographic-data", {})
 
-        publication_ref = biblio.get("publication-reference", {}).get(
-            "document-id", {}
-        )
+        publication_ref = biblio.get("publication-reference", {}).get("document-id", {})
         if isinstance(publication_ref, list):
             publication_ref = publication_ref[0] if publication_ref else {}
 
-        application_ref = biblio.get("application-reference", {}).get(
-            "document-id", {}
-        )
+        application_ref = biblio.get("application-reference", {}).get("document-id", {})
         if isinstance(application_ref, list):
             application_ref = application_ref[0] if application_ref else {}
 
@@ -590,9 +593,7 @@ class EPOClient:
         if not cls_data:
             cls_data = biblio.get(cls_type, {})
 
-        cls_list = cls_data.get("classification-cpc", []) or cls_data.get(
-            "classification-ipcr", []
-        )
+        cls_list = cls_data.get("classification-cpc", []) or cls_data.get("classification-ipcr", [])
 
         if isinstance(cls_list, dict):
             cls_list = [cls_list]

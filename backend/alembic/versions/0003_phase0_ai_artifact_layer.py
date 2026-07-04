@@ -115,9 +115,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(256), nullable=True),
         sa.Column("is_admin", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("preferences", postgresql.JSONB(), nullable=True),
-        sa.Column(
-            "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
-        ),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
 
     # Seed default user.
@@ -138,22 +136,14 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), primary_key=True),
         sa.Column("normalized_name", sa.String(256), nullable=False),
         sa.Column("display_name", sa.String(256), nullable=False),
-        sa.Column(
-            "aliases", postgresql.JSONB(), nullable=False, server_default="[]"
-        ),
+        sa.Column("aliases", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("country", sa.String(8), nullable=True),
         sa.Column("entity_type", sa.String(32), nullable=True),
         sa.Column("patent_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
-        ),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
-    op.create_index(
-        "ix_assignees_normalized_name", "assignees", ["normalized_name"], unique=True
-    )
+    op.create_index("ix_assignees_normalized_name", "assignees", ["normalized_name"], unique=True)
 
     # ------------------------------------------------------------------
     # ai_runs
@@ -163,21 +153,15 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), primary_key=True),
         sa.Column("task_type", sa.String(32), nullable=False),
         sa.Column("run_mode", sa.String(16), nullable=False),
-        sa.Column(
-            "cohort_filter", postgresql.JSONB(), nullable=False, server_default="{}"
-        ),
+        sa.Column("cohort_filter", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column("cohort_size", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("cached_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("uncached_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("model", sa.String(64), nullable=False),
         sa.Column("prompt_name", sa.String(64), nullable=True),
         sa.Column("prompt_version", sa.Integer(), nullable=True),
-        sa.Column(
-            "est_input_tokens", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "est_output_tokens", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("est_input_tokens", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("est_output_tokens", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("est_cost_usd", sa.Float(), nullable=False, server_default="0"),
         sa.Column(
             "actual_input_tokens",
@@ -192,13 +176,9 @@ def upgrade() -> None:
             server_default="0",
         ),
         sa.Column("actual_cost_usd", sa.Float(), nullable=False, server_default="0"),
-        sa.Column(
-            "completed_count", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("completed_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("failed_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "status", sa.String(16), nullable=False, server_default="pending"
-        ),
+        sa.Column("status", sa.String(16), nullable=False, server_default="pending"),
         sa.Column("celery_task_id", sa.String(128), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column(
@@ -238,9 +218,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("artifact_type", sa.String(32), nullable=False),
-        sa.Column(
-            "artifact_version", sa.Integer(), nullable=False, server_default="1"
-        ),
+        sa.Column("artifact_version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("model", sa.String(64), nullable=False),
         sa.Column("prompt_name", sa.String(64), nullable=False),
         sa.Column("prompt_version", sa.Integer(), nullable=False),
@@ -250,18 +228,10 @@ def upgrade() -> None:
         sa.Column("content_json", postgresql.JSONB(), nullable=True),
         sa.Column("content_text", sa.Text(), nullable=True),
         sa.Column("input_tokens", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "output_tokens", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "estimated_cost_usd", sa.Float(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "actual_cost_usd", sa.Float(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "status", sa.String(16), nullable=False, server_default="pending"
-        ),
+        sa.Column("output_tokens", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("estimated_cost_usd", sa.Float(), nullable=False, server_default="0"),
+        sa.Column("actual_cost_usd", sa.Float(), nullable=False, server_default="0"),
+        sa.Column("status", sa.String(16), nullable=False, server_default="pending"),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
@@ -282,12 +252,8 @@ def upgrade() -> None:
         ["patent_publication_id"],
     )
     op.create_index("ix_ai_artifacts_run_id", "ai_artifacts", ["run_id"])
-    op.create_index(
-        "ix_ai_artifacts_artifact_type", "ai_artifacts", ["artifact_type"]
-    )
-    op.create_index(
-        "ix_ai_artifacts_prompt_hash", "ai_artifacts", ["prompt_hash"]
-    )
+    op.create_index("ix_ai_artifacts_artifact_type", "ai_artifacts", ["artifact_type"])
+    op.create_index("ix_ai_artifacts_prompt_hash", "ai_artifacts", ["prompt_hash"])
     op.create_index("ix_ai_artifacts_input_hash", "ai_artifacts", ["input_hash"])
     op.create_index(
         "ix_ai_artifacts_subject_key",
@@ -392,9 +358,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint(
-            "patent_id", "neighbor_patent_id", name="uq_cross_industry_pair"
-        ),
+        sa.UniqueConstraint("patent_id", "neighbor_patent_id", name="uq_cross_industry_pair"),
     )
     op.create_index(
         "ix_cross_industry_snapshots_patent_id",
@@ -464,12 +428,8 @@ def upgrade() -> None:
             name="uq_convergence_pair_window",
         ),
     )
-    op.create_index(
-        "ix_convergence_signals_cpc_a", "convergence_signals", ["cpc_a"]
-    )
-    op.create_index(
-        "ix_convergence_signals_cpc_b", "convergence_signals", ["cpc_b"]
-    )
+    op.create_index("ix_convergence_signals_cpc_a", "convergence_signals", ["cpc_a"])
+    op.create_index("ix_convergence_signals_cpc_b", "convergence_signals", ["cpc_b"])
 
     # ------------------------------------------------------------------
     # trend_snapshots
@@ -482,17 +442,11 @@ def upgrade() -> None:
         sa.Column("week_start", sa.DateTime(), nullable=False),
         sa.Column("count_4w", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("count_12w", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "baseline_12mo", sa.Float(), nullable=False, server_default="0"
-        ),
+        sa.Column("baseline_12mo", sa.Float(), nullable=False, server_default="0"),
         sa.Column("z_score", sa.Float(), nullable=False, server_default="0"),
         sa.Column("growth_pct", sa.Float(), nullable=False, server_default="0"),
-        sa.Column(
-            "assignee_diversity", sa.Float(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "cpc_diversity", sa.Float(), nullable=False, server_default="0"
-        ),
+        sa.Column("assignee_diversity", sa.Float(), nullable=False, server_default="0"),
+        sa.Column("cpc_diversity", sa.Float(), nullable=False, server_default="0"),
         sa.Column(
             "top_patent_ids",
             postgresql.JSONB(),
@@ -505,15 +459,11 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint(
-            "surface", "key", "week_start", name="uq_trend_surface_key_week"
-        ),
+        sa.UniqueConstraint("surface", "key", "week_start", name="uq_trend_surface_key_week"),
     )
     op.create_index("ix_trend_snapshots_surface", "trend_snapshots", ["surface"])
     op.create_index("ix_trend_snapshots_key", "trend_snapshots", ["key"])
-    op.create_index(
-        "ix_trend_snapshots_week_start", "trend_snapshots", ["week_start"]
-    )
+    op.create_index("ix_trend_snapshots_week_start", "trend_snapshots", ["week_start"])
 
     # ------------------------------------------------------------------
     # sleeping_giant_clusters
@@ -554,13 +504,9 @@ def downgrade() -> None:
     op.drop_index("ix_convergence_signals_cpc_b", table_name="convergence_signals")
     op.drop_index("ix_convergence_signals_cpc_a", table_name="convergence_signals")
     op.drop_table("convergence_signals")
-    op.drop_index(
-        "ix_patent_cliff_clusters_key_value", table_name="patent_cliff_clusters"
-    )
+    op.drop_index("ix_patent_cliff_clusters_key_value", table_name="patent_cliff_clusters")
     op.drop_table("patent_cliff_clusters")
-    op.drop_index(
-        "ix_cross_industry_snapshots_run_id", table_name="cross_industry_snapshots"
-    )
+    op.drop_index("ix_cross_industry_snapshots_run_id", table_name="cross_industry_snapshots")
     op.drop_index(
         "ix_cross_industry_snapshots_patent_id",
         table_name="cross_industry_snapshots",
@@ -592,9 +538,7 @@ def downgrade() -> None:
     op.drop_index("ix_ai_artifacts_prompt_hash", table_name="ai_artifacts")
     op.drop_index("ix_ai_artifacts_artifact_type", table_name="ai_artifacts")
     op.drop_index("ix_ai_artifacts_run_id", table_name="ai_artifacts")
-    op.drop_index(
-        "ix_ai_artifacts_patent_publication_id", table_name="ai_artifacts"
-    )
+    op.drop_index("ix_ai_artifacts_patent_publication_id", table_name="ai_artifacts")
     op.drop_table("ai_artifacts")
 
     op.drop_index("ix_ai_runs_created_at_desc", table_name="ai_runs")

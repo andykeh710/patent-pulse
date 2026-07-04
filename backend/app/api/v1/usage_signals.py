@@ -1,4 +1,5 @@
 """Sprint 5 — Usage Signals API endpoints."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -40,9 +41,7 @@ class EvidenceItem(BaseModel):
             source_patent_title=row.source_patent_title,
             source_patent_assignee=row.source_patent_assignee,
             source_patent_filing_date=(
-                row.source_patent_filing_date.isoformat()
-                if row.source_patent_filing_date
-                else None
+                row.source_patent_filing_date.isoformat() if row.source_patent_filing_date else None
             ),
             evidence_tier=row.evidence_tier,
             similarity_score=row.similarity_score,
@@ -89,9 +88,7 @@ class UsageSignalResponse(BaseModel):
             ),
             narrative_summary=signal.narrative_summary,
             narrative_generated_at=(
-                signal.narrative_generated_at.isoformat()
-                if signal.narrative_generated_at
-                else None
+                signal.narrative_generated_at.isoformat() if signal.narrative_generated_at else None
             ),
             evidence=[EvidenceItem.from_row(e) for e in evidence_rows],
         )
@@ -124,9 +121,7 @@ async def _get_or_assess_signals(
 ) -> tuple[PatentUsageSignals | None, list]:
     """Return existing signal row + evidence, or (None, []) if not assessed."""
     result = await db.execute(
-        select(PatentUsageSignals).where(
-            PatentUsageSignals.patent_publication_id == patent_id
-        )
+        select(PatentUsageSignals).where(PatentUsageSignals.patent_publication_id == patent_id)
     )
     signal = result.scalar_one_or_none()
 
@@ -144,9 +139,7 @@ async def _get_or_assess_signals(
 
 
 async def _get_patent_or_404(db: AsyncSession, patent_id: UUID) -> PatentPublication:
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")
@@ -180,20 +173,14 @@ async def generate_usage_signals(
     patent = await _get_patent_or_404(db, patent_id)
 
     # Run collectors.
-    evidence_dicts, collector_stats = await collect_all_evidence(
-        db, patent.id, similarity_top_k=10
-    )
+    evidence_dicts, collector_stats = await collect_all_evidence(db, patent.id, similarity_top_k=10)
 
     # Score.
-    signal_result = compute_usage_signal_score(
-        evidence_dicts, patent.assignees or []
-    )
+    signal_result = compute_usage_signal_score(evidence_dicts, patent.assignees or [])
 
     # Upsert signal row.
     existing = await db.execute(
-        select(PatentUsageSignals).where(
-            PatentUsageSignals.patent_publication_id == patent_id
-        )
+        select(PatentUsageSignals).where(PatentUsageSignals.patent_publication_id == patent_id)
     )
     signal_row = existing.scalar_one_or_none()
 
@@ -276,15 +263,18 @@ async def generate_narrative(
                 "weak": signal.weak_evidence_count,
             },
         },
-        [{
-            "source_patent_title": e.source_patent_title,
-            "source_patent_assignee": e.source_patent_assignee,
-            "evidence_tier": e.evidence_tier,
-            "similarity_score": e.similarity_score,
-            "cpc_overlap_count": e.cpc_overlap_count,
-            "source_patent_filing_date": e.source_patent_filing_date,
-            "matched_cpc": e.matched_cpc,
-        } for e in evidence[:5]],
+        [
+            {
+                "source_patent_title": e.source_patent_title,
+                "source_patent_assignee": e.source_patent_assignee,
+                "evidence_tier": e.evidence_tier,
+                "similarity_score": e.similarity_score,
+                "cpc_overlap_count": e.cpc_overlap_count,
+                "source_patent_filing_date": e.source_patent_filing_date,
+                "matched_cpc": e.matched_cpc,
+            }
+            for e in evidence[:5]
+        ],
         patent_id,
         patent_title=patent.title or "",
         patent_assignee=(patent.assignees or [None])[0] or "",
@@ -330,9 +320,8 @@ def _update_from_result(
     if result.get("most_recent_date"):
         try:
             from datetime import date as date_type
-            row.most_recent_evidence_date = date_type.fromisoformat(
-                result["most_recent_date"]
-            )
+
+            row.most_recent_evidence_date = date_type.fromisoformat(result["most_recent_date"])
         except (ValueError, TypeError):
             pass
 

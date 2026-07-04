@@ -5,7 +5,6 @@ Uses a single async event loop to avoid RuntimeError from multiple asyncio.run()
 """
 
 import asyncio
-import logging
 from datetime import date, datetime, timezone
 
 from celery.utils.log import get_task_logger
@@ -40,9 +39,7 @@ def ingest_odp_grants_range(self, start_date: str, end_date: str) -> dict:
     name="app.tasks.ingest_odp_bulk.ingest_odp_applications_range",
     max_retries=1,
 )
-def ingest_odp_applications_range(
-    self, start_date: str, end_date: str
-) -> dict:
+def ingest_odp_applications_range(self, start_date: str, end_date: str) -> dict:
     """Ingest USPTO published applications from ODP bulk datasets."""
     return asyncio.run(
         _ingest_odp_range_async(
@@ -51,9 +48,7 @@ def ingest_odp_applications_range(
     )
 
 
-async def _ingest_odp_range_async(
-    kind: str, start_date: date, end_date: date
-) -> dict:
+async def _ingest_odp_range_async(kind: str, start_date: date, end_date: date) -> dict:
     """Core async ingestion logic — single event loop for all DB operations."""
     client = USPTOBulkDatasetClient()
     normalizer = USPTONormalizer()

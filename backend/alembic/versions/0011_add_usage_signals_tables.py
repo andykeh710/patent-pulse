@@ -7,6 +7,7 @@ Create Date: 2026-05-23
 Adds usage_evidence and patent_usage_signals tables for Sprint 5
 Commercial Usage Signals MVP.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

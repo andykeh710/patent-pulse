@@ -6,6 +6,7 @@ Free, no authentication required. Rate limit: 45 requests/minute.
 
 API docs: https://api.patentsview.org/patent/
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -169,9 +170,7 @@ class PatentsViewClient:
 
         return results
 
-    def _get_patent(
-        self, patent_number: str, fields: list[str]
-    ) -> list[dict[str, Any]]:
+    def _get_patent(self, patent_number: str, fields: list[str]) -> list[dict[str, Any]]:
         """Fetch a single patent by number."""
         all_fields = ["patent_number"] + fields
         query = {

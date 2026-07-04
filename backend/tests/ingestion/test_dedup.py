@@ -1,4 +1,3 @@
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,9 +37,7 @@ async def test_upsert_updates_existing_patent(
 
 
 @pytest.mark.asyncio
-async def test_upsert_is_idempotent(
-    db_session: AsyncSession, sample_patent_data: dict
-) -> None:
+async def test_upsert_is_idempotent(db_session: AsyncSession, sample_patent_data: dict) -> None:
     await upsert_patent(db_session, sample_patent_data)
     await upsert_patent(db_session, sample_patent_data)
     record, _ = await upsert_patent(db_session, sample_patent_data)
@@ -60,9 +57,7 @@ async def test_upsert_missing_doc_id_raises(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_patent_by_doc_id(
-    db_session: AsyncSession, sample_patent_data: dict
-) -> None:
+async def test_get_patent_by_doc_id(db_session: AsyncSession, sample_patent_data: dict) -> None:
     await upsert_patent(db_session, sample_patent_data)
 
     result = await get_patent_by_doc_id(db_session, sample_patent_data["doc_id"])

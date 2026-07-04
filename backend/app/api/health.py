@@ -1,4 +1,5 @@
 """Health check endpoint with DB, Redis, and Resend probes."""
+
 from __future__ import annotations
 
 import asyncio
@@ -38,6 +39,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
     try:
         from alembic.config import Config
         from alembic.script import ScriptDirectory
+
         cfg = Config("alembic.ini")
         script = ScriptDirectory.from_config(cfg)
         probes["alembic_head"] = script.get_current_head()
@@ -58,6 +60,7 @@ async def sentry_smoke_test() -> dict:
     """
     if settings.environment == "production":
         from fastapi.responses import JSONResponse
+
         return JSONResponse(status_code=404, content={"detail": "Not found"})
 
     1 / 0  # deliberate ZeroDivisionError for Sentry smoke test
@@ -78,6 +81,7 @@ async def _check_db(db: AsyncSession) -> str:
 async def _check_redis() -> str:
     try:
         from app.tasks.celery_app import celery_app
+
         conn = celery_app.broker_connection()
         conn.ensure_connection(max_retries=1, timeout=2)
         return "ok"
@@ -106,8 +110,9 @@ async def _check_resend() -> str:
     return "ok"
 
     try:
-        import urllib.request
         import urllib.error
+        import urllib.request
+
         # Use the /emails endpoint (works with sending_access keys).
         # /domains requires full_access which is unnecessary and would
         # return 403 for a correctly-configured sending-access key.
@@ -127,11 +132,14 @@ async def _check_resend() -> str:
         if e.code in (401, 403):
             logger.warning(
                 "Health: Resend probe returned %s — check RESEND_API_KEY "
-                "is valid at https://resend.com/api-keys", e.code,
+                "is valid at https://resend.com/api-keys",
+                e.code,
             )
             return "unauthorized"
         logger.warning(
-            "Health: Resend probe HTTP %s: %s", e.code, e.reason,
+            "Health: Resend probe HTTP %s: %s",
+            e.code,
+            e.reason,
         )
         return "unreachable"
     except Exception as e:

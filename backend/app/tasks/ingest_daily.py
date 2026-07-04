@@ -10,19 +10,15 @@ Replaces the weekly-only schedule with a nightly catch-up:
 """
 
 import asyncio
-import logging
 from datetime import date, datetime, timedelta, timezone
 
 from celery.utils.log import get_task_logger
 
 from app.config import settings
-from app.core.exceptions import TransientIngestionError
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
 from app.tasks.ingest_bigquery import ingest_from_bigquery_range
 from app.tasks.ingest_uspto_bulk import catch_up_weeks
-from app.tasks.ingest_applications import ingest_applications_range
-from app.tasks.ingest_grants import ingest_grants_range
 
 logger = get_task_logger(__name__)
 
@@ -101,21 +97,24 @@ async def _get_latest_publication_date() -> date | None:
     from app.core.models import PatentPublication
 
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(func.max(PatentPublication.publication_date))
-        )
+        result = await session.execute(select(func.max(PatentPublication.publication_date)))
         return result.scalar()
 
 
 async def _record_source_fetch(
-    provider: str, office: str, target_type: str,
-    target_id: str, stats: dict, error: str | None,
+    provider: str,
+    office: str,
+    target_type: str,
+    target_id: str,
+    stats: dict,
+    error: str | None,
 ) -> None:
     """Record a per-source fetch attempt in source_fetches."""
     from sqlalchemy import text
 
     async with async_session_maker() as session:
-        await session.execute(text("""
+        await session.execute(
+            text("""
             INSERT INTO source_fetches (
                 provider, office, target_type, target_id,
                 status, records_found, error_message,
@@ -125,16 +124,20 @@ async def _record_source_fetch(
                 :status, :found, :error,
                 now(), now(), :ms
             )
-        """), {
-            "provider": provider,
-            "office": office,
-            "target_type": target_type,
-            "target_id": target_id,
-            "status": "success" if (not error and stats.get("fetched", 0) > 0) else ("failed" if error else "empty"),
-            "found": stats.get("fetched", 0) or stats.get("processed", 0),
-            "error": error[:500] if error else None,
-            "ms": 0,
-        })
+        """),
+            {
+                "provider": provider,
+                "office": office,
+                "target_type": target_type,
+                "target_id": target_id,
+                "status": "success"
+                if (not error and stats.get("fetched", 0) > 0)
+                else ("failed" if error else "empty"),
+                "found": stats.get("fetched", 0) or stats.get("processed", 0),
+                "error": error[:500] if error else None,
+                "ms": 0,
+            },
+        )
         await session.commit()
 
 
@@ -242,9 +245,16 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             bq_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 1, "fetched": 0}
 
         # Record source fetch for BigQuery
-        asyncio.run(_record_source_fetch("bigquery", "US", "grants_range",
-            f"{start_date.isoformat()}:{end_date.isoformat()}",
-            bq_stats, bq_error))
+        asyncio.run(
+            _record_source_fetch(
+                "bigquery",
+                "US",
+                "grants_range",
+                f"{start_date.isoformat()}:{end_date.isoformat()}",
+                bq_stats,
+                bq_error,
+            )
+        )
 
         # Phase 2: USPTO ODP bulk (official weekly XML — when available)
         odp_stats = {}
@@ -260,18 +270,25 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             odp_error = str(e)[:500]
             odp_stats = {"created": 0, "updated": 0, "failed": 1}
 
-        asyncio.run(_record_source_fetch("uspto_odp", "US", "bulk_weekly",
-            f"{start_date.isoformat()}:{end_date.isoformat()}",
-            odp_stats, odp_error))
+        asyncio.run(
+            _record_source_fetch(
+                "uspto_odp",
+                "US",
+                "bulk_weekly",
+                f"{start_date.isoformat()}:{end_date.isoformat()}",
+                odp_stats,
+                odp_error,
+            )
+        )
 
         # Merge stats: BigQuery + ODP
         grants_stats = {
             "processed": (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0))
-                       + (odp_stats.get("fetched", 0) or 0),
+            + (odp_stats.get("fetched", 0) or 0),
             "created": bq_stats.get("created", 0) + odp_stats.get("created", 0),
             "updated": bq_stats.get("updated", 0) + odp_stats.get("updated", 0),
             "failed": (1 if (bq_error or bq_stats.get("error")) else 0)
-                    + (1 if (odp_error or odp_stats.get("error")) else 0),
+            + (1 if (odp_error or odp_stats.get("error")) else 0),
         }
         apps_stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0}
 
@@ -279,11 +296,15 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
             total_new = bq_stats.get("created", 0) + odp_stats.get("created", 0)
             total_updated = bq_stats.get("updated", 0) + odp_stats.get("updated", 0)
             total_failed = bq_stats.get("failed", 0) + odp_stats.get("failed", 0)
-            total_processed = (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (odp_stats.get("fetched", 0) or 0)
+            total_processed = (bq_stats.get("fetched", 0) or bq_stats.get("processed", 0)) + (
+                odp_stats.get("fetched", 0) or 0
+            )
 
             if total_new > 0 or total_updated > 0:
                 status = "success"
-            elif odp_stats.get("source_status") == "unavailable" and bq_stats.get("fetched", 0) == 0:
+            elif (
+                odp_stats.get("source_status") == "unavailable" and bq_stats.get("fetched", 0) == 0
+            ):
                 status = "degraded"
             else:
                 status = "success"  # ran successfully, just no new data
@@ -331,11 +352,7 @@ def run_daily_ingestion(self, override_lookback_days: int | None = None) -> dict
 
     except Exception as e:
         logger.error(f"Daily ingestion failed: {e}", exc_info=True)
-        asyncio.run(
-            _record_ingestion_run(
-                status="degraded", error=str(e), started_at=started_at
-            )
-        )
+        asyncio.run(_record_ingestion_run(status="degraded", error=str(e), started_at=started_at))
         stats["status"] = "degraded"
         stats["error"] = str(e)
 
@@ -371,9 +388,7 @@ def _trigger_downstream_refresh(new_record_count: int) -> None:
     # Score unscored patents
     from app.tasks.opportunity import batch_score_opportunity
 
-    batch_score_opportunity.apply_async(
-        kwargs={"limit": 500}, queue="summarization"
-    )
+    batch_score_opportunity.apply_async(kwargs={"limit": 500}, queue="summarization")
 
     # Recompute trends
     from app.tasks.compute_trends import compute_weekly_trends

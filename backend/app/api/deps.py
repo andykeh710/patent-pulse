@@ -47,9 +47,7 @@ async def current_user(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = _jwt.decode(
-            auth_session, settings.auth_secret_key, algorithms=["HS256"]
-        )
+        payload = _jwt.decode(auth_session, settings.auth_secret_key, algorithms=["HS256"])
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401)
@@ -73,6 +71,7 @@ async def current_user_optional(
         return None
     try:
         import jwt as _jwt
+
         payload = _jwt.decode(auth_session, settings.auth_secret_key, algorithms=["HS256"])
         user_id: str = payload.get("sub", "")
         if not user_id:
@@ -81,6 +80,7 @@ async def current_user_optional(
         return None
 
     from app.core.ai_models import User
+
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     return user.id if user else None
 
@@ -100,7 +100,8 @@ async def current_user_or_api_key(
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer pp_live_"):
         from app.auth.api_keys import authenticate_api_key
-        user = await authenticate_api_key(db, auth_header[len("Bearer "):])
+
+        user = await authenticate_api_key(db, auth_header[len("Bearer ") :])
         if user is not None:
             return user.id
 

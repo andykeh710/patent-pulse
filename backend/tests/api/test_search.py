@@ -95,9 +95,7 @@ async def test_semantic_mode_with_query(client: AsyncClient, db_session) -> None
 
     # Query embedding matches SEM001 exactly
     with _mock_embedding(_vec(1.0)):
-        response = await client.get(
-            "/api/v1/search?q=exact&mode=semantic&min_similarity=0"
-        )
+        response = await client.get("/api/v1/search?q=exact&mode=semantic&min_similarity=0")
     if response.status_code != 200:
         print("DEBUG 422:", response.json())  # CI debug
     assert response.status_code == 200
@@ -113,7 +111,8 @@ async def test_semantic_mode_with_query(client: AsyncClient, db_session) -> None
 
 @pytest.mark.asyncio
 async def test_semantic_mode_skips_null_embeddings(
-    client: AsyncClient, db_session,
+    client: AsyncClient,
+    db_session,
 ) -> None:
     """Patents without embeddings are excluded from semantic/hybrid results."""
     p = PatentPublication(
@@ -129,9 +128,7 @@ async def test_semantic_mode_skips_null_embeddings(
     await db_session.commit()
 
     with _mock_embedding(_vec(1.0)):
-        response = await client.get(
-            "/api/v1/search?q=test&mode=semantic&min_similarity=0"
-        )
+        response = await client.get("/api/v1/search?q=test&mode=semantic&min_similarity=0")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0
@@ -143,7 +140,8 @@ async def test_semantic_mode_skips_null_embeddings(
 
 @pytest.mark.asyncio
 async def test_hybrid_mode_combines_scores(
-    client: AsyncClient, db_session,
+    client: AsyncClient,
+    db_session,
 ) -> None:
     """Seed patents with different keyword/vector/recency trade-offs."""
     today = date.today()
@@ -208,7 +206,8 @@ async def test_hybrid_mode_combines_scores(
 
 @pytest.mark.asyncio
 async def test_hybrid_fulltext_order_differs(
-    client: AsyncClient, db_session,
+    client: AsyncClient,
+    db_session,
 ) -> None:
     """Fulltext mode ranks by keyword; hybrid adds vector + recency."""
     today = date.today()
@@ -247,9 +246,7 @@ async def test_hybrid_fulltext_order_differs(
 
     # Hybrid: vector-driven — VEC001 may rank higher
     with _mock_embedding(_vec(1.0)):
-        hy = await client.get(
-            "/api/v1/search?q=battery cooling&mode=hybrid&min_similarity=0"
-        )
+        hy = await client.get("/api/v1/search?q=battery cooling&mode=hybrid&min_similarity=0")
     assert hy.status_code == 200
     hy_data = hy.json()
     if hy_data["total"] >= 2:
@@ -287,9 +284,7 @@ async def test_min_similarity_filter(client: AsyncClient, db_session) -> None:
 
     with _mock_embedding(_vec(1.0)):
         # Threshold 0.8 — only p1 passes
-        r1 = await client.get(
-            "/api/v1/search?q=test&mode=semantic&min_similarity=0.8"
-        )
+        r1 = await client.get("/api/v1/search?q=test&mode=semantic&min_similarity=0.8")
     assert r1.status_code == 200
     d1 = r1.json()
     assert d1["total"] == 1
@@ -297,9 +292,7 @@ async def test_min_similarity_filter(client: AsyncClient, db_session) -> None:
 
     with _mock_embedding(_vec(1.0)):
         # Threshold 0.95 — p1 may also be excluded (depends on float rounding)
-        r2 = await client.get(
-            "/api/v1/search?q=test&mode=hybrid&min_similarity=0.99"
-        )
+        r2 = await client.get("/api/v1/search?q=test&mode=hybrid&min_similarity=0.99")
     assert r2.status_code == 200
 
 

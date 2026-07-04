@@ -34,9 +34,7 @@ class EPOOPSProvider(BasePatentProvider):
         with EPOClient() as client:
             yield from client.fetch_publications_by_date(publication_date)
 
-    def fetch_images(
-        self, publication_number: str
-    ) -> list[dict[str, Any]]:
+    def fetch_images(self, publication_number: str) -> list[dict[str, Any]]:
         """Fetch drawings from EPO OPS and return metadata dicts."""
         from app.ingestion.epo_client import EPOClient
 
@@ -54,9 +52,7 @@ class EPOOPSProvider(BasePatentProvider):
                 for i, page in enumerate(pages)
             ]
         except Exception:
-            logger.debug(
-                "EPO image fetch failed for %s", publication_number, exc_info=True
-            )
+            logger.debug("EPO image fetch failed for %s", publication_number, exc_info=True)
             return []
 
     def fetch_full_text(self, publication_number: str) -> dict[str, str | None]:
@@ -76,7 +72,10 @@ class EPOOPSProvider(BasePatentProvider):
                 if isinstance(members, dict):
                     members = [members]
                 return [
-                    m.get("publication-reference", {}).get("document-id", {}).get("doc-number", {}).get("$", "")
+                    m.get("publication-reference", {})
+                    .get("document-id", {})
+                    .get("doc-number", {})
+                    .get("$", "")
                     for m in members
                 ]
         except Exception:

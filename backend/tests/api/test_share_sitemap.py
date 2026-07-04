@@ -1,7 +1,9 @@
 """Tests for sitemap index, robots.txt, structured data (Phase 6 PR 1)."""
+
 import io
-import json
+
 import pytest
+
 pytestmark = pytest.mark.xfail(reason="KI-004: JSONB assignees format mismatch in test schema")
 import re
 
@@ -9,7 +11,6 @@ import pytest
 from PIL import Image
 
 from app.api.v1.share import _generate_share_png
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Share cards (Phase 5)
@@ -34,9 +35,9 @@ async def test_sitemap_is_valid_index(client):
     r = await client.get("/sitemap.xml")
     assert r.status_code == 200
     body = r.text
-    assert '<?xml' in body
-    assert '<sitemapindex' in body
-    assert '<sitemap>' in body
+    assert "<?xml" in body
+    assert "<sitemapindex" in body
+    assert "<sitemap>" in body
     # Should reference sub-sitemaps
     for name in ["companies", "themes", "patents", "pages"]:
         assert f"sitemap-{name}.xml" in body
@@ -46,8 +47,8 @@ async def test_sitemap_is_valid_index(client):
 async def test_sitemap_companies_returns_valid_xml(client):
     r = await client.get("/sitemap-companies.xml")
     assert r.status_code == 200
-    assert '<urlset' in r.text
-    assert '<url>' in r.text
+    assert "<urlset" in r.text
+    assert "<url>" in r.text
 
 
 @pytest.mark.asyncio(loop_scope="function")

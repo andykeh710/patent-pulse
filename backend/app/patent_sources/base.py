@@ -38,9 +38,7 @@ class BasePatentProvider(ABC):
         """
         return {"abstract": None, "claims_text": None}
 
-    def fetch_images(
-        self, publication_number: str
-    ) -> list[dict[str, Any]]:
+    def fetch_images(self, publication_number: str) -> list[dict[str, Any]]:
         """Fetch available images/figures for a publication.
 
         Returns list of dicts with: source_url, page_number, figure_label,
@@ -52,9 +50,7 @@ class BasePatentProvider(ABC):
         """Fetch family member publication numbers."""
         return []
 
-    def fetch_citations(
-        self, publication_number: str
-    ) -> dict[str, list[str]]:
+    def fetch_citations(self, publication_number: str) -> dict[str, list[str]]:
         """Fetch forward and backward citations.
 
         Returns dict with 'forward' and 'backward' lists of doc IDs.

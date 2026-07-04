@@ -8,6 +8,7 @@ Adds expiry_assessments table for deterministic expiry status, confidence,
 active family risk, and legal caveats. This is a derived layer on top of
 PatentPublication expiry fields — does not replace them.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

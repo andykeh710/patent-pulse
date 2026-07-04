@@ -11,8 +11,7 @@ supplemental queries.
 """
 
 import asyncio
-import logging
-from datetime import date, timedelta
+from datetime import date
 
 from celery.utils.log import get_task_logger
 
@@ -22,7 +21,6 @@ from app.database import async_session_maker
 from app.ingestion.bigquery_client import BigQueryClient
 from app.ingestion.dedup import upsert_patent
 from app.ingestion.normalizer import USPTONormalizer
-from app.tasks.celery_app import celery_app
 
 logger = get_task_logger(__name__)
 BATCH_SIZE = 200
@@ -44,8 +42,11 @@ def ingest_from_bigquery_range(start_date: date, end_date: date) -> dict:
     """
     if not settings.google_cloud_project:
         return {
-            "processed": 0, "created": 0, "updated": 0,
-            "failed": 1, "fetched": 0,
+            "processed": 0,
+            "created": 0,
+            "updated": 0,
+            "failed": 1,
+            "fetched": 0,
             "error": "GOOGLE_CLOUD_PROJECT not configured",
         }
 

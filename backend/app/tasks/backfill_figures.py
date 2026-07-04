@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from uuid import UUID
 
 from celery.utils.log import get_task_logger
@@ -54,15 +53,13 @@ async def _backfill_async(limit: int, priority_order: str) -> dict:
 
     async with async_session_maker() as session:
         # Build query: patents with figures_status='pending'
-        query = select(PatentPublication).where(
-            PatentPublication.figures_status == "pending"
-        )
+        query = select(PatentPublication).where(PatentPublication.figures_status == "pending")
 
         if priority_order == "briefing":
             # Prioritize patents surfaced in briefings/expiry radar
-            query = query.where(
-                PatentPublication.opportunity_score.isnot(None)
-            ).order_by(PatentPublication.opportunity_score.desc().nulls_last())
+            query = query.where(PatentPublication.opportunity_score.isnot(None)).order_by(
+                PatentPublication.opportunity_score.desc().nulls_last()
+            )
         else:
             query = query.order_by(PatentPublication.publication_date.desc().nulls_last())
 
@@ -117,6 +114,7 @@ def fetch_patent_figures(self, patent_id: str) -> dict:
     Args:
         patent_id: UUID string of the patent.
     """
+
     async def _run():
         from app.core.models import PatentPublication
         from app.ingestion.figure_fetcher import fetch_and_store_figures
@@ -150,7 +148,7 @@ def compute_figure_page_url(publication_number: str, office: str) -> str | None:
     # Strip any existing prefix
     for prefix in ("US", "EP", "WO", "JP", "CN", "KR", "DE", "FR", "GB"):
         if clean.startswith(prefix) and not clean.startswith(f"{prefix}D"):
-            clean = clean[len(prefix):]
+            clean = clean[len(prefix) :]
             break
 
     office_prefix = {"USPTO": "US", "EPO": "EP", "WIPO": "WO"}.get(office, office[:2])

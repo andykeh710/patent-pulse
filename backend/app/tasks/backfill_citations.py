@@ -8,6 +8,7 @@ Idempotent: skips already-populated patents. Rate-limited at 1 call/sec
 Throughput: ~600 patents/hr (limit=50 every 5 min).
 Full 54K corpus → ~90 hours wall-clock.
 """
+
 from __future__ import annotations
 
 import asyncio

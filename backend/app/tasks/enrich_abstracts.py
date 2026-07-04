@@ -146,8 +146,7 @@ async def _enrich_batch_async(batch_size: int) -> dict:
         patents = list(result.all())
 
         count_result = await session.execute(
-            select(func.count(PatentPublication.id))
-            .where(
+            select(func.count(PatentPublication.id)).where(
                 or_(
                     PatentPublication.abstract.is_(None),
                     PatentPublication.claims_text.is_(None),
@@ -198,9 +197,7 @@ async def _enrich_batch_async(batch_size: int) -> dict:
                             got_abstract = True
 
                         # Source 2: Google Patents for claims + description
-                        gp_data = gp_client.fetch_patent_fulltext(
-                            pub_number, kind_code or "B2"
-                        )
+                        gp_data = gp_client.fetch_patent_fulltext(pub_number, kind_code or "B2")
                         time.sleep(THROTTLE_DELAY)
 
                         if gp_data.get("claims_text"):
@@ -277,9 +274,7 @@ async def _enrich_single_async(patent_id: str) -> dict:
         # Source 1: EPO OPS for abstract
         if not patent.abstract:
             with EPOClient() as epo_client:
-                abstract = epo_client.fetch_abstract_for_us_patent(
-                    patent.publication_number
-                )
+                abstract = epo_client.fetch_abstract_for_us_patent(patent.publication_number)
             if abstract:
                 patent.abstract = abstract
                 updated["abstract"] = len(abstract)

@@ -31,9 +31,7 @@ def sample_epo_publication() -> dict:
         "inventors": [{"name": "Hans Mueller"}, {"name": "Anna Schmidt"}],
         "cpc_codes": [{"code": "G06F 16/00"}, {"code": "H04L 9/32"}],
         "ipc_codes": [{"code": "G06F 16/00"}],
-        "priority_claims": [
-            {"country": "DE", "doc_number": "102020001234", "date": "20200115"}
-        ],
+        "priority_claims": [{"country": "DE", "doc_number": "102020001234", "date": "20200115"}],
     }
 
 
@@ -50,9 +48,7 @@ def sample_pct_application() -> dict:
         "inventors": [{"name": "John Smith"}],
         "ipc_codes": [{"code": "G06N 3/08"}],
         "designated_states": ["US", "EP", "JP", "CN"],
-        "priority_claims": [
-            {"country": "US", "number": "63/123456", "date": "2022-03-15"}
-        ],
+        "priority_claims": [{"country": "US", "number": "63/123456", "date": "2022-03-15"}],
     }
 
 

@@ -1,4 +1,5 @@
 """Sprint 6 — Magic-link auth endpoints."""
+
 from __future__ import annotations
 
 import logging
@@ -135,11 +136,13 @@ async def request_link(
         # Always log the magic link in dev/dry_run so Andy can QA locally
         if settings.email_send_mode in ("dev", "dry_run"):
             logger.info(
-                "DEV MAGIC LINK: %s", magic_link,
+                "DEV MAGIC LINK: %s",
+                magic_link,
             )
 
         # Send magic link via Resend
         from app.email.sender import send_email
+
         await send_email(
             db_session=session,
             to=email,
@@ -193,9 +196,7 @@ async def me(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = jwt.decode(
-            auth_session, settings.auth_secret_key, algorithms=["HS256"]
-        )
+        payload = jwt.decode(auth_session, settings.auth_secret_key, algorithms=["HS256"])
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401)

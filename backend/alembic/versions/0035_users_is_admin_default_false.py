@@ -18,11 +18,13 @@ admins keep their access. If neither is set in production, NO user remains
 admin — a safe-by-default outcome (better than everyone-admin); promote the
 real admin afterwards via ADMIN_EMAILS + re-login, or a one-off UPDATE.
 """
+
 from __future__ import annotations
 
 import os
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0035"
@@ -46,16 +48,12 @@ def upgrade() -> None:
 
     default_user_id = os.getenv("DEFAULT_USER_ID", "local-user")
     op.execute(
-        sa.text("UPDATE users SET is_admin = true WHERE id = :uid").bindparams(
-            uid=default_user_id
-        )
+        sa.text("UPDATE users SET is_admin = true WHERE id = :uid").bindparams(uid=default_user_id)
     )
 
     for email in _admin_emails():
         op.execute(
-            sa.text(
-                "UPDATE users SET is_admin = true WHERE lower(email) = :e"
-            ).bindparams(e=email)
+            sa.text("UPDATE users SET is_admin = true WHERE lower(email) = :e").bindparams(e=email)
         )
 
 

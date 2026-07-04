@@ -7,6 +7,7 @@ The default ``EXPIRING_SOON_WINDOW_DAYS`` is conservative: patents
 estimated to expire within 3 years are flagged for attention. This
 can be tightened later with settings-based configuration.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -38,8 +39,13 @@ _ACTIVE_MAINTENANCE = {"PAID", "CURRENT", "ACTIVE", "GRANTED"}
 
 # Maintenance statuses that suggest lapse or abandonment.
 _LAPSED_MAINTENANCE = {
-    "LAPSED", "EXPIRED", "ABANDONED", "CANCELLED",
-    "WITHDRAWN", "REVOKED", "CEASED",
+    "LAPSED",
+    "EXPIRED",
+    "ABANDONED",
+    "CANCELLED",
+    "WITHDRAWN",
+    "REVOKED",
+    "CEASED",
 }
 
 
@@ -231,8 +237,14 @@ def _assess_family_risk(
     if effective_count > 1 or (effective_count == 1 and not self_in_family):
         # Only flag risk if this patent's status looks expired/expiring.
         # An active patent with a large family is not a "risk" — it's normal.
-        if status in ("expired_estimated", "expiring_soon", "lapsed_possible",
-                      "lapsed_confirmed", "expired_confirmed", "unknown"):
+        if status in (
+            "expired_estimated",
+            "expiring_soon",
+            "lapsed_possible",
+            "lapsed_confirmed",
+            "expired_confirmed",
+            "unknown",
+        ):
             return True, (
                 f"This patent has {effective_count} family member(s). "
                 f"Active family members in other jurisdictions may still "

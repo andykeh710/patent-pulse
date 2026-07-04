@@ -10,6 +10,7 @@ the aggregate from the ``ai_artifacts`` table on every call. This is
 idempotent, race-free, and resilient to lost messages -- if a task is
 re-run, the aggregate self-corrects.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,9 +25,7 @@ from app.core.ai_models import AIArtifact, AIRun
 logger = logging.getLogger(__name__)
 
 
-async def recompute_run_aggregates(
-    session: AsyncSession, run_id: UUID | str
-) -> None:
+async def recompute_run_aggregates(session: AsyncSession, run_id: UUID | str) -> None:
     """Recompute counters + finalize status for one AIRun.
 
     Safe to call after every per-patent task completion. Will:
@@ -40,9 +39,7 @@ async def recompute_run_aggregates(
     if isinstance(run_id, str):
         run_id = UUID(run_id)
 
-    run = (
-        await session.execute(select(AIRun).where(AIRun.id == run_id))
-    ).scalar_one_or_none()
+    run = (await session.execute(select(AIRun).where(AIRun.id == run_id))).scalar_one_or_none()
     if run is None:
         logger.warning("recompute_run_aggregates: run %s not found", run_id)
         return

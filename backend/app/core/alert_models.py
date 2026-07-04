@@ -1,4 +1,5 @@
 """Phase 5 PR 2 — Alert and webhook config models."""
+
 from __future__ import annotations
 
 import uuid
@@ -32,9 +33,7 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
-    sent_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_method: Mapped[str | None] = mapped_column(
         String(16), nullable=True
     )  # email | webhook
@@ -60,16 +59,14 @@ class UserWebhookConfig(Base):
     webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     secret_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    last_success_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    last_failure_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_failure_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, server_default=text("now()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, server_default=text("now()"),
+        DateTime(timezone=True),
+        default=_utcnow,
+        server_default=text("now()"),
         onupdate=_utcnow,
     )

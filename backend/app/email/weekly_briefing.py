@@ -8,6 +8,7 @@ Phase 5 PR 1: A/B subject line variants picked deterministically by
 user_id mod 4. Each variant fills different placeholders from the
 briefing items.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +22,9 @@ logger = logging.getLogger(__name__)
 def _utc_date_slug() -> str:
     """Return today's date as 'YYYY-MM-DD' for UTM campaign params."""
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
 
 # ── A/B subject line variants ──────────────────────────────────────
 
@@ -141,24 +144,28 @@ def render_weekly_briefing(
         confidence = item.get("confidence") or {}
         freshness = item.get("freshness", {})
 
-        email_items.append({
-            "type_label": type_labels.get(item.get("type", ""), item.get("label", "Update")),
-            "title": item.get("title", "")[:120],
-            "reason": item.get("reason", "")[:200],
-            "source": item.get("source", ""),
-            "freshness": freshness.get("relative", ""),
-            "confidence_caveat": confidence.get("caveat", ""),
-        })
+        email_items.append(
+            {
+                "type_label": type_labels.get(item.get("type", ""), item.get("label", "Update")),
+                "title": item.get("title", "")[:120],
+                "reason": item.get("reason", "")[:200],
+                "source": item.get("source", ""),
+                "freshness": freshness.get("relative", ""),
+                "confidence_caveat": confidence.get("caveat", ""),
+            }
+        )
 
     if not email_items:
-        email_items.append({
-            "type_label": "Update",
-            "title": "No new patent activity in your topics this week",
-            "reason": "We'll let you know when new patents match your interests.",
-            "source": "Invention Index 8",
-            "freshness": "just now",
-            "confidence_caveat": "",
-        })
+        email_items.append(
+            {
+                "type_label": "Update",
+                "title": "No new patent activity in your topics this week",
+                "reason": "We'll let you know when new patents match your interests.",
+                "source": "Invention Index 8",
+                "freshness": "just now",
+                "confidence_caveat": "",
+            }
+        )
 
     # Pick subject variant
     variant = pick_variant(user_id)

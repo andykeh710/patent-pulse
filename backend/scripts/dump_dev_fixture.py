@@ -9,6 +9,7 @@ Usage::
     python -m scripts.dump_dev_fixture
     python -m scripts.dump_dev_fixture --size 50 --sections A B C G H F
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,15 +41,38 @@ def _serialize(value: Any) -> Any:
 
 def _to_dict(p: PatentPublication) -> dict[str, Any]:
     fields = [
-        "doc_id", "office", "publication_number", "application_number",
-        "kind_code", "family_id", "filing_date", "priority_date",
-        "publication_date", "grant_date", "assignees", "inventors",
-        "cpc", "ipc", "title", "abstract", "claims_text", "description_text",
-        "citations_backward", "family_members", "legal_status",
-        "maintenance_status", "estimated_expiry_date", "summary",
-        "novel_applications", "interesting_score", "score_breakdown",
-        "tags", "opportunity_score", "opportunity_breakdown",
-        "why_now_text", "summarized_at",
+        "doc_id",
+        "office",
+        "publication_number",
+        "application_number",
+        "kind_code",
+        "family_id",
+        "filing_date",
+        "priority_date",
+        "publication_date",
+        "grant_date",
+        "assignees",
+        "inventors",
+        "cpc",
+        "ipc",
+        "title",
+        "abstract",
+        "claims_text",
+        "description_text",
+        "citations_backward",
+        "family_members",
+        "legal_status",
+        "maintenance_status",
+        "estimated_expiry_date",
+        "summary",
+        "novel_applications",
+        "interesting_score",
+        "score_breakdown",
+        "tags",
+        "opportunity_score",
+        "opportunity_breakdown",
+        "why_now_text",
+        "summarized_at",
     ]
     out: dict[str, Any] = {"id": str(p.id)}
     for f in fields:
@@ -56,7 +80,9 @@ def _to_dict(p: PatentPublication) -> dict[str, Any]:
     return out
 
 
-async def _pick_for_section(section: str, per: int, prefer_summary: bool) -> list[PatentPublication]:
+async def _pick_for_section(
+    section: str, per: int, prefer_summary: bool
+) -> list[PatentPublication]:
     async with async_session_maker() as session:
         stmt = (
             select(PatentPublication)
@@ -65,6 +91,7 @@ async def _pick_for_section(section: str, per: int, prefer_summary: bool) -> lis
         )
         # Filter on cpc array containing any string starting with section.
         from sqlalchemy import text
+
         stmt = (
             select(PatentPublication)
             .where(

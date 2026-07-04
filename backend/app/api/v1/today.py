@@ -37,26 +37,32 @@ async def get_for_you(
     now = datetime.now(timezone.utc)
 
     for r in recs:
-        items.append(dict(
-            type="foryou", label="For You",
-            title=r["title"],
-            subtext=f"{r['assignee']} · {r['patent_id'][:8]}",
-            reason="Recommended based on your patent viewing patterns",
-            source="Invention Index 8",
-            freshness={"updated_at": now.isoformat(), "relative": "just now"},
-            confidence={"level": "medium", "caveat": "AI recommendation"},
-            href=f"/patents/{r['patent_id']}",
-        ))
+        items.append(
+            dict(
+                type="foryou",
+                label="For You",
+                title=r["title"],
+                subtext=f"{r['assignee']} · {r['patent_id'][:8]}",
+                reason="Recommended based on your patent viewing patterns",
+                source="Invention Index 8",
+                freshness={"updated_at": now.isoformat(), "relative": "just now"},
+                confidence={"level": "medium", "caveat": "AI recommendation"},
+                href=f"/patents/{r['patent_id']}",
+            )
+        )
 
     if not items:
-        items.append(dict(
-            type="foryou", label="For You · early personalization",
-            title="Recommendations appear as you explore patents and follow topics",
-            reason="Based on your activity and follows",
-            source="Invention Index 8",
-            freshness={"updated_at": now.isoformat(), "relative": "just now"},
-            href="/themes",
-        ))
+        items.append(
+            dict(
+                type="foryou",
+                label="For You · early personalization",
+                title="Recommendations appear as you explore patents and follow topics",
+                reason="Based on your activity and follows",
+                source="Invention Index 8",
+                freshness={"updated_at": now.isoformat(), "relative": "just now"},
+                href="/themes",
+            )
+        )
 
     return items
 
@@ -176,14 +182,13 @@ async def _query_filing_trend(db: DbSession) -> FilingTrendCard | None:
     top_assignees: list[str] = []
     if trend.top_patent_ids:
         assignee_result = await db.execute(
-            select(PatentPublication.assignees)
-            .where(PatentPublication.id.in_(
-                [UUID(pid) for pid in trend.top_patent_ids[:5]]
-            ))
+            select(PatentPublication.assignees).where(
+                PatentPublication.id.in_([UUID(pid) for pid in trend.top_patent_ids[:5]])
+            )
         )
         seen: set[str] = set()
         for (assignees,) in assignee_result:
-            for a in (assignees or []):
+            for a in assignees or []:
                 if a not in seen:
                     seen.add(a)
                     top_assignees.append(a)
@@ -212,8 +217,7 @@ async def _query_expiring_opportunity(db: DbSession) -> ExpiringOpportunityCard 
     # expiry_opportunity_score is stored in opportunity_breakdown JSON
     # or as a separate column. Check the opportunity_breakdown column.
     result = await db.execute(
-        select(func.count(PatentPublication.id))
-        .where(
+        select(func.count(PatentPublication.id)).where(
             PatentPublication.estimated_expiry_date.isnot(None),
             PatentPublication.estimated_expiry_date >= now,
             PatentPublication.estimated_expiry_date <= ninety_days,
@@ -254,11 +258,7 @@ async def _query_notable_patent(db: DbSession) -> NotablePatentCard | None:
     # Extract first sentence from summary
     summary_text = ""
     if patent.summary and isinstance(patent.summary, dict):
-        summary_text = (
-            patent.summary.get("what_it_is")
-            or patent.summary.get("summary")
-            or ""
-        )
+        summary_text = patent.summary.get("what_it_is") or patent.summary.get("summary") or ""
     first_sentence = summary_text.split(".")[0].strip() + "." if summary_text else ""
 
     has_abstract = bool(patent.abstract)
@@ -297,9 +297,7 @@ async def _query_company_move(db: DbSession) -> CompanyMoveCard | None:
         .where(PatentPublication.publication_date >= this_week_start)
         .group_by(text("assignee"))
     )
-    this_week_counts: dict[str, int] = {
-        row.assignee: row.cnt for row in this_week
-    }
+    this_week_counts: dict[str, int] = {row.assignee: row.cnt for row in this_week}
 
     # Count filings per assignee in prior 3 weeks (4wk window minus this week)
     prior_3wk = await db.execute(
@@ -313,9 +311,7 @@ async def _query_company_move(db: DbSession) -> CompanyMoveCard | None:
         )
         .group_by(text("assignee"))
     )
-    prior_counts: dict[str, int] = {
-        row.assignee: row.cnt for row in prior_3wk
-    }
+    prior_counts: dict[str, int] = {row.assignee: row.cnt for row in prior_3wk}
 
     # Find max delta
     best_assignee: str | None = None
@@ -406,9 +402,10 @@ async def get_briefing(
 
 class TodayStateResponse(BaseModel):
     """Lightweight state for the Today screen header."""
-    generated_at: str          # ISO 8601 UTC
-    last_seen_at: str | None   # ISO 8601 UTC — null for first-time users
-    comparison_label: str       # Human-readable, e.g. "Since June 14, 2026"
+
+    generated_at: str  # ISO 8601 UTC
+    last_seen_at: str | None  # ISO 8601 UTC — null for first-time users
+    comparison_label: str  # Human-readable, e.g. "Since June 14, 2026"
 
 
 class MarkSeenRequest(BaseModel):
@@ -422,6 +419,7 @@ async def get_today_state(
 ) -> TodayStateResponse:
     """Return the user's Today view state for since-last-visit display."""
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
     now = datetime.now(timezone.utc)
@@ -469,14 +467,13 @@ async def mark_today_seen(
     when users are actively refreshing to read.
     """
     from sqlalchemy import select, update
+
     from app.core.ai_models import User
 
     now = datetime.now(timezone.utc)
 
     # Get current last_seen
-    result = await db.execute(
-        select(User.last_today_seen_at).where(User.id == user_id)
-    )
+    result = await db.execute(select(User.last_today_seen_at).where(User.id == user_id))
     row = result.one_or_none()
     current_last = row[0] if row else None
 
@@ -485,7 +482,11 @@ async def mark_today_seen(
     if current_last is not None:
         delta = (now - current_last).total_seconds()
         if delta < 300:
-            return {"status": "skipped", "reason": "within idempotency window", "marked_at": now.isoformat()}
+            return {
+                "status": "skipped",
+                "reason": "within idempotency window",
+                "marked_at": now.isoformat(),
+            }
 
     # Shift: previous = current last_seen, last_seen = now
     await db.execute(

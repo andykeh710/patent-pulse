@@ -11,7 +11,8 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import DbSession, current_user
-from app.core.ai_models import User as UserModel, UserCompanyFollow
+from app.core.ai_models import User as UserModel
+from app.core.ai_models import UserCompanyFollow
 from app.core.schemas import (
     FeedFeedbackRequest,
     FeedInteractionRequest,
@@ -35,34 +36,25 @@ async def get_preferences(
     """Return the current user's preference state."""
     from sqlalchemy import func, select
 
-    from app.core.theme_models import WatchlistItem
-
     # SavedSearch is defined in the saved_searches API module
     from app.api.v1.saved_searches import SavedSearch as SavedSearchModel
+    from app.core.theme_models import WatchlistItem
 
     user = await db.get(UserModel, user_id)
     if not user:
         raise HTTPException(404, "User not found")
 
     topic_count = await db.scalar(
-        select(func.count(TopicSubscription.id)).where(
-            TopicSubscription.user_id == user_id
-        )
+        select(func.count(TopicSubscription.id)).where(TopicSubscription.user_id == user_id)
     )
     company_count = await db.scalar(
-        select(func.count(UserCompanyFollow.user_id)).where(
-            UserCompanyFollow.user_id == user_id
-        )
+        select(func.count(UserCompanyFollow.user_id)).where(UserCompanyFollow.user_id == user_id)
     )
     patent_count = await db.scalar(
-        select(func.count(WatchlistItem.id)).where(
-            WatchlistItem.user_id == user_id
-        )
+        select(func.count(WatchlistItem.id)).where(WatchlistItem.user_id == user_id)
     )
     search_count = await db.scalar(
-        select(func.count(SavedSearchModel.id)).where(
-            SavedSearchModel.user_id == user_id
-        )
+        select(func.count(SavedSearchModel.id)).where(SavedSearchModel.user_id == user_id)
     )
 
     return UserPreferencesResponse(

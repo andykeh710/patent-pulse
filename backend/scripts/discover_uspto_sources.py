@@ -166,8 +166,12 @@ def test_all():
             result["status"] = -1
             result["error"] = str(e)[:200]
 
-        status_icon = "✅" if result["status"] == 200 else "❌" if result["status"] in (403, 401) else "⚠️"
-        print(f"[{i+1:02d}/{len(ENDPOINTS)}] {status_icon} {result['status']} {result['path'][:70]}")
+        status_icon = (
+            "✅" if result["status"] == 200 else "❌" if result["status"] in (403, 401) else "⚠️"
+        )
+        print(
+            f"[{i + 1:02d}/{len(ENDPOINTS)}] {status_icon} {result['status']} {result['path'][:70]}"
+        )
 
     return {
         "discovered_at": datetime.now(timezone.utc).isoformat(),
@@ -186,7 +190,7 @@ if __name__ == "__main__":
     os.makedirs("docs/artifacts", exist_ok=True)
     with open("docs/artifacts/uspto_source_discovery.json", "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     print(f"Total: {summary['total_tested']}")
     print(f"Working: {summary['working_200']}")
     print(f"Auth blocked: {summary['auth_blocked']}")

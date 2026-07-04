@@ -3,6 +3,7 @@
 Previously every account (including magic-link signups) became an admin.
 These tests lock in the safe default and the ADMIN_EMAILS allowlist behavior.
 """
+
 import pytest
 from sqlalchemy import select
 
@@ -43,9 +44,7 @@ async def test_orm_user_defaults_to_non_admin(db_session):
 async def test_new_magic_link_user_is_not_admin(client, db_session, monkeypatch):
     """Signing up via magic link does not grant admin when allowlist is empty."""
     monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "")
-    r = await client.post(
-        "/api/v1/auth/request-link", json={"email": "newbie@example.com"}
-    )
+    r = await client.post("/api/v1/auth/request-link", json={"email": "newbie@example.com"})
     assert r.status_code == 202
     user = (
         await db_session.execute(select(User).where(User.email == "newbie@example.com"))
@@ -69,9 +68,7 @@ async def test_admin_endpoint_rejects_normal_user(client, db_session, monkeypatc
 @pytest.mark.asyncio(loop_scope="function")
 async def test_allowlisted_email_is_admin(client, db_session, monkeypatch):
     """An ADMIN_EMAILS address is granted admin on signup and passes the gate."""
-    monkeypatch.setattr(
-        "app.api.v1.auth.settings.admin_emails", "boss@example.com, other@x.com"
-    )
+    monkeypatch.setattr("app.api.v1.auth.settings.admin_emails", "boss@example.com, other@x.com")
     await client.post("/api/v1/auth/request-link", json={"email": "boss@example.com"})
     user = (
         await db_session.execute(select(User).where(User.email == "boss@example.com"))
@@ -83,9 +80,7 @@ async def test_allowlisted_email_is_admin(client, db_session, monkeypatch):
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_allowlist_promotes_existing_non_admin_on_login(
-    client, db_session, monkeypatch
-):
+async def test_allowlist_promotes_existing_non_admin_on_login(client, db_session, monkeypatch):
     """A pre-existing non-admin is promoted when later added to the allowlist."""
     u = User(email="late@example.com", is_admin=False)
     db_session.add(u)

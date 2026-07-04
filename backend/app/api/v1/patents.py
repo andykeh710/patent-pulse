@@ -45,7 +45,10 @@ async def list_patents(
     date_from: date | None = None,
     date_to: date | None = None,
     min_score: float | None = None,
-    sort_by: str = Query(default="publication_date", pattern="^(publication_date|interesting_score|opportunity_score|created_at)$"),
+    sort_by: str = Query(
+        default="publication_date",
+        pattern="^(publication_date|interesting_score|opportunity_score|created_at)$",
+    ),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -59,9 +62,7 @@ async def list_patents(
         conditions.append(PatentPublication.kind_code == kind_code)
     if cpc_prefix:
         cpc_prefix = validate_cpc_prefix(cpc_prefix)
-        conditions.append(
-            PatentPublication.cpc.cast(Text).like(f'%"{cpc_prefix}%')
-        )
+        conditions.append(PatentPublication.cpc.cast(Text).like(f'%"{cpc_prefix}%'))
     if assignee:
         conditions.append(PatentPublication.assignees.contains([assignee]))
     if date_from:
@@ -75,9 +76,7 @@ async def list_patents(
     if conditions:
         base_query = base_query.where(and_(*conditions))
 
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar() or 0
 
     sort_column = getattr(PatentPublication, sort_by)
@@ -87,9 +86,7 @@ async def list_patents(
         sort_column = sort_column.asc().nulls_last()
 
     offset = (page - 1) * page_size
-    result = await db.execute(
-        base_query.order_by(sort_column).offset(offset).limit(page_size)
-    )
+    result = await db.execute(base_query.order_by(sort_column).offset(offset).limit(page_size))
     patents = result.scalars().all()
 
     items = [PatentListItem.from_patent(p) for p in patents]
@@ -111,9 +108,7 @@ async def get_stats(db: DbSession) -> StatsResponse:
     total_patents = total_result.scalar() or 0
 
     grants_result = await db.execute(
-        select(func.count(PatentPublication.id)).where(
-            PatentPublication.legal_status == "GRANTED"
-        )
+        select(func.count(PatentPublication.id)).where(PatentPublication.legal_status == "GRANTED")
     )
     total_grants = grants_result.scalar() or 0
 
@@ -125,9 +120,7 @@ async def get_stats(db: DbSession) -> StatsResponse:
     total_applications = apps_result.scalar() or 0
 
     summarized_result = await db.execute(
-        select(func.count(PatentPublication.id)).where(
-            PatentPublication.summarized_at.isnot(None)
-        )
+        select(func.count(PatentPublication.id)).where(PatentPublication.summarized_at.isnot(None))
     )
     summarized_count = summarized_result.scalar() or 0
 
@@ -182,21 +175,15 @@ async def get_stats(db: DbSession) -> StatsResponse:
 async def get_freshness(db: DbSession) -> FreshnessResponse:
     """Return data freshness timestamps for UI indicators."""
     # Latest patent ingested
-    latest_created = await db.execute(
-        select(func.max(PatentPublication.created_at))
-    )
+    latest_created = await db.execute(select(func.max(PatentPublication.created_at)))
     latest_patent_created_at = latest_created.scalar()
 
     # Latest publication date in the data
-    latest_pub = await db.execute(
-        select(func.max(PatentPublication.publication_date))
-    )
+    latest_pub = await db.execute(select(func.max(PatentPublication.publication_date)))
     latest_pub_date = latest_pub.scalar()
 
     # Latest summarization
-    latest_summ = await db.execute(
-        select(func.max(PatentPublication.summarized_at))
-    )
+    latest_summ = await db.execute(select(func.max(PatentPublication.summarized_at)))
     latest_summarized_at = latest_summ.scalar()
 
     # Total counts
@@ -204,25 +191,19 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     total_patents = total_result.scalar() or 0
 
     summarized_result = await db.execute(
-        select(func.count(PatentPublication.id)).where(
-            PatentPublication.summarized_at.isnot(None)
-        )
+        select(func.count(PatentPublication.id)).where(PatentPublication.summarized_at.isnot(None))
     )
     total_summarized = summarized_result.scalar() or 0
 
     # Latest trend snapshot
-    latest_trend = await db.execute(
-        select(func.max(TrendSnapshot.week_start))
-    )
+    latest_trend = await db.execute(select(func.max(TrendSnapshot.week_start)))
     latest_trend_val = latest_trend.scalar()
 
     trend_count = await db.execute(select(func.count(TrendSnapshot.id)))
     total_trend_snapshots = trend_count.scalar() or 0
 
     # Latest AI run
-    latest_run = await db.execute(
-        select(func.max(AIRun.created_at))
-    )
+    latest_run = await db.execute(select(func.max(AIRun.created_at)))
     latest_ai_run_at = latest_run.scalar()
 
     # Latest ingestion run metadata
@@ -238,8 +219,12 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     )
     ing_row = ingestion_result.first()
     last_ingestion_status = ing_row.status if ing_row else None
-    last_ingestion_started_at = ing_row.started_at.isoformat() if ing_row and ing_row.started_at else None
-    last_ingestion_finished_at = ing_row.finished_at.isoformat() if ing_row and ing_row.finished_at else None
+    last_ingestion_started_at = (
+        ing_row.started_at.isoformat() if ing_row and ing_row.started_at else None
+    )
+    last_ingestion_finished_at = (
+        ing_row.finished_at.isoformat() if ing_row and ing_row.finished_at else None
+    )
     last_ingestion_new_records = ing_row.new_records if ing_row else None
     last_ingestion_error = ing_row.error_message if ing_row else None
 
@@ -279,12 +264,18 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     )
     odp_row = odp_result.first()
     primary_source = "odp_bulk_dataset" if (odp_row and odp_row.status == "success") else "legacy"
-    source_diagnostics = {
-        "odp_status": odp_row.status if odp_row else None,
-        "odp_target": odp_row.target_id if odp_row else None,
-        "odp_records": odp_row.records_found if odp_row else None,
-        "odp_last_run": odp_row.started_at.isoformat() if odp_row and odp_row.started_at else None,
-    } if odp_row else None
+    source_diagnostics = (
+        {
+            "odp_status": odp_row.status if odp_row else None,
+            "odp_target": odp_row.target_id if odp_row else None,
+            "odp_records": odp_row.records_found if odp_row else None,
+            "odp_last_run": odp_row.started_at.isoformat()
+            if odp_row and odp_row.started_at
+            else None,
+        }
+        if odp_row
+        else None
+    )
 
     # ── V3.8H-R1: primary source wins over legacy errors ──
     # When ODP is the active primary source and its latest fetch succeeded,
@@ -329,7 +320,9 @@ async def get_expiry_summary(db: DbSession) -> ExpirySummary:
     async def count_expiring(days: int) -> int:
         cutoff = today + timedelta(days=days)
         r = await db.execute(
-            select(func.count()).select_from(PatentPublication).where(
+            select(func.count())
+            .select_from(PatentPublication)
+            .where(
                 and_(
                     PatentPublication.estimated_expiry_date >= today,
                     PatentPublication.estimated_expiry_date <= cutoff,
@@ -341,7 +334,9 @@ async def get_expiry_summary(db: DbSession) -> ExpirySummary:
 
     async def count_total_with_expiry() -> int:
         r = await db.execute(
-            select(func.count()).select_from(PatentPublication).where(
+            select(func.count())
+            .select_from(PatentPublication)
+            .where(
                 and_(
                     PatentPublication.estimated_expiry_date.isnot(None),
                     PatentPublication.legal_status == LegalStatus.GRANTED,
@@ -385,9 +380,7 @@ async def get_trend(db: DbSession) -> TrendResponse:
     )
     rows = result.fetchall()
     points = [
-        TrendPoint(period=row.month.strftime("%Y-%m"), count=row.count)
-        for row in rows
-        if row.month
+        TrendPoint(period=row.month.strftime("%Y-%m"), count=row.count) for row in rows if row.month
     ]
     return TrendResponse(points=points)
 
@@ -448,15 +441,11 @@ async def priority_watch(
             PatentPublication.estimated_expiry_date.asc().nullslast(),
         )
 
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar() or 0
 
     offset = (page - 1) * page_size
-    result = await db.execute(
-        base_query.order_by(*order).offset(offset).limit(page_size)
-    )
+    result = await db.execute(base_query.order_by(*order).offset(offset).limit(page_size))
     patents = result.scalars().all()
     items = [PatentListItem.from_patent(p) for p in patents]
     pages = (total + page_size - 1) // page_size
@@ -473,9 +462,7 @@ async def priority_watch(
 @router.get("/{patent_id}", response_model=PatentDetailResponse)
 async def get_patent(db: DbSession, patent_id: UUID) -> PatentDetailResponse:
     """Get detailed patent information by ID."""
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
 
     if not patent:
@@ -527,21 +514,15 @@ async def generate_why_now(
     Cache-first: returns the existing AIArtifact if one matches the current
     input fingerprint.  Pass ``force=true`` to bypass the cache and regenerate.
     """
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")
 
     if not patent.title and not patent.abstract:
-        raise HTTPException(
-            status_code=400, detail="Patent has no title or abstract to analyze"
-        )
+        raise HTTPException(status_code=400, detail="Patent has no title or abstract to analyze")
 
-    data, artifact_id = await generate_why_now_cached(
-        db, patent, run_id=None
-    )
+    data, artifact_id = await generate_why_now_cached(db, patent, run_id=None)
 
     # Denormalize onto PatentPublication for fast reads
     patent.why_now_text = data.get("headline", "")
@@ -570,21 +551,15 @@ async def generate_opportunity_narrative(
     Cache-first: returns the existing AIArtifact if one matches the current
     input fingerprint.  Pass ``force=true`` to bypass the cache and regenerate.
     """
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")
 
     if not patent.title and not patent.abstract:
-        raise HTTPException(
-            status_code=400, detail="Patent has no title or abstract to analyze"
-        )
+        raise HTTPException(status_code=400, detail="Patent has no title or abstract to analyze")
 
-    data, artifact_id = await generate_opportunity_narrative_cached(
-        db, patent, run_id=None
-    )
+    data, artifact_id = await generate_opportunity_narrative_cached(db, patent, run_id=None)
 
     return {
         "status": "success",
@@ -610,16 +585,12 @@ async def generate_trend_snapshot(
     Cache-first via :func:`app.ai.llm_client.record_rules_artifact`.
     Pass ``force=true`` to bypass the cache.
     """
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")
 
-    data, artifact_id = await generate_trend_snapshot_cached(
-        db, patent, run_id=None
-    )
+    data, artifact_id = await generate_trend_snapshot_cached(db, patent, run_id=None)
     await db.commit()
 
     return {
@@ -641,16 +612,12 @@ async def generate_assignee_intelligence(
     Cache-first via :func:`app.ai.llm_client.record_rules_artifact`.
     Pass ``force=true`` to bypass the cache.
     """
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")
 
-    data, artifact_id = await generate_assignee_intelligence_cached(
-        db, patent, run_id=None
-    )
+    data, artifact_id = await generate_assignee_intelligence_cached(db, patent, run_id=None)
     await db.commit()
 
     return {
@@ -679,9 +646,9 @@ _OG_IMAGE_RE = re.compile(
 )
 _PUBLICATION_NUMBER_NORMALIZE_RE = re.compile(r"[^A-Z0-9]")
 
-_THUMBNAIL_TTL_OK = 7 * 24 * 3600        # 7 days for successful resolves
-_THUMBNAIL_TTL_MISS = 24 * 3600          # 1 day for "no image" — avoid hammering
-_THUMBNAIL_TTL_TRANSIENT = 60 * 30       # 30 min for network errors — retry sooner
+_THUMBNAIL_TTL_OK = 7 * 24 * 3600  # 7 days for successful resolves
+_THUMBNAIL_TTL_MISS = 24 * 3600  # 1 day for "no image" — avoid hammering
+_THUMBNAIL_TTL_TRANSIENT = 60 * 30  # 30 min for network errors — retry sooner
 
 _thumbnail_redis_client = None  # lazy, may stay None if redis package not present
 

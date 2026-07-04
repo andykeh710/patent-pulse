@@ -4,6 +4,7 @@ Resend webhook handler + public unsubscribe page.
 POST /api/v1/webhooks/resend — receives Resend delivery events
 GET  /unsubscribe/{token} — one-click unsubscribe, no auth
 """
+
 from __future__ import annotations
 
 import logging
@@ -65,7 +66,9 @@ async def resend_webhook(request: Request) -> dict:
             # Phase 5: record clicks
             elif event_type == "email.clicked" and delivery.email_clicked_at is None:
                 delivery.email_clicked_at = datetime.now(timezone.utc)
-                delivery.click_url = data.get("click", {}).get("link") or data.get("url") or data.get("link", "")
+                delivery.click_url = (
+                    data.get("click", {}).get("link") or data.get("url") or data.get("link", "")
+                )
                 delivery.click_url = (delivery.click_url or "")[:512]
 
             await session.commit()
@@ -126,9 +129,7 @@ async def unsubscribe_page(token: str):
 
     # Update user
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await session.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         if not user:
             return _unsubscribe_html("not_found")
@@ -150,6 +151,7 @@ async def unsubscribe_by_token(payload: dict) -> dict:
 
 async def _verify_unsubscribe(token: str) -> dict:
     import jwt
+
     try:
         payload = jwt.decode(
             token, settings.auth_secret_key or "dev-secret-change-me", algorithms=["HS256"]
@@ -172,9 +174,17 @@ async def _verify_unsubscribe(token: str) -> dict:
 def _unsubscribe_html(state: str) -> str:
     messages = {
         "success": ("Unsubscribed", "You have been unsubscribed from weekly briefings.", "#22C55E"),
-        "expired": ("Link Expired", "This unsubscribe link has expired. Visit your account settings to manage email preferences.", "#F59E0B"),
+        "expired": (
+            "Link Expired",
+            "This unsubscribe link has expired. Visit your account settings to manage email preferences.",
+            "#F59E0B",
+        ),
         "invalid": ("Invalid Link", "This unsubscribe link is not valid.", "#EF4444"),
-        "not_found": ("Account Not Found", "We couldn't find an account matching this link.", "#EF4444"),
+        "not_found": (
+            "Account Not Found",
+            "We couldn't find an account matching this link.",
+            "#EF4444",
+        ),
     }
     title, message, color = messages.get(state, messages["invalid"])
     return f"""<!DOCTYPE html>

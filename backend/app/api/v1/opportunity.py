@@ -8,6 +8,7 @@ Tabs (the ``tab`` query param) translate into preset filter combinations
 documented inline; arbitrary filters can also be combined directly via
 the explicit query params.
 """
+
 from __future__ import annotations
 
 import logging
@@ -154,8 +155,9 @@ def _apply_tab_filters(stmt, tab: str | None):
         # Rules: expired/lapsed + score >= 45 + no active family risk.
         # Tags are additive (LLM may flag revival candidates that rules miss).
         tag_check = _tag_contains(
-            PatentPublication.tags, "opportunity_tags",
-            ["ai_revival_candidate", "public_domain_candidate", "expired_opportunity"]
+            PatentPublication.tags,
+            "opportunity_tags",
+            ["ai_revival_candidate", "public_domain_candidate", "expired_opportunity"],
         )
         rules_check = and_(
             PatentPublication.estimated_expiry_date.isnot(None),
@@ -163,9 +165,7 @@ def _apply_tab_filters(stmt, tab: str | None):
             PatentPublication.opportunity_score >= 45,
             or_(
                 PatentPublication.tags.op("->")("risk_flags").is_(None),
-                ~_tag_contains(
-                    PatentPublication.tags, "risk_flags", ["active_family_risk"]
-                ),
+                ~_tag_contains(PatentPublication.tags, "risk_flags", ["active_family_risk"]),
             ),
         )
         return stmt.where(or_(rules_check, tag_check))
@@ -177,8 +177,7 @@ def _apply_tab_filters(stmt, tab: str | None):
             and_(
                 PatentPublication.opportunity_score >= 40,
                 _tag_contains(
-                    PatentPublication.tags, "opportunity_tags",
-                    ["cross_industry_transfer"]
+                    PatentPublication.tags, "opportunity_tags", ["cross_industry_transfer"]
                 ),
             )
         )
@@ -188,8 +187,9 @@ def _apply_tab_filters(stmt, tab: str | None):
             and_(
                 PatentPublication.opportunity_score >= 42,
                 _tag_contains(
-                    PatentPublication.tags, "opportunity_tags",
-                    ["startup_opportunity", "low_competition"]
+                    PatentPublication.tags,
+                    "opportunity_tags",
+                    ["startup_opportunity", "low_competition"],
                 ),
             )
         )
@@ -199,8 +199,9 @@ def _apply_tab_filters(stmt, tab: str | None):
             and_(
                 PatentPublication.opportunity_score >= 42,
                 _tag_contains(
-                    PatentPublication.tags, "opportunity_tags",
-                    ["enterprise_automation", "manufacturing_reuse"]
+                    PatentPublication.tags,
+                    "opportunity_tags",
+                    ["enterprise_automation", "manufacturing_reuse"],
                 ),
             )
         )
@@ -209,18 +210,16 @@ def _apply_tab_filters(stmt, tab: str | None):
         return stmt.where(
             and_(
                 PatentPublication.opportunity_score >= 35,
-                _tag_contains(
-                    PatentPublication.tags, "opportunity_tags",
-                    ["sustainability_angle"]
-                ),
+                _tag_contains(PatentPublication.tags, "opportunity_tags", ["sustainability_angle"]),
             )
         )
 
     if tab == "legal_review":
         # High opportunity but legal uncertainty.
         tag_check = _tag_contains(
-            PatentPublication.tags, "risk_flags",
-            ["needs_legal_review", "active_family_risk", "unknown_legal_status"]
+            PatentPublication.tags,
+            "risk_flags",
+            ["needs_legal_review", "active_family_risk", "unknown_legal_status"],
         )
         rules_check = and_(
             PatentPublication.opportunity_score >= 40,
@@ -250,8 +249,9 @@ def _apply_sort(stmt, sort: str):
     if sort == "strongest_cross_industry":
         # Patents tagged cross_industry_transfer first, then by opp score.
         return stmt.order_by(
-            _tag_contains(PatentPublication.tags, "opportunity_tags",
-                          ["cross_industry_transfer"]).desc(),
+            _tag_contains(
+                PatentPublication.tags, "opportunity_tags", ["cross_industry_transfer"]
+            ).desc(),
             PatentPublication.opportunity_score.desc().nullslast(),
         )
     return stmt.order_by(PatentPublication.opportunity_score.desc().nullslast())
@@ -276,35 +276,23 @@ async def list_opportunities(
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedResponse[OpportunityItem]:
     """List patents ranked by opportunity_score with rich filtering."""
-    base = select(PatentPublication).where(
-        PatentPublication.opportunity_score.isnot(None)
-    )
+    base = select(PatentPublication).where(PatentPublication.opportunity_score.isnot(None))
 
     base = _apply_tab_filters(base, tab)
 
     if industry:
-        base = base.where(
-            _tag_contains(PatentPublication.tags, "industries", [industry])
-        )
+        base = base.where(_tag_contains(PatentPublication.tags, "industries", [industry]))
     if time_horizon:
         # tags ->> 'time_horizon' returns text; compare directly.
-        base = base.where(
-            PatentPublication.tags["time_horizon"].astext == time_horizon
-        )
+        base = base.where(PatentPublication.tags["time_horizon"].astext == time_horizon)
     if risk_flag:
-        base = base.where(
-            _tag_contains(PatentPublication.tags, "risk_flags", [risk_flag])
-        )
+        base = base.where(_tag_contains(PatentPublication.tags, "risk_flags", [risk_flag]))
     if opportunity_tag:
         base = base.where(
-            _tag_contains(
-                PatentPublication.tags, "opportunity_tags", [opportunity_tag]
-            )
+            _tag_contains(PatentPublication.tags, "opportunity_tags", [opportunity_tag])
         )
     if legal_confidence:
-        base = base.where(
-            PatentPublication.legal_status_confidence == legal_confidence
-        )
+        base = base.where(PatentPublication.legal_status_confidence == legal_confidence)
     if cpc_prefix:
         cpc_prefix = validate_cpc_prefix(cpc_prefix)
         base = base.where(
@@ -372,8 +360,10 @@ class TabCounts(BaseModel):
 async def opportunity_tab_counts(db: DbSession) -> TabCounts:
     """Return a count for each opportunity-page tab. Cheap aggregate query."""
     today = date.today()
-    base = select(func.count()).select_from(PatentPublication).where(
-        PatentPublication.opportunity_score.isnot(None)
+    base = (
+        select(func.count())
+        .select_from(PatentPublication)
+        .where(PatentPublication.opportunity_score.isnot(None))
     )
 
     async def _count(stmt) -> int:
@@ -381,9 +371,7 @@ async def opportunity_tab_counts(db: DbSession) -> TabCounts:
 
     # Thresholds calibrated to current data: max=56.42, avg=45.31, min=34.84
     return TabCounts(
-        top=await _count(
-            base.where(PatentPublication.opportunity_score >= 45)
-        ),
+        top=await _count(base.where(PatentPublication.opportunity_score >= 45)),
         expired=await _count(
             base.where(
                 and_(

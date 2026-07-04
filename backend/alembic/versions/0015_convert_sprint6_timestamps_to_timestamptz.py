@@ -7,6 +7,7 @@ Create Date: 2026-05-25
 Convert 7 TIMESTAMP columns across Sprint 6 tables to TIMESTAMPTZ
 for consistent timezone-aware datetime handling.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

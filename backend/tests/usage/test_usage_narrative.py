@@ -1,4 +1,5 @@
 """Tests for Sprint 5 usage signal narrative module."""
+
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from app.ai.usage_narrative import (
 from app.core.exceptions import SummarizationError
 
 # ── test data ────────────────────────────────────────────────────────
+
 
 def _signal(**overrides):
     defaults = {
@@ -45,7 +47,10 @@ def _evidence(**overrides):
 def test_contains_forbidden():
     """Detect forbidden phrases in text."""
     assert _contains_forbidden("this technology is free to use") == ["free to use"]
-    assert _contains_forbidden("this patent is used by many companies") == ["this patent is used", "is used by"]
+    assert _contains_forbidden("this patent is used by many companies") == [
+        "this patent is used",
+        "is used by",
+    ]
     assert _contains_forbidden("this appears related to newer patents") == []
 
 
@@ -93,7 +98,10 @@ def test_validate_output_adds_disclaimer():
     """Disclaimer is always first in limitations."""
     raw = {"summary": "OK.", "evidence_summary": "OK.", "limitations": ["Custom caveat"]}
     result = validate_output(raw)
-    assert result["limitations"][0] == "Evidence is patent-based only — no product-level verification has been performed."
+    assert (
+        result["limitations"][0]
+        == "Evidence is patent-based only — no product-level verification has been performed."
+    )
     assert "Custom caveat" in result["limitations"]
 
 

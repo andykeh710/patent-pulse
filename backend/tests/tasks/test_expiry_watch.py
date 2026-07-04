@@ -4,9 +4,7 @@ from unittest.mock import MagicMock, patch
 
 class TestUpdateExpiryFlags:
     @patch("app.tasks.expiry_watch._update_expiry_flags_async")
-    def test_update_expiry_flags_returns_stats(
-        self, mock_update_async: MagicMock
-    ) -> None:
+    def test_update_expiry_flags_returns_stats(self, mock_update_async: MagicMock) -> None:
         import asyncio
 
         async def mock_result():
@@ -19,9 +17,7 @@ class TestUpdateExpiryFlags:
 
 class TestGetExpiringSoon:
     @patch("app.tasks.expiry_watch._get_expiring_patents")
-    def test_get_expiring_soon_returns_list(
-        self, mock_get_expiring: MagicMock
-    ) -> None:
+    def test_get_expiring_soon_returns_list(self, mock_get_expiring: MagicMock) -> None:
         import asyncio
 
         mock_patent = MagicMock()

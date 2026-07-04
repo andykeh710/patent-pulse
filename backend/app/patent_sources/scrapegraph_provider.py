@@ -30,7 +30,9 @@ class ScrapeGraphProvider(BasePatentProvider):
     def __init__(self):
         self._api_key = getattr(settings, "scrapegraph_api_key", None) or ""
         self._enabled = str(getattr(settings, "scrapegraph_enabled", False)).lower() in (
-            "true", "1", "yes"
+            "true",
+            "1",
+            "yes",
         )
 
     @property

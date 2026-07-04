@@ -79,9 +79,8 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
     themes = result.scalars().all()
 
     # Single GROUP BY query to avoid N+1
-    count_query = (
-        select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt"))
-        .group_by(ThemeMatch.theme_id)
+    count_query = select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt")).group_by(
+        ThemeMatch.theme_id
     )
     count_result = await db.execute(count_query)
     count_map = {row.theme_id: row.cnt for row in count_result}
@@ -188,13 +187,17 @@ async def list_followed_themes(
 
     return [
         ThemeResponse(
-            id=str(t.id), name=t.name, description=t.description,
+            id=str(t.id),
+            name=t.name,
+            description=t.description,
             cpc_prefixes=t.cpc_prefixes or [],
             assignee_keywords=t.assignee_keywords or [],
             title_keywords=t.title_keywords or [],
-            keywords=t.keywords, opportunity_tags=t.opportunity_tags,
+            keywords=t.keywords,
+            opportunity_tags=t.opportunity_tags,
             min_opportunity_score=t.min_opportunity_score,
-            user_id=t.user_id, is_active=t.is_active,
+            user_id=t.user_id,
+            is_active=t.is_active,
             patent_count=count_map.get(t.id, 0),
             created_at=t.created_at.isoformat(),
         )
@@ -254,17 +257,13 @@ async def update_theme(
 
     if theme.user_id is None:
         # System theme — admin-only edit path.
-        user = (
-            await db.execute(select(User).where(User.id == user_id))
-        ).scalar_one_or_none()
+        user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
         if user is None or not user.is_admin:
             raise HTTPException(
                 status_code=403, detail="System themes can only be edited by an admin"
             )
     elif theme.user_id != user_id:
-        raise HTTPException(
-            status_code=403, detail="You can only edit your own themes"
-        )
+        raise HTTPException(status_code=403, detail="You can only edit your own themes")
 
     update_data = theme_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -339,9 +338,7 @@ async def get_theme_patents(
         .where(ThemeMatch.match_score >= min_score)
     )
 
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar() or 0
 
     offset = (page - 1) * page_size

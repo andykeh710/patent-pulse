@@ -4,13 +4,9 @@ from __future__ import annotations
 
 import io
 import os
-from datetime import datetime, timezone
 
 import pytest
 from PIL import Image
-
-from app.config import settings
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Unit: figure conversion
@@ -120,27 +116,33 @@ async def test_migration_0039_up_down(db_session):
     from sqlalchemy import text
 
     # Check that columns exist after migration applied
-    result = await db_session.execute(text(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_name='patent_publications' AND column_name IN "
-        "('thumbnail_url','figures_status')"
-    ))
+    result = await db_session.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='patent_publications' AND column_name IN "
+            "('thumbnail_url','figures_status')"
+        )
+    )
     cols = {row[0] for row in result.all()}
     assert "thumbnail_url" in cols
     assert "figures_status" in cols
 
     # Check patent_figures table exists
-    result = await db_session.execute(text(
-        "SELECT EXISTS (SELECT FROM information_schema.tables "
-        "WHERE table_name='patent_figures')"
-    ))
+    result = await db_session.execute(
+        text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables "
+            "WHERE table_name='patent_figures')"
+        )
+    )
     assert result.scalar() is True
 
     # Check figures_status default
-    result = await db_session.execute(text(
-        "SELECT column_default FROM information_schema.columns "
-        "WHERE table_name='patent_publications' AND column_name='figures_status'"
-    ))
+    result = await db_session.execute(
+        text(
+            "SELECT column_default FROM information_schema.columns "
+            "WHERE table_name='patent_publications' AND column_name='figures_status'"
+        )
+    )
     default = result.scalar()
     assert default is not None
     assert "pending" in str(default)
@@ -159,13 +161,12 @@ async def test_migration_0039_up_down(db_session):
 async def test_backfill_figures_live(db_session):
     """Integration test: backfill figures for a single patent with live EPO."""
     from sqlalchemy import select
+
     from app.core.models import PatentPublication
     from app.ingestion.figure_fetcher import fetch_and_store_figures
 
     result = await db_session.execute(
-        select(PatentPublication).where(
-            PatentPublication.office == "USPTO"
-        ).limit(1)
+        select(PatentPublication).where(PatentPublication.office == "USPTO").limit(1)
     )
     patent = result.scalar_one_or_none()
     if patent is None:

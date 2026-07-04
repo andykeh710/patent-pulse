@@ -11,12 +11,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai_models import User as UserModel, UserCompanyFollow
+from app.core.ai_models import User as UserModel
+from app.core.ai_models import UserCompanyFollow
 from app.core.subscription_models import TopicSubscription
-
 
 # ── Feed item schema (internal typed dict) ────────────────────────────
 
@@ -133,9 +133,7 @@ async def _build_user_context(db: AsyncSession, user_id: str) -> dict[str, Any]:
 
     # Followed topic IDs
     topic_rows = await db.execute(
-        select(TopicSubscription.theme_id).where(
-            TopicSubscription.user_id == user_id
-        )
+        select(TopicSubscription.theme_id).where(TopicSubscription.user_id == user_id)
     )
     followed_topic_ids = {row[0] for row in topic_rows.fetchall() if row[0]}
 
@@ -149,18 +147,14 @@ async def _build_user_context(db: AsyncSession, user_id: str) -> dict[str, Any]:
 
     # Saved patent IDs
     patent_rows = await db.execute(
-        text(
-            "SELECT patent_id FROM watchlist_items WHERE user_id = :uid"
-        ),
+        text("SELECT patent_id FROM watchlist_items WHERE user_id = :uid"),
         {"uid": user_id},
     )
     saved_patent_ids = {row[0] for row in patent_rows.fetchall() if row[0]}
 
     # Hidden item IDs (object_type:object_id pairs)
     hidden_rows = await db.execute(
-        text(
-            "SELECT object_type, object_id FROM hidden_feed_items WHERE user_id = :uid"
-        ),
+        text("SELECT object_type, object_id FROM hidden_feed_items WHERE user_id = :uid"),
         {"uid": user_id},
     )
     hidden_items = {f"{row[0]}:{row[1]}" for row in hidden_rows.fetchall()}
@@ -189,9 +183,7 @@ async def _build_user_context(db: AsyncSession, user_id: str) -> dict[str, Any]:
 # ── Candidate gathering ───────────────────────────────────────────────
 
 
-async def _gather_candidates(
-    db: AsyncSession, ctx: dict[str, Any]
-) -> list[dict[str, Any]]:
+async def _gather_candidates(db: AsyncSession, ctx: dict[str, Any]) -> list[dict[str, Any]]:
     """Collect candidate feed items from real data sources."""
     now = datetime.now(timezone.utc)
     candidates: list[dict[str, Any]] = []
@@ -210,20 +202,22 @@ async def _gather_candidates(
         """)
     )
     for row in expiring.fetchall():
-        candidates.append(_make_item(
-            feed_type="expiry_opportunity",
-            object_type="patent",
-            object_id=str(row[0]),
-            title=row[1] or "Untitled patent",
-            summary=f"Expiring patent from {_first_assignee(row[2])}",
-            evidence={
-                "opportunity_score": row[4],
-                "estimated_expiry_date": str(row[5]) if row[5] else None,
-                "legal_status_confidence": row[6],
-            },
-            source_date=str(row[5]) if row[5] else None,
-            created_at=now,
-        ))
+        candidates.append(
+            _make_item(
+                feed_type="expiry_opportunity",
+                object_type="patent",
+                object_id=str(row[0]),
+                title=row[1] or "Untitled patent",
+                summary=f"Expiring patent from {_first_assignee(row[2])}",
+                evidence={
+                    "opportunity_score": row[4],
+                    "estimated_expiry_date": str(row[5]) if row[5] else None,
+                    "legal_status_confidence": row[6],
+                },
+                source_date=str(row[5]) if row[5] else None,
+                created_at=now,
+            )
+        )
 
     # 2. High-opportunity patents (top 3 recent)
     high_opp = await db.execute(
@@ -238,19 +232,21 @@ async def _gather_candidates(
         """)
     )
     for row in high_opp.fetchall():
-        candidates.append(_make_item(
-            feed_type="high_opportunity_patent",
-            object_type="patent",
-            object_id=str(row[0]),
-            title=row[1] or "Untitled patent",
-            summary=f"High-opportunity patent from {_first_assignee(row[2])}",
-            evidence={
-                "opportunity_score": row[4],
-                "publication_date": str(row[3]) if row[3] else None,
-            },
-            source_date=str(row[3]) if row[3] else None,
-            created_at=now,
-        ))
+        candidates.append(
+            _make_item(
+                feed_type="high_opportunity_patent",
+                object_type="patent",
+                object_id=str(row[0]),
+                title=row[1] or "Untitled patent",
+                summary=f"High-opportunity patent from {_first_assignee(row[2])}",
+                evidence={
+                    "opportunity_score": row[4],
+                    "publication_date": str(row[3]) if row[3] else None,
+                },
+                source_date=str(row[3]) if row[3] else None,
+                created_at=now,
+            )
+        )
 
     # 3. Company signals (top 3 filing spikes in followed companies, or top overall)
     if ctx["followed_companies"]:
@@ -282,17 +278,20 @@ async def _gather_candidates(
             """)
         )
     for row in company_rows.fetchall():
-        candidates.append(_make_item(
-            feed_type="followed_company_signal" if row[0] in ctx["followed_companies"]
-            else "company_new_patents",
-            object_type="company",
-            object_id=row[0],
-            title=f"{row[0]} filing activity",
-            summary=f"{row[0]}: {row[1]} patents in last 30 days",
-            evidence={"recent_filings": row[1]},
-            related_companies=[row[0]],
-            created_at=now,
-        ))
+        candidates.append(
+            _make_item(
+                feed_type="followed_company_signal"
+                if row[0] in ctx["followed_companies"]
+                else "company_new_patents",
+                object_type="company",
+                object_id=row[0],
+                title=f"{row[0]} filing activity",
+                summary=f"{row[0]}: {row[1]} patents in last 30 days",
+                evidence={"recent_filings": row[1]},
+                related_companies=[row[0]],
+                created_at=now,
+            )
+        )
 
     # 4. Topic signals (top patents from followed topics)
     if ctx["followed_topic_ids"]:
@@ -310,21 +309,23 @@ async def _gather_candidates(
             """)
         )
         for row in topic_rows.fetchall():
-            candidates.append(_make_item(
-                feed_type="topic_new_patents",
-                object_type="patent",
-                object_id=str(row[0]),
-                title=row[1] or "Untitled patent",
-                summary=f"New patent in {row[5]}: {_first_assignee(row[2])}",
-                evidence={
-                    "topic_name": row[5],
-                    "publication_date": str(row[4]) if row[4] else None,
-                    "opportunity_score": row[3],
-                },
-                related_topics=[row[5]],
-                source_date=str(row[4]) if row[4] else None,
-                created_at=now,
-            ))
+            candidates.append(
+                _make_item(
+                    feed_type="topic_new_patents",
+                    object_type="patent",
+                    object_id=str(row[0]),
+                    title=row[1] or "Untitled patent",
+                    summary=f"New patent in {row[5]}: {_first_assignee(row[2])}",
+                    evidence={
+                        "topic_name": row[5],
+                        "publication_date": str(row[4]) if row[4] else None,
+                        "opportunity_score": row[3],
+                    },
+                    related_topics=[row[5]],
+                    source_date=str(row[4]) if row[4] else None,
+                    created_at=now,
+                )
+            )
 
     # 5. Fresh ingestion summary
     ingestion_rows = await db.execute(
@@ -337,26 +338,32 @@ async def _gather_candidates(
     )
     ing_row = ingestion_rows.first()
     if ing_row:
-        candidates.append(_make_item(
-            feed_type="fresh_ingestion_summary",
-            object_type="ingestion",
-            object_id="latest",
-            title="Patent data freshness",
-            summary=f"Ingestion ran {_relative_time(ing_row[1])}: {ing_row[1]} new records" if ing_row[1] else "Ingestion ran successfully (no new records)",
-            evidence={"new_records": ing_row[1]},
-            created_at=now,
-        ))
+        candidates.append(
+            _make_item(
+                feed_type="fresh_ingestion_summary",
+                object_type="ingestion",
+                object_id="latest",
+                title="Patent data freshness",
+                summary=f"Ingestion ran {_relative_time(ing_row[1])}: {ing_row[1]} new records"
+                if ing_row[1]
+                else "Ingestion ran successfully (no new records)",
+                evidence={"new_records": ing_row[1]},
+                created_at=now,
+            )
+        )
 
     # 6. Recommended actions
     if not ctx["followed_topic_ids"]:
-        candidates.append(_make_item(
-            feed_type="recommended_action",
-            object_type="action",
-            object_id="follow_topics",
-            title="Personalize your briefing",
-            summary="Follow topics and companies to get tailored invention intelligence.",
-            created_at=now,
-        ))
+        candidates.append(
+            _make_item(
+                feed_type="recommended_action",
+                object_type="action",
+                object_id="follow_topics",
+                title="Personalize your briefing",
+                summary="Follow topics and companies to get tailored invention intelligence.",
+                created_at=now,
+            )
+        )
 
     return candidates
 
@@ -364,9 +371,7 @@ async def _gather_candidates(
 # ── Ranking ────────────────────────────────────────────────────────────
 
 
-def _rank_candidates(
-    candidates: list[dict[str, Any]], ctx: dict[str, Any]
-) -> list[dict[str, Any]]:
+def _rank_candidates(candidates: list[dict[str, Any]], ctx: dict[str, Any]) -> list[dict[str, Any]]:
     """Score and sort candidates deterministically."""
     user = ctx["user"]
     persona = user.persona
@@ -448,9 +453,7 @@ def _rank_candidates(
 # ── Why-shown ──────────────────────────────────────────────────────────
 
 
-def _attach_explanations(
-    items: list[dict[str, Any]], ctx: dict[str, Any]
-) -> None:
+def _attach_explanations(items: list[dict[str, Any]], ctx: dict[str, Any]) -> None:
     """Attach why_this, why_now, and why_for_user to each feed item."""
     user = ctx["user"]
     persona = user.persona
@@ -473,9 +476,7 @@ def _attach_explanations(
                 f"This patent is in the '{evidence['topic_name']}' technology area."
             )
         if item.get("related_companies"):
-            reasons_this.append(
-                f"Involves {', '.join(item['related_companies'][:2])}."
-            )
+            reasons_this.append(f"Involves {', '.join(item['related_companies'][:2])}.")
 
         # Why now
         if feed_type == "expiry_opportunity" and evidence.get("estimated_expiry_date"):
@@ -493,18 +494,12 @@ def _attach_explanations(
                     reasons_user.append(f"Shown because you follow {c}.")
         if persona:
             persona_label = persona.replace("_", " ").title()
-            reasons_user.append(
-                f"Your selected role: {persona_label}."
-            )
+            reasons_user.append(f"Your selected role: {persona_label}.")
         if use_case:
             uc_label = use_case.replace("_", " ").title()
-            reasons_user.append(
-                f"Your selected use case: {uc_label}."
-            )
+            reasons_user.append(f"Your selected use case: {uc_label}.")
         if feed_type == "recommended_action":
-            reasons_user.append(
-                "Shown to help you get started with personalization."
-            )
+            reasons_user.append("Shown to help you get started with personalization.")
 
         if not reasons_user:
             reasons_user.append("Shown as a general signal of interest.")

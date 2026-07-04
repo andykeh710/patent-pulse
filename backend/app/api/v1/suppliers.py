@@ -81,9 +81,11 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
     today = date.today()
     five_years = today + timedelta(days=5 * 365)
 
-    rows = (await db.execute(
-        text(
-            """
+    rows = (
+        (
+            await db.execute(
+                text(
+                    """
             WITH supplier_rows AS (
                 SELECT
                     assignee_val AS supplier_name,
@@ -109,8 +111,12 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
             )
             SELECT * FROM supplier_rows
             """
-        ).bindparams(today=today, five_years=five_years)
-    )).mappings().all()
+                ).bindparams(today=today, five_years=five_years)
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     items = [
         SupplierItem(
@@ -121,13 +127,17 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
             active_patent_count=int(row["active_patent_count"] or 0),
             expiring_soon_count=int(row["expiring_soon_count"] or 0),
             technology_area_count=int(row["technology_area_count"] or 0),
-            average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+            average_signal_score=round(float(row["average_signal_score"]), 2)
+            if row["average_signal_score"] is not None
+            else None,
             supplier_score=_score_supplier(
                 int(row["patent_count"] or 0),
                 int(row["active_patent_count"] or 0),
                 int(row["expiring_soon_count"] or 0),
                 int(row["technology_area_count"] or 0),
-                float(row["average_signal_score"]) if row["average_signal_score"] is not None else None,
+                float(row["average_signal_score"])
+                if row["average_signal_score"] is not None
+                else None,
             ),
         )
         for row in rows
@@ -150,7 +160,9 @@ async def supplier_summary(db: DbSession) -> SupplierSummary:
         high_opportunity_suppliers=sum(1 for item in items if item.supplier_score >= 60),
         countries=[
             {"country": country, "count": count}
-            for country, count in sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+            for country, count in sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[
+                :10
+            ]
         ],
     )
 
@@ -161,7 +173,9 @@ async def list_suppliers(
     country: str | None = None,
     entity_type: str | None = None,
     min_patent_count: int = Query(default=1, ge=1, le=10000),
-    sort_by: Literal["supplier_score", "patent_count", "active_patent_count", "average_signal_score"] = "supplier_score",
+    sort_by: Literal[
+        "supplier_score", "patent_count", "active_patent_count", "average_signal_score"
+    ] = "supplier_score",
     sort_order: Literal["asc", "desc"] = "desc",
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -179,9 +193,11 @@ async def list_suppliers(
     if entity_type:
         params["entity_type"] = entity_type
 
-    rows = (await db.execute(
-        text(
-            f"""
+    rows = (
+        (
+            await db.execute(
+                text(
+                    f"""
             WITH supplier_rows AS (
                 SELECT
                     assignee_val AS supplier_name,
@@ -208,8 +224,12 @@ async def list_suppliers(
             WHERE {where_clause}
               AND patent_count >= :min_patent_count
             """
-        ).bindparams(**params)
-    )).mappings().all()
+                ).bindparams(**params)
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     items = [
         SupplierItem(
@@ -220,13 +240,17 @@ async def list_suppliers(
             active_patent_count=int(row["active_patent_count"] or 0),
             expiring_soon_count=int(row["expiring_soon_count"] or 0),
             technology_area_count=int(row["technology_area_count"] or 0),
-            average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+            average_signal_score=round(float(row["average_signal_score"]), 2)
+            if row["average_signal_score"] is not None
+            else None,
             supplier_score=_score_supplier(
                 int(row["patent_count"] or 0),
                 int(row["active_patent_count"] or 0),
                 int(row["expiring_soon_count"] or 0),
                 int(row["technology_area_count"] or 0),
-                float(row["average_signal_score"]) if row["average_signal_score"] is not None else None,
+                float(row["average_signal_score"])
+                if row["average_signal_score"] is not None
+                else None,
             ),
         )
         for row in rows
@@ -236,10 +260,12 @@ async def list_suppliers(
     items.sort(key=lambda item: getattr(item, sort_by) or 0, reverse=reverse)
     total = len(items)
     offset = (page - 1) * page_size
-    paged = items[offset:offset + page_size]
+    paged = items[offset : offset + page_size]
     pages = (total + page_size - 1) // page_size
 
-    return SupplierListResponse(items=paged, total=total, page=page, page_size=page_size, pages=pages)
+    return SupplierListResponse(
+        items=paged, total=total, page=page, page_size=page_size, pages=pages
+    )
 
 
 @router.get("/map", response_model=list[SupplierMapCountry])
@@ -267,9 +293,15 @@ async def supplier_map(db: DbSession) -> list[SupplierMapCountry]:
                 country=country,
                 supplier_count=len(items),
                 patent_count=sum(item.patent_count for item in items),
-                average_supplier_score=round(sum(item.supplier_score for item in items) / len(items), 2),
+                average_supplier_score=round(
+                    sum(item.supplier_score for item in items) / len(items), 2
+                ),
                 top_suppliers=[
-                    {"name": item.name, "patent_count": item.patent_count, "supplier_score": item.supplier_score}
+                    {
+                        "name": item.name,
+                        "patent_count": item.patent_count,
+                        "supplier_score": item.supplier_score,
+                    }
                     for item in top
                 ],
             )
@@ -304,9 +336,11 @@ async def company_profile(
     five_years = today + timedelta(days=5 * 365)
 
     # Get aggregates for this assignee
-    row = (await db.execute(
-        text(
-            """
+    row = (
+        (
+            await db.execute(
+                text(
+                    """
             WITH supplier_row AS (
                 SELECT
                     assignee_val AS supplier_name,
@@ -332,16 +366,21 @@ async def company_profile(
             )
             SELECT * FROM supplier_row
             """
-        ).bindparams(today=today, five_years=five_years, name=name)
-    )).mappings().first()
+                ).bindparams(today=today, five_years=five_years, name=name)
+            )
+        )
+        .mappings()
+        .first()
+    )
 
     if not row:
         raise HTTPException(status_code=404, detail=f"Company '{name}' not found")
 
     # Top CPC codes
-    cpc_rows = (await db.execute(
-        text(
-            """
+    cpc_rows = (
+        await db.execute(
+            text(
+                """
             SELECT LEFT(cpc_val, 4) AS cpc, COUNT(*) AS count
             FROM patent_publications p
             JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
@@ -352,13 +391,15 @@ async def company_profile(
             ORDER BY count DESC
             LIMIT 10
             """
-        ).bindparams(name=name)
-    )).fetchall()
+            ).bindparams(name=name)
+        )
+    ).fetchall()
 
     # Recent patents
-    recent_rows = (await db.execute(
-        text(
-            """
+    recent_rows = (
+        await db.execute(
+            text(
+                """
             SELECT p.id, p.doc_id, p.title, p.publication_date, p.opportunity_score
             FROM patent_publications p
             JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
@@ -366,13 +407,15 @@ async def company_profile(
             ORDER BY p.publication_date DESC NULLS LAST
             LIMIT 10
             """
-        ).bindparams(name=name)
-    )).fetchall()
+            ).bindparams(name=name)
+        )
+    ).fetchall()
 
     # Top inventors
-    inventor_rows = (await db.execute(
-        text(
-            """
+    inventor_rows = (
+        await db.execute(
+            text(
+                """
             SELECT inv_val AS name, COUNT(DISTINCT p.id) AS patent_count
             FROM patent_publications p
             JOIN LATERAL jsonb_array_elements_text(p.assignees) AS assignee_val ON true
@@ -383,8 +426,9 @@ async def company_profile(
             ORDER BY patent_count DESC
             LIMIT 5
             """
-        ).bindparams(name=name)
-    )).fetchall()
+            ).bindparams(name=name)
+        )
+    ).fetchall()
 
     return CompanyProfile(
         name=row["supplier_name"],
@@ -394,7 +438,9 @@ async def company_profile(
         active_patent_count=int(row["active_patent_count"] or 0),
         expiring_soon_count=int(row["expiring_soon_count"] or 0),
         technology_area_count=int(row["technology_area_count"] or 0),
-        average_signal_score=round(float(row["average_signal_score"]), 2) if row["average_signal_score"] is not None else None,
+        average_signal_score=round(float(row["average_signal_score"]), 2)
+        if row["average_signal_score"] is not None
+        else None,
         supplier_score=_score_supplier(
             int(row["patent_count"] or 0),
             int(row["active_patent_count"] or 0),
@@ -404,13 +450,16 @@ async def company_profile(
         ),
         top_cpc=[{"cpc": r.cpc, "count": r.count} for r in cpc_rows],
         recent_patents=[
-            {"id": str(r.id), "doc_id": r.doc_id, "title": r.title, "publication_date": str(r.publication_date) if r.publication_date else None, "opportunity_score": float(r.opportunity_score) if r.opportunity_score else None}
+            {
+                "id": str(r.id),
+                "doc_id": r.doc_id,
+                "title": r.title,
+                "publication_date": str(r.publication_date) if r.publication_date else None,
+                "opportunity_score": float(r.opportunity_score) if r.opportunity_score else None,
+            }
             for r in recent_rows
         ],
-        top_inventors=[
-            {"name": r.name, "patent_count": r.patent_count}
-            for r in inventor_rows
-        ],
+        top_inventors=[{"name": r.name, "patent_count": r.patent_count} for r in inventor_rows],
     )
 
 
@@ -430,6 +479,7 @@ async def check_follow(
 ) -> FollowStatus:
     """Check if the current user follows a company."""
     from app.services.follow_company import list_follows, normalize_company_name
+
     follows = await list_follows(db, user_id)
     normalized = normalize_company_name(name)
     is_following = any(f.company_normalized_name == normalized for f in follows)
@@ -444,6 +494,7 @@ async def follow_company(
 ) -> dict:
     """Follow a company."""
     from app.services.follow_company import add_follow
+
     await add_follow(db, user_id, name)
     return {"status": "following", "company_name": name}
 
@@ -456,6 +507,7 @@ async def unfollow_company(
 ) -> dict:
     """Unfollow a company."""
     from app.services.follow_company import normalize_company_name, remove_follow
+
     normalized = normalize_company_name(name)
     removed = await remove_follow(db, user_id, normalized)
     if not removed:
@@ -470,6 +522,7 @@ async def list_followed_companies(
 ) -> list[dict]:
     """List companies the current user follows."""
     from app.services.follow_company import list_follows
+
     follows = await list_follows(db, user_id)
     return [
         {"company_name": f.display_name, "normalized_name": f.company_normalized_name}

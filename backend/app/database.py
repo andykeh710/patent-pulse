@@ -21,9 +21,7 @@ _engine_kwargs: dict = {
     "connect_args": {
         "server_settings": {
             "idle_in_transaction_session_timeout": "60000",  # ms = 60 sec
-            "application_name": "patent_pulse_worker"
-            if _in_celery_worker
-            else "patent_pulse_app",
+            "application_name": "patent_pulse_worker" if _in_celery_worker else "patent_pulse_app",
         },
     },
 }

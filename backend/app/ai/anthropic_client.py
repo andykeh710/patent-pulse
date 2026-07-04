@@ -43,9 +43,7 @@ class AnthropicChatClient:
     def _get_client(self) -> anthropic.AsyncAnthropic:
         if self._client is None:
             if not self._api_key:
-                raise RuntimeError(
-                    "API key is not configured; cannot make chat calls"
-                )
+                raise RuntimeError("API key is not configured; cannot make chat calls")
             self._client = anthropic.AsyncAnthropic(
                 api_key=self._api_key,
                 base_url=self._base_url,

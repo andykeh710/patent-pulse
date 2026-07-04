@@ -115,8 +115,6 @@ async def list_feedback(
     surface: str | None = None,
 ) -> list[FeedbackResponse]:
     """Admin view of recent feedback. Requires admin user."""
-    from app.api.v1.admin import require_admin
-    from app.core.ai_models import User
 
     # Verify admin
     result = await db.execute(text("SELECT is_admin FROM users WHERE id = :uid"), {"uid": user_id})
@@ -130,10 +128,12 @@ async def list_feedback(
         where += " AND surface = :surface"
         params["surface"] = surface
 
-    rows = (await db.execute(
-        text(f"SELECT * FROM feedback {where} ORDER BY created_at DESC LIMIT :limit"),
-        params,
-    )).fetchall()
+    rows = (
+        await db.execute(
+            text(f"SELECT * FROM feedback {where} ORDER BY created_at DESC LIMIT :limit"),
+            params,
+        )
+    ).fetchall()
 
     return [
         FeedbackResponse(
@@ -161,35 +161,45 @@ async def activation_state(
     params = {"uid": user_id}
 
     # Today views
-    today_row = (await db.execute(
-        text("SELECT last_today_seen_at, previous_today_seen_at FROM users WHERE id = :uid"),
-        params,
-    )).one_or_none()
+    today_row = (
+        await db.execute(
+            text("SELECT last_today_seen_at, previous_today_seen_at FROM users WHERE id = :uid"),
+            params,
+        )
+    ).one_or_none()
     has_today = today_row and today_row[0] is not None
 
     # Saved patents
-    patent_row = (await db.execute(
-        text("SELECT COUNT(*) FROM watchlist WHERE user_id = :uid"),
-        params,
-    )).scalar()
+    patent_row = (
+        await db.execute(
+            text("SELECT COUNT(*) FROM watchlist WHERE user_id = :uid"),
+            params,
+        )
+    ).scalar()
 
     # Saved searches
-    search_row = (await db.execute(
-        text("SELECT COUNT(*) FROM saved_searches WHERE user_id = :uid"),
-        params,
-    )).scalar()
+    search_row = (
+        await db.execute(
+            text("SELECT COUNT(*) FROM saved_searches WHERE user_id = :uid"),
+            params,
+        )
+    ).scalar()
 
     # Followed companies
-    company_row = (await db.execute(
-        text("SELECT COUNT(*) FROM user_company_follows WHERE user_id = :uid"),
-        params,
-    )).scalar()
+    company_row = (
+        await db.execute(
+            text("SELECT COUNT(*) FROM user_company_follows WHERE user_id = :uid"),
+            params,
+        )
+    ).scalar()
 
     # Feedback
-    feedback_row = (await db.execute(
-        text("SELECT COUNT(*) FROM feedback WHERE user_id = :uid"),
-        params,
-    )).scalar()
+    feedback_row = (
+        await db.execute(
+            text("SELECT COUNT(*) FROM feedback WHERE user_id = :uid"),
+            params,
+        )
+    ).scalar()
 
     saved_patents = int(patent_row or 0)
     saved_searches = int(search_row or 0)
@@ -290,14 +300,24 @@ async def retention_summary(
         raise HTTPException(status_code=403, detail="Admin access required")
 
     total = (await db.execute(text("SELECT COUNT(*) FROM users"))).scalar() or 0
-    today_v = (await db.execute(text("SELECT COUNT(*) FROM users WHERE last_today_seen_at IS NOT NULL"))).scalar() or 0
-    saved_p = (await db.execute(text("SELECT COUNT(DISTINCT user_id) FROM watchlist"))).scalar() or 0
-    saved_s = (await db.execute(text("SELECT COUNT(DISTINCT user_id) FROM saved_searches"))).scalar() or 0
+    today_v = (
+        await db.execute(text("SELECT COUNT(*) FROM users WHERE last_today_seen_at IS NOT NULL"))
+    ).scalar() or 0
+    saved_p = (
+        await db.execute(text("SELECT COUNT(DISTINCT user_id) FROM watchlist"))
+    ).scalar() or 0
+    saved_s = (
+        await db.execute(text("SELECT COUNT(DISTINCT user_id) FROM saved_searches"))
+    ).scalar() or 0
     feedback_c = (await db.execute(text("SELECT COUNT(*) FROM feedback"))).scalar() or 0
 
-    surfaces = (await db.execute(
-        text("SELECT surface, COUNT(*) as cnt FROM feedback GROUP BY surface ORDER BY cnt DESC LIMIT 5")
-    )).fetchall()
+    surfaces = (
+        await db.execute(
+            text(
+                "SELECT surface, COUNT(*) as cnt FROM feedback GROUP BY surface ORDER BY cnt DESC LIMIT 5"
+            )
+        )
+    ).fetchall()
 
     return RetentionSummary(
         total_users=int(total),

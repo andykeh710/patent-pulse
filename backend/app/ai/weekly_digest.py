@@ -4,6 +4,7 @@ Weekly digest generator (Sprint 6).
 Produces a Sonnet-written weekly briefing from a user's topic matches.
 Cached per (user_id, week_start) as AIArtifact.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,8 +24,13 @@ WEEKLY_DIGEST_PROMPT_VERSION = 1
 
 REQUIRED_FIELDS = {"headline", "highlights", "patterns", "caveats"}
 FORBIDDEN_PHRASES = [
-    "free to use", "public domain", "is used by", "definitely used",
-    "infringes", "no licensing required", "can freely use",
+    "free to use",
+    "public domain",
+    "is used by",
+    "definitely used",
+    "infringes",
+    "no licensing required",
+    "can freely use",
     "being commercialized",
 ]
 
@@ -66,9 +72,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
         lower = text.lower()
         for phrase in FORBIDDEN_PHRASES:
             if phrase.lower() in lower:
-                raise SummarizationError(
-                    f"Forbidden phrase '{phrase}' found in {key}. Regenerate."
-                )
+                raise SummarizationError(f"Forbidden phrase '{phrase}' found in {key}. Regenerate.")
 
     # ── schema defaults ──
     for field in REQUIRED_FIELDS:
@@ -146,6 +150,7 @@ async def generate_weekly_digest(
     from sqlalchemy import update
 
     from app.core.ai_models import AIArtifact
+
     await session.execute(
         update(AIArtifact)
         .where(AIArtifact.id == response.artifact_id)

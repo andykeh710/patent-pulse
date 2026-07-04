@@ -1,4 +1,5 @@
 """Tests for Sprint 5 citation evidence collector."""
+
 from datetime import date, timedelta
 from uuid import uuid4
 
@@ -50,6 +51,7 @@ def test_compute_tier_old_excluded():
 async def test_collect_returns_empty_for_no_citations(db_session):
     """Patent without forward citations returns empty list."""
     from uuid import uuid4
+
     uid = uuid4()
     patent = PatentPublication(
         id=uid,

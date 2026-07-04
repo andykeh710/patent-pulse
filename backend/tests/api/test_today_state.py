@@ -1,4 +1,5 @@
 """Tests for Sprint 3 today/state and today/mark-seen endpoints."""
+
 import pytest
 from httpx import AsyncClient
 
@@ -180,7 +181,6 @@ async def test_mark_seen_shift(client: AsyncClient, db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_mark_seen_idempotent(client: AsyncClient, db_session):
     """Calling mark-seen twice in succession works correctly."""
-    from datetime import datetime, timezone
 
     from sqlalchemy import select
 
@@ -243,7 +243,9 @@ async def test_migration_columns_default_null(client: AsyncClient, db_session):
     # (which is the correct default - nullable)
     # The model defines them as nullable=True, so they default to None
     assert getattr(user, "last_today_seen_at", None) is None or user.last_today_seen_at is None
-    assert getattr(user, "previous_today_seen_at", None) is None or user.previous_today_seen_at is None
+    assert (
+        getattr(user, "previous_today_seen_at", None) is None or user.previous_today_seen_at is None
+    )
 
 
 # -- Integration: state reflects mark-seen --
@@ -279,7 +281,9 @@ async def test_state_reflects_mark_seen(client: AsyncClient, db_session):
 async def test_mark_seen_idempotent_within_window(client: AsyncClient, db_session):
     """Repeated mark-seen within 5 minutes skips update (hard-reload protection)."""
     from datetime import datetime, timezone
+
     from sqlalchemy import select
+
     from app.core.ai_models import User
 
     # Set last_seen to just now (within idempotency window)

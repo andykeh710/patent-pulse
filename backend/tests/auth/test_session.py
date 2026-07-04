@@ -1,4 +1,5 @@
 """Tests for JWT session sign/verify."""
+
 import jwt
 import pytest
 
@@ -7,6 +8,7 @@ SECRET = "test-secret-key-for-tests"
 
 def test_jwt_roundtrip():
     import datetime as _dt
+
     now = _dt.datetime.now(_dt.timezone.utc)
     payload = {"sub": "local-user", "iat": now, "exp": now + _dt.timedelta(days=30)}
     token = jwt.encode(payload, SECRET, algorithm="HS256")
@@ -16,6 +18,7 @@ def test_jwt_roundtrip():
 
 def test_expired_jwt_rejected():
     import datetime as _dt
+
     past = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=1)
     payload = {"sub": "local-user", "iat": past - _dt.timedelta(days=30), "exp": past}
     token = jwt.encode(payload, SECRET, algorithm="HS256")

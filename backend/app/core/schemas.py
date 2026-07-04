@@ -72,9 +72,7 @@ class PatentListItem(BaseModel):
             publication_date=patent.publication_date,
             grant_date=patent.grant_date,
             legal_status=patent.legal_status,
-            legal_status_confidence=getattr(
-                patent, "legal_status_confidence", None
-            ) or "estimated",
+            legal_status_confidence=getattr(patent, "legal_status_confidence", None) or "estimated",
             interesting_score=patent.interesting_score,
             opportunity_score=getattr(patent, "opportunity_score", None),
             tags=getattr(patent, "tags", None),
@@ -167,9 +165,7 @@ class PatentDetailResponse(BaseModel):
             abstract=patent.abstract,
             claims_text=patent.claims_text,
             legal_status=patent.legal_status,
-            legal_status_confidence=getattr(
-                patent, "legal_status_confidence", None
-            ) or "estimated",
+            legal_status_confidence=getattr(patent, "legal_status_confidence", None) or "estimated",
             maintenance_status=patent.maintenance_status,
             estimated_expiry_date=patent.estimated_expiry_date,
             summary=summary,
@@ -327,6 +323,7 @@ class FreshnessResponse(BaseModel):
 
 class UserPreferencesResponse(BaseModel):
     """Full user preference state returned by GET /me/preferences."""
+
     persona: str | None = None
     use_case: str | None = None
     industry_focus: str | None = None
@@ -342,6 +339,7 @@ class UserPreferencesResponse(BaseModel):
 
 class UserPreferencesUpdate(BaseModel):
     """Fields accepted by PATCH /me/preferences. All optional."""
+
     persona: str | None = None
     use_case: str | None = None
     industry_focus: str | None = None
@@ -353,6 +351,7 @@ class UserPreferencesUpdate(BaseModel):
 
 class FeedInteractionRequest(BaseModel):
     """Create a feed interaction event."""
+
     object_type: str
     object_id: str
     interaction_type: str
@@ -361,12 +360,14 @@ class FeedInteractionRequest(BaseModel):
 
 class HideFeedItemRequest(BaseModel):
     """Hide a feed item."""
+
     object_type: str
     object_id: str
 
 
 class FeedFeedbackRequest(BaseModel):
     """Submit useful/not_useful feedback on a feed item."""
+
     object_type: str
     object_id: str
     feedback_type: str  # "useful" | "not_useful"

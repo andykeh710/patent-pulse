@@ -1,4 +1,5 @@
 """Sprint 7 — Billing, API key, and export ORM models."""
+
 from __future__ import annotations
 
 import uuid
@@ -53,9 +54,7 @@ class APIKey(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
     )
-    user_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id", ondelete="CASCADE")
-    )
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     key_hash: Mapped[str] = mapped_column(String(128), unique=True)
     key_prefix: Mapped[str] = mapped_column(String(16))
     name: Mapped[str | None] = mapped_column(String(128))
@@ -76,9 +75,7 @@ class Export(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
     )
-    user_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id", ondelete="CASCADE")
-    )
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     export_type: Mapped[str] = mapped_column(String(16))
     scope: Mapped[str] = mapped_column(String(32))
     payload_size_bytes: Mapped[int | None] = mapped_column(Integer)

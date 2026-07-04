@@ -1,4 +1,5 @@
 """Tests for admin endpoints (Sprint 7 + Sprint 1.5 gate)."""
+
 import pytest
 
 
@@ -8,15 +9,25 @@ def _cookie(user_id="local-user"):
     import jwt
 
     from app.config import settings
-    return {"auth_session": jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        settings.auth_secret_key, algorithm="HS256",
-    )}
+
+    return {
+        "auth_session": jwt.encode(
+            {
+                "sub": user_id,
+                "iat": datetime.now(timezone.utc),
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            },
+            settings.auth_secret_key,
+            algorithm="HS256",
+        )
+    }
 
 
 async def _make_admin(db_session) -> None:
     from sqlalchemy import select
+
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()
@@ -24,7 +35,9 @@ async def _make_admin(db_session) -> None:
 
 async def _make_non_admin(db_session) -> None:
     from sqlalchemy import select
+
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = False
     await db_session.commit()
@@ -58,7 +71,9 @@ async def test_trigger_forbidden_non_admin(client, db_session, path):
     """Trigger endpoints must reject non-admin users."""
     await _make_non_admin(db_session)
     r = await client.post(path, cookies=_cookie())
-    assert r.status_code in (401, 403), f"{path}: expected 401/403 for non-admin, got {r.status_code}"
+    assert r.status_code in (401, 403), (
+        f"{path}: expected 401/403 for non-admin, got {r.status_code}"
+    )
 
 
 @pytest.mark.asyncio(loop_scope="function")
@@ -73,6 +88,7 @@ async def test_trigger_assignee_backfill_admin_accepted(client, db_session):
 
 
 # -- Existing admin tests --
+
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_admin_users_unauthorized(client, db_session):
@@ -102,12 +118,14 @@ async def test_admin_overrides_tier(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
-    from app.core.billing_models import BillingSubscription
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.is_admin = True
     await db_session.commit()
 
-    r = await client.post("/api/v1/admin/users/local-user/tier", json={"tier": "lifetime"}, cookies=_cookie())
+    r = await client.post(
+        "/api/v1/admin/users/local-user/tier", json={"tier": "lifetime"}, cookies=_cookie()
+    )
     assert r.status_code == 200
     data = r.json()
     assert data["tier"] == "lifetime"

@@ -1,5 +1,6 @@
 """Tests for A/B subject line variants (Phase 5 PR 1)."""
-from app.email.weekly_briefing import pick_variant, build_subject, SUBJECT_VARIANTS
+
+from app.email.weekly_briefing import SUBJECT_VARIANTS, build_subject, pick_variant
 
 
 def test_pick_variant_is_deterministic():
@@ -64,7 +65,11 @@ def test_build_subject_variant_c():
 def test_build_subject_variant_d():
     """Variant D uses top patent title."""
     items = [
-        {"title": "System and Method for Secure Authentication", "type": "notable", "source": "Acme"},
+        {
+            "title": "System and Method for Secure Authentication",
+            "type": "notable",
+            "source": "Acme",
+        },
     ]
     subj = build_subject("D", items)
     assert "System and Method for Secure Authentication" in subj

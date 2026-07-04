@@ -1,36 +1,37 @@
 """Tests for persona_weights module."""
+
 from app.services.persona_weights import get_weights
 
 
 def test_get_weights_founder_boosts_opportunity():
     w = get_weights("Founder")
     assert w["expiring"] > 1.0  # HIGH
-    assert w["company"] > 1.0   # HIGH
+    assert w["company"] > 1.0  # HIGH
 
 
 def test_get_weights_vc_boosts_expiry():
     w = get_weights("VC")
     assert w["expiring"] > 1.0  # HIGH
-    assert w["trend"] > 1.0     # HIGH
+    assert w["trend"] > 1.0  # HIGH
 
 
 def test_get_weights_engineer_boosts_notable():
     w = get_weights("Engineer")
-    assert w["notable"] > 1.0   # HIGH
-    assert w["trend"] > 1.0     # HIGH
+    assert w["notable"] > 1.0  # HIGH
+    assert w["trend"] > 1.0  # HIGH
     assert w["expiring"] < 1.0  # LOW-MED
 
 
 def test_get_weights_researcher_boosts_trend():
     w = get_weights("Researcher")
-    assert w["trend"] > 1.0     # HIGH
-    assert w["notable"] > 1.0   # HIGH
+    assert w["trend"] > 1.0  # HIGH
+    assert w["notable"] > 1.0  # HIGH
 
 
 def test_get_weights_operator_boosts_company():
     w = get_weights("Operator")
-    assert w["company"] > 1.0   # HIGH
-    assert w["foryou"] > 1.0    # MED-HIGH
+    assert w["company"] > 1.0  # HIGH
+    assert w["foryou"] > 1.0  # MED-HIGH
 
 
 def test_get_weights_none_returns_all_baseline():

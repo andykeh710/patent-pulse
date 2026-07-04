@@ -14,13 +14,18 @@ down_revision = "0031"
 branch_labels = None
 depends_on = None
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("last_today_seen_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("users", sa.Column("previous_today_seen_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column(
+        "users", sa.Column("last_today_seen_at", sa.DateTime(timezone=True), nullable=True)
+    )
+    op.add_column(
+        "users", sa.Column("previous_today_seen_at", sa.DateTime(timezone=True), nullable=True)
+    )
 
 
 def downgrade() -> None:

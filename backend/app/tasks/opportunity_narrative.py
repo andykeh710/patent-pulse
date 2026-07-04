@@ -1,4 +1,5 @@
 """Celery tasks for the Opportunity Narrative generator."""
+
 from __future__ import annotations
 
 import asyncio
@@ -27,12 +28,16 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
     autoretry_for=(SummarizationError,),
 )
-def generate_opportunity_narrative(self, patent_id: str, run_id: str | None = None) -> dict[str, Any]:
+def generate_opportunity_narrative(
+    self, patent_id: str, run_id: str | None = None
+) -> dict[str, Any]:
     """Generate Opportunity Narrative for one patent and persist artifact."""
     return asyncio.run(_generate_opportunity_narrative_async(patent_id, run_id))
 
 
-async def _generate_opportunity_narrative_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
+async def _generate_opportunity_narrative_async(
+    patent_id: str, run_id: str | None
+) -> dict[str, Any]:
     async with async_session_maker() as session:
         result = await session.execute(
             select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
@@ -58,7 +63,9 @@ async def _generate_opportunity_narrative_async(patent_id: str, run_id: str | No
         }
 
 
-@celery_app.task(bind=True, name="app.tasks.opportunity_narrative.batch_opportunity_narrative", max_retries=1)
+@celery_app.task(
+    bind=True, name="app.tasks.opportunity_narrative.batch_opportunity_narrative", max_retries=1
+)
 def batch_opportunity_narrative(self, limit: int = 50) -> dict[str, Any]:
     """Generate Opportunity Narrative for patents that have tags but no narrative yet."""
     return asyncio.run(_batch_opportunity_narrative_async(limit))
