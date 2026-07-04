@@ -13,7 +13,11 @@ from app.ai.assignee_intelligence import generate_assignee_intelligence
 from app.core.models import PatentPublication
 from app.database import async_session_maker
 from app.tasks.celery_app import celery_app
-from app.tasks.run_aggregates import recompute_run_aggregates
+from app.tasks.run_aggregates import (
+    recompute_run_aggregates,
+    record_run_task_completion,
+    record_run_task_failure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +35,7 @@ def generate_assignee_intelligence_task(
 
 
 async def _gen_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
+    run_uuid = UUID(run_id) if run_id else None
     async with async_session_maker() as session:
         patent = (
             await session.execute(
@@ -38,18 +43,16 @@ async def _gen_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if not patent:
+            if run_uuid:
+                await record_run_task_failure(session, run_uuid)
+                await recompute_run_aggregates(session, run_uuid)
             return {"status": "failed", "error": "patent not found"}
-        intel, artifact_id = await generate_assignee_intelligence(
-            session, patent, run_id=UUID(run_id) if run_id else None
-        )
+        intel, artifact_id = await generate_assignee_intelligence(session, patent, run_id=run_uuid)
         await session.commit()
-        if run_id:
-            await recompute_run_aggregates(session, run_id)
-        return {
-            "status": "success",
-            "artifact_id": str(artifact_id),
-            "assignee_intelligence_score": intel.get("assignee_intelligence_score"),
-        }
+        if run_uuid:
+            await record_run_task_completion(session, run_uuid)
+            await recompute_run_aggregates(session, run_uuid)
+        return {"status": "success", "artifact_id": str(artifact_id), "assignee_intelligence_score": intel.get("assignee_intelligence_score")}
 
 
 @celery_app.task(

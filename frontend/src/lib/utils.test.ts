@@ -10,11 +10,11 @@ describe("formatDate", () => {
     expect(formatDate("2024-03-15")).toBe("Mar 15, 2024");
   });
 
-  it("returns dash for null", () => {
+  it("returns '—' for null", () => {
     expect(formatDate(null)).toBe("—");
   });
 
-  it("returns original string for invalid date", () => {
+  it("returns original for invalid date", () => {
     expect(formatDate("invalid")).toBe("invalid");
   });
 });
