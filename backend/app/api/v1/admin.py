@@ -87,6 +87,14 @@ DEFAULT_TOPICS = [
 class TriggerIngestRequest(BaseModel):
     type: Literal["grants", "applications", "epo", "pct"] = Field(...)
     target_date: date | None = None
+async def require_admin(
+    user_id: str = Depends(current_user),
+    db = Depends(get_db),
+) -> _UserModel:
+    user = (await db.execute(select(_UserModel).where(_UserModel.id == user_id))).scalar_one_or_none()
+    if user is None or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    return user
     max_results: int | None = Field(default=None, ge=1, le=1000)
 
 
@@ -329,14 +337,6 @@ class TierOverrideBody(BaseModel):
     reason: str | None = None
 
 
-async def require_admin(
-    user_id: str = Depends(current_user),
-    db = Depends(get_db),
-) -> _UserModel:
-    user = (await db.execute(select(_UserModel).where(_UserModel.id == user_id))).scalar_one_or_none()
-    if user is None or not user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin required")
-    return user
 
 
 @router.get("/users")
