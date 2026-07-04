@@ -29,6 +29,7 @@ structlog = "^24.4"
 slowapi = "^0.1.9"
 sentry-sdk = {extras = ["fastapi"], version = "^2.0"}
 pillow = "^11.0"
+pymupdf = "^1.25.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3"

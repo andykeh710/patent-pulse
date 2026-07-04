@@ -81,68 +81,63 @@ def catch_up_weeks(self, start_date: str = "2026-05-29", end_date: str | None = 
 
 def _ingest_week(kind: str, target_date: date) -> dict:
     """
-    Ingest one week of grants or applications.
+    Ingest one week of grants or applications via the ODP datasets API.
 
     Records every source attempt in source_fetches. Returns honest status.
     """
-    client = USPTOBulkClient()
+    from app.ingestion.uspto_odp_bulk import USPTOBulkDatasetClient
+
+    client = USPTOBulkDatasetClient()
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
     stats = {"fetched": 0, "created": 0, "updated": 0, "failed": 0, "sources": {}}
 
-    # Try each source
-    sources = _try_all_sources(client, kind, target_date)
+    # Try ODP datasets API
+    sources = _try_all_sources(None, kind, target_date)  # type: ignore[arg-type]
     stats["sources"] = sources
 
-    # Determine status
     any_success = any(s["status"] == "success" for s in sources.values())
-    any_fetched = any(s.get("records_found", 0) > 0 for s in sources.values())
-    all_down = all(s["status"] in ("failed", "unavailable") for s in sources.values())
+    any_data = any(s.get("records_found", 0) > 0 for s in sources.values())
 
-    if any_fetched:
-        stats["source_status"] = "success" if not any(
-            s["status"] == "unavailable" for s in sources.values()
-        ) else "partial_success"
-    elif all_down:
-        stats["source_status"] = "unavailable"
-    else:
+    if not any_data:
         stats["source_status"] = "empty"
+        asyncio.run(_record_source_fetches(kind, target_date, sources, stats))
+        return stats
 
-    # If we got data, process it
-    if any_fetched:
-        fetch_fn = client.fetch_grant_week if kind == "grant" else client.fetch_application_week
+    # Download and parse via ODP datasets client
+    try:
+        if kind == "grant":
+            files = client.get_grant_files(target_date, target_date)
+        else:
+            files = client.get_application_files(target_date, target_date)
+
         normalize_fn = normalizer.normalize_grant if kind == "grant" else normalizer.normalize_application
 
-        batch = []
-        try:
-            for raw in fetch_fn(target_date):
+        for file_info in files:
+            for raw in client.download_and_parse(file_info):
                 stats["fetched"] += 1
                 try:
                     data = normalize_fn(raw)
                     score, breakdown = scorer.score_dict(data)
                     data["interesting_score"] = score
                     data["score_breakdown"] = breakdown
-                    batch.append(data)
-
-                    if len(batch) >= BATCH_SIZE:
-                        r = asyncio.run(_upsert_batch(batch))
-                        stats["created"] += r["created"]
-                        stats["updated"] += r["updated"]
-                        stats["failed"] += r["failed"]
-                        batch = []
+                    batch = [data]
+                    r = asyncio.run(_upsert_batch(batch))
+                    stats["created"] += r["created"]
+                    stats["updated"] += r["updated"]
+                    stats["failed"] += r["failed"]
+                    if r["created"] > 0:
+                        # Schedule figure fetch for newly created patents
+                        from app.tasks.backfill_figures import fetch_patent_figures
+                        fetch_patent_figures.delay(batch[0]["publication_number"])
                 except Exception as exc:
                     stats["failed"] += 1
                     logger.warning(f"Failed to process record: {exc}")
-
-            if batch:
-                r = asyncio.run(_upsert_batch(batch))
-                stats["created"] += r["created"]
-                stats["updated"] += r["updated"]
-                stats["failed"] += r["failed"]
-        except Exception as exc:
-            logger.error(f"{kind} ingestion failed: {exc}", exc_info=True)
-            stats["error"] = str(exc)[:500]
+    except Exception as exc:
+        logger.error(f"{kind} ingestion failed: {exc}", exc_info=True)
+        stats["error"] = str(exc)[:500]
+        stats["source_status"] = "failed"
 
     # ── Record source_fetches rows ──
     asyncio.run(_record_source_fetches(kind, target_date, sources, stats))
@@ -154,71 +149,37 @@ def _ingest_week(kind: str, target_date: date) -> dict:
 
 def _try_all_sources(client: USPTOBulkClient, kind: str, target_date: date) -> dict:
     """
-    Attempt to fetch from each configured source and return per-source results.
-
-    Does NOT do full XML parsing — just checks reachability and data presence.
+    Attempt to fetch from the new USPTO ODP datasets API.
+    The legacy bulkdata.uspto.gov and developer.uspto.gov endpoints were
+    retired June 2026. We now use api.uspto.gov/api/v1/datasets/products/.
     """
+    from app.ingestion.uspto_odp_bulk import USPTOBulkDatasetClient
+
     results = {}
 
-    # Source 1: bulkdata.uspto.gov (ZIP download)
-    year = target_date.year
-    date_str = target_date.strftime("%m%d%Y")
-    if kind == "grant":
-        bulk_url = f"https://bulkdata.uspto.gov/data/patent/grant/redbook/full/{year}/ipg{date_str}.zip"
-    else:
-        bulk_url = f"https://bulkdata.uspto.gov/data/patent/application/redbook/full/{year}/ipa{date_str}.zip"
-
-    bulk_result = {
-        "provider": "uspto_bulkdata",
-        "source_url": bulk_url,
-        "status": "unavailable",
-        "http_status": None,
-        "records_found": 0,
-        "error_message": None,
-    }
-    try:
-        import httpx
-        r = httpx.head(bulk_url, timeout=15, follow_redirects=True)
-        bulk_result["http_status"] = r.status_code
-        if r.status_code == 200:
-            content_len = int(r.headers.get("content-length", 0))
-            bulk_result["status"] = "success" if content_len > 100 else "empty"
-            bulk_result["records_found"] = content_len
-        else:
-            bulk_result["status"] = "unavailable"
-            bulk_result["error_message"] = f"HTTP {r.status_code}"
-    except Exception as e:
-        bulk_result["status"] = "unavailable"
-        bulk_result["error_message"] = f"DNS/network failure: {e}"
-    results["uspto_bulkdata"] = bulk_result
-
-    # Source 2: ODP IBD API
-    odp_url = f"{client.base_url}/patent/{kind}s"
+    # Source: ODP datasets API (api.uspto.gov)
+    odp_client = USPTOBulkDatasetClient()
+    product_id = "PTGRXML" if kind == "grant" else "APPXML"
     odp_result = {
         "provider": "uspto_odp",
-        "source_url": odp_url,
+        "source_url": f"{odp_client.base}/datasets/products/{product_id}",
         "status": "unavailable",
         "http_status": None,
         "records_found": 0,
         "error_message": None,
     }
     try:
-        import httpx
-        params = {"dateFrom": target_date.isoformat(), "dateTo": target_date.isoformat()}
-        if client.api_key:
-            params["api_key"] = client.api_key
-        r = httpx.get(odp_url, params=params, timeout=30)
-        odp_result["http_status"] = r.status_code
-        if r.status_code == 200:
-            content_len = len(r.content)
-            odp_result["status"] = "success" if content_len > 100 else "empty"
-            odp_result["records_found"] = content_len
+        files = odp_client.get_grant_files(target_date, target_date) if kind == "grant" \
+                else odp_client.get_application_files(target_date, target_date)
+        if files:
+            total_size = sum(f.get("fileSize", 0) for f in files)
+            odp_result["status"] = "success"
+            odp_result["records_found"] = total_size
         else:
-            odp_result["status"] = "unavailable"
-            odp_result["error_message"] = f"HTTP {r.status_code}: {r.text[:200]}"
+            odp_result["status"] = "empty"
     except Exception as e:
-        odp_result["status"] = "source_unavailable"
-        odp_result["error_message"] = f"Connection failure: {e}"
+        odp_result["status"] = "unavailable"
+        odp_result["error_message"] = str(e)[:500]
     results["uspto_odp"] = odp_result
 
     return results
