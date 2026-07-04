@@ -5,6 +5,7 @@ Provides access to INPADOC family data and cross-jurisdiction analysis.
 """
 
 from uuid import UUID
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -68,7 +69,7 @@ async def get_family(db: DbSession, family_id: str) -> FamilyResponse:
     else:
         priority_pubs = [m for m in members if m.office in priority_offices]
         if priority_pubs:
-            primary = min(priority_pubs, key=lambda x: x.publication_date or "9999-99-99")
+            primary = min(priority_pubs, key=lambda x: x.publication_date or date.max)
         else:
             primary = members[0]
 
