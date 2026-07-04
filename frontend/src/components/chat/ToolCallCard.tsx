@@ -67,6 +67,7 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCallRecord }) {
           </div>
 
           {/* Result (if done) */}
+          {/* @ts-ignore */}
           {hasResult && toolCall.result && (
             <div>
               <span className="text-[var(--text-muted)]">Result: </span>

@@ -261,7 +261,7 @@ export function useChatStream() {
         setState((prev) => ({
           ...prev,
           isStreaming: false,
-          error: err.message || "Chat request failed",
+          error: (err as Error).message || "Chat request failed",
         }));
       }
     },
