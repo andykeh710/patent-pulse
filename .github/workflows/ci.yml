@@ -159,10 +159,12 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: root
           key: ${{ secrets.DEPLOY_KEY }}
-          script_stop: true
           script: |
             set -e
             cd /opt/invention-index-8
+
+            # Stash any local changes before pulling
+            git stash 2>/dev/null || true
 
             # Record current commit for rollback
             PREV_COMMIT=$(git rev-parse HEAD)
@@ -174,8 +176,8 @@ jobs:
             # Run migrations
             docker compose exec -T backend alembic upgrade head
 
-            # Rebuild and restart
-            docker compose up -d --build --force-recreate backend worker beat frontend
+            # Rebuild and restart (production overrides)
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate backend worker beat frontend
 
             # Health check — poll for up to 90 seconds
             for i in $(seq 1 30); do
@@ -213,7 +215,7 @@ jobs:
           server_port: 465
           username: resend
           password: ${{ secrets.RESEND_API_KEY }}
-          from: hello@inventionindex8.com
+          from: Invention Index 8 <hello@inventionindex8.com>
           to: andy@web3r.tech
           subject: "✅ Deploy succeeded — Invention Index 8"
           body: |
@@ -229,7 +231,7 @@ jobs:
           server_port: 465
           username: resend
           password: ${{ secrets.RESEND_API_KEY }}
-          from: hello@inventionindex8.com
+          from: Invention Index 8 <hello@inventionindex8.com>
           to: andy@web3r.tech
           subject: "❌ Deploy FAILED — Invention Index 8"
           body: |
