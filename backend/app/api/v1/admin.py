@@ -199,7 +199,6 @@ async def require_admin(
     if user is None or not user.is_admin:
         raise HTTPException(status_code=403, detail="Admin required")
     return user
-    max_results: int | None = Field(default=None, ge=1, le=1000)
 
 
 @router.post("/trigger-ingest", response_model=TaskStatusResponse)
