@@ -77,6 +77,8 @@ services:
       EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      STRIPE_MODE: ${STRIPE_MODE:-test}
+      STRIPE_LIVE_ACKNOWLEDGED: ${STRIPE_LIVE_ACKNOWLEDGED:-}
     depends_on:
       db:
         condition: service_healthy
@@ -162,6 +164,8 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      STRIPE_MODE: ${STRIPE_MODE:-test}
+      STRIPE_LIVE_ACKNOWLEDGED: ${STRIPE_LIVE_ACKNOWLEDGED:-}
       CELERY_WORKER: "true"
       PATENT_CLIENT_BASE_DIR: /tmp/patent_client
     depends_on:

@@ -36,12 +36,18 @@ class Settings(BaseSettings):
     # Sprint 6.5: feature-flag USPTO citation ingestion (1 extra API call/patent).
     uspto_fetch_citations: bool = False
 
-    # Sprint 7: Stripe billing (TEST MODE ONLY)
+    # Sprint 7 / Phase 4: Stripe billing
     stripe_api_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_basic: str = ""
     stripe_price_id_lifetime: str = ""
     stripe_price_id_enterprise: str = ""
+
+    # Stripe mode enforcement (Phase 4 PR 1 — SAFETY GATE).
+    #   stripe_mode: "test" | "live"  — which Stripe keys are in use
+    #   stripe_live_acknowledged: must be "true" before stripe_mode=live will start
+    stripe_mode: str = "test"
+    stripe_live_acknowledged: str | None = None
 
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
@@ -122,6 +128,10 @@ class Settings(BaseSettings):
     figure_retry_max_attempts: int = 3
     figure_retry_backoff_base: float = 5.0  # seconds
     google_patents_images_enabled: bool = False  # feature flag: ToS gray area
+
+    # Phase 3 PR 6: Chat quota — tier-based daily limits
+    chat_quota_free: int = 5
+    chat_quota_basic: int = 50
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

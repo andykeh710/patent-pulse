@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/lib/ThemeProvider";
 
 const NAV_ITEMS = [
   { href: "/today", label: "Today" },
+  { href: "/chat", label: "Chat" },
   { href: "/patents", label: "Patents" },
   { href: "/expiry", label: "Expiry" },
   { href: "/opportunity", label: "Opportunities" },
