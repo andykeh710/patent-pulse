@@ -196,7 +196,6 @@ async def _stream_anthropic_response(
         try:
             assistant_text_parts: list[str] = []
             assistant_content_blocks: list[dict] = []
-            tool_result_blocks: list[dict] = []
 
             async for event in client.stream(
                 system=system_prompt,

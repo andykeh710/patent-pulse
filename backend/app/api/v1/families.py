@@ -4,8 +4,8 @@ Patent Family API endpoints.
 Provides access to INPADOC family data and cross-jurisdiction analysis.
 """
 
-from uuid import UUID
 from datetime import date
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel

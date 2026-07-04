@@ -1,10 +1,11 @@
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-from datetime import datetime, timezone
 
 import pytest
 
 from app.core.models import PatentPublication
+
 
 class TestSummarizePatent:
     @patch("app.tasks.summarize._summarize_patent_async")
