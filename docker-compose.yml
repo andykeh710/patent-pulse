@@ -40,6 +40,8 @@ services:
       # Set GOOGLE_APPLICATION_CREDENTIALS_HOST in .env to the host path
       # of the JSON file (e.g. /Users/you/Downloads/patent-signals-XXX.json).
       - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
+      # V3.8I: patent figure storage (shared between backend + worker)
+      - figure_data:/data/figures
     ports:
       - "8080:8000"
     environment:
@@ -101,6 +103,8 @@ services:
     volumes:
       - ./backend:/app
       - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
+      # V3.8I: patent figure storage (shared between backend + worker)
+      - figure_data:/data/figures
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
@@ -183,3 +187,4 @@ services:
 
 volumes:
   pgdata:
+  figure_data:

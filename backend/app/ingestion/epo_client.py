@@ -307,6 +307,78 @@ class EPOClient:
             pass
         return result
 
+    def fetch_drawings(self, publication_number: str) -> list[bytes]:
+        """Fetch patent drawings/images from EPO OPS published-images API.
+
+        Args:
+            publication_number: EPODOC-format number (e.g., 'US12586484B2').
+
+        Returns:
+            List of raw image bytes (may be TIFF). Empty list if none found.
+        """
+        clean = publication_number.replace("-", "").replace("/", "").strip()
+        path = f"/published-data/images/{clean}/drawings"
+        try:
+            result = self._request("GET", path, accept="application/tiff")
+            # OPS returns a multi-page TIFF. Split into individual pages.
+            pages = self._split_tiff_pages(result)
+            return pages
+        except IngestionError as e:
+            if "404" in str(e) or "Not Found" in str(e):
+                logger.debug("No drawings found for %s", clean)
+                return []
+            raise
+        except Exception as e:
+            logger.warning("Drawings fetch failed for %s: %s", clean, e)
+            return []
+
+    @staticmethod
+    def _split_tiff_pages(result: dict) -> list[bytes]:
+        """Split multi-page TIFF response into individual page bytes.
+
+        EPO OPS returns either a single TIFF with multiple pages or a
+        multipart response. Extract each page into its own byte buffer.
+        """
+        import io
+
+        from PIL import Image
+
+        raw = result.get("raw", "")
+        if not raw or not isinstance(raw, str):
+            return []
+
+        # The raw response may be base64-encoded or binary text
+        try:
+            import base64
+            data = base64.b64decode(raw)
+        except Exception:
+            # Try treating as latin-1 encoded binary
+            data = raw.encode("latin-1")
+
+        pages: list[bytes] = []
+        try:
+            img = Image.open(io.BytesIO(data))
+            page_idx = 0
+            while True:
+                buf = io.BytesIO()
+                img.seek(page_idx)
+                img.save(buf, format="TIFF")
+                pages.append(buf.getvalue())
+                page_idx += 1
+        except EOFError:
+            pass  # no more pages
+        except Exception:
+            # Single page or non-TIFF — return as single page
+            try:
+                img = Image.open(io.BytesIO(data))
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                pages = [buf.getvalue()]
+            except Exception:
+                pages = [data]
+
+        return pages
+
     def fetch_publications_by_date(self, publication_date: date) -> Iterator[dict]:
         """
         Fetch all EP publications for a specific date.

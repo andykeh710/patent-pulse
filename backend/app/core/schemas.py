@@ -82,7 +82,7 @@ class PatentListItem(BaseModel):
             estimated_expiry_date=patent.estimated_expiry_date,
             days_until_expiry=days_until,
             figure_page_url=getattr(patent, "figure_page_url", None),
-            thumbnail_url=None,  # lazy-resolved by frontend via /thumbnail-url
+            thumbnail_url=getattr(patent, "thumbnail_url", None),
         )
 
 
@@ -133,6 +133,7 @@ class PatentDetailResponse(BaseModel):
 
     # V3.8I: direct image URL when resolvable (lazy-resolved by frontend).
     thumbnail_url: str | None = None
+    figures_status: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -190,6 +191,7 @@ class PatentDetailResponse(BaseModel):
             presentation_rank_reason=getattr(patent, "presentation_rank_reason", None),
             presentation_rank_confidence=getattr(patent, "presentation_rank_confidence", None),
             figure_page_url=getattr(patent, "figure_page_url", None),
+            thumbnail_url=getattr(patent, "thumbnail_url", None),
         )
 
 

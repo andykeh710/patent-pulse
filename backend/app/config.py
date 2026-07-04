@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     uspto_api_key: str = ""
     uspto_odp_api_key: str = ""
-    uspto_odp_base_url: str = "https://developer.uspto.gov/ibd-api/v1"
+    uspto_odp_base_url: str = "https://api.uspto.gov/api/v1"
     google_cloud_project: str | None = None
 
     # Sprint 6: magic-link auth
@@ -111,6 +111,17 @@ class Settings(BaseSettings):
     # Phase 3: Chatbot config — DeepSeek via Anthropic-compatible endpoint
     chat_model: str = "deepseek-v4-pro"
     chat_retrieve_k: int = 8
+    chat_quota_free: int = 50
+    chat_quota_basic: int = 100
+
+    # V3.8I: patent figure storage + rate limiting
+    figures_storage_dir: str = "/data/figures"
+    figures_serve_url_prefix: str = "/api/v1/patents"
+    epo_ops_max_rps: float = 2.0  # free tier: ~2 requests/second
+    uspto_odp_max_rps: float = 5.0
+    figure_retry_max_attempts: int = 3
+    figure_retry_backoff_base: float = 5.0  # seconds
+    google_patents_images_enabled: bool = False  # feature flag: ToS gray area
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

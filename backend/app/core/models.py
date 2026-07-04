@@ -49,6 +49,11 @@ class PatentPublication(Base):
 
     # Sprint 4.5: link-out to Google Patents thumbnails page (not inline image).
     figure_page_url: Mapped[str | None] = mapped_column(String(512))
+    # V3.8I: explicit image contract — first figure thumbnail endpoint
+    thumbnail_url: Mapped[str | None] = mapped_column(String(512))
+    figures_status: Mapped[str] = mapped_column(
+        String(16), default="pending", server_default="pending"
+    )
     abstract_source: Mapped[str | None] = mapped_column(String(32))
     claims_source: Mapped[str | None] = mapped_column(String(32))
 
@@ -231,3 +236,53 @@ class NewsPatentLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (Index("ix_news_patent_links_news", "news_id"),)
+
+
+# ── V3.8I: Patent figures ───────────────────────────────────────
+
+class PatentFigure(Base):
+    __tablename__ = "patent_figures"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    patent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE"), index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    full_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String(32))
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    figure_label: Mapped[str | None] = mapped_column(String(256))
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        Index("ix_patent_figures_patent_ordinal", "patent_id", "ordinal", unique=True),
+    )
+
+
+class IngestionRun(Base):
+    """ORM mirror of ingestion_runs table (created by migration 0036).
+
+    Exists so test conftest's Base.metadata.create_all() creates the table.
+    The production table is managed by Alembic.
+    """
+    __tablename__ = "ingestion_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    status: Mapped[str] = mapped_column(String(16), comment="started, success, failed")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    grants_processed: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_created: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_updated: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_failed: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_processed: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_created: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_updated: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_failed: Mapped[int] = mapped_column(Integer, server_default="0")
+    error_message: Mapped[str | None] = mapped_column(Text)

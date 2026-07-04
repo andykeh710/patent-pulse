@@ -769,3 +769,112 @@ async def get_patent_thumbnail_url(publication_number: str) -> dict:
     img_url = match.group(1)
     _cache(img_url, _THUMBNAIL_TTL_OK)
     return {"url": img_url, "cached": False, "error": None}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# V3.8I: Patent figure serving
+# ═══════════════════════════════════════════════════════════════════════
+
+from fastapi.responses import Response as FastAPIResponse
+
+
+@router.get("/{patent_id}/figures/{ordinal}")
+async def get_patent_figure(
+    patent_id: UUID,
+    ordinal: int,
+    db: DbSession,
+):
+    """Serve a full-size patent figure with immutable cache headers."""
+    from app.core.models import PatentFigure
+
+    result = await db.execute(
+        select(PatentFigure).where(
+            PatentFigure.patent_id == patent_id,
+            PatentFigure.ordinal == ordinal,
+        )
+    )
+    figure = result.scalar_one_or_none()
+    if figure is None:
+        raise HTTPException(status_code=404, detail="Figure not found")
+
+    from app.ingestion.figure_storage import get_storage
+
+    storage = get_storage()
+    if not storage.exists(figure.full_path):
+        raise HTTPException(status_code=404, detail="Figure file missing")
+
+    data = storage.get(figure.full_path)
+    return FastAPIResponse(
+        content=data,
+        media_type=figure.mime_type or "image/png",
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{figure.id}"',
+        },
+    )
+
+
+@router.get("/{patent_id}/figures/{ordinal}/thumbnail")
+async def get_patent_figure_thumbnail(
+    patent_id: UUID,
+    ordinal: int,
+    db: DbSession,
+):
+    """Serve a patent figure thumbnail with immutable cache headers."""
+    from app.core.models import PatentFigure
+
+    result = await db.execute(
+        select(PatentFigure).where(
+            PatentFigure.patent_id == patent_id,
+            PatentFigure.ordinal == ordinal,
+        )
+    )
+    figure = result.scalar_one_or_none()
+    if figure is None:
+        raise HTTPException(status_code=404, detail="Figure not found")
+
+    from app.ingestion.figure_storage import get_storage
+
+    storage = get_storage()
+    if not storage.exists(figure.thumb_path):
+        raise HTTPException(status_code=404, detail="Thumbnail file missing")
+
+    data = storage.get(figure.thumb_path)
+    return FastAPIResponse(
+        content=data,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{figure.id}-thumb"',
+        },
+    )
+
+
+@router.get("/{patent_id}/figures")
+async def list_patent_figures(
+    patent_id: UUID,
+    db: DbSession,
+):
+    """List all figures for a patent with thumbnail + full URLs."""
+    from app.core.models import PatentFigure
+
+    result = await db.execute(
+        select(PatentFigure)
+        .where(PatentFigure.patent_id == patent_id)
+        .order_by(PatentFigure.ordinal)
+    )
+    figures = result.scalars().all()
+
+    base = settings.figures_serve_url_prefix
+    return {
+        "figures": [
+            {
+                "ordinal": f.ordinal,
+                "thumbnail_url": f"{base}/{patent_id}/figures/{f.ordinal}/thumbnail",
+                "full_url": f"{base}/{patent_id}/figures/{f.ordinal}",
+                "width": f.width,
+                "height": f.height,
+            }
+            for f in figures
+        ]
+    }
