@@ -81,6 +81,8 @@ export interface PatentListItem {
   estimated_expiry_date: string | null;
   figure_page_url: string | null;
   similarity?: number;
+  // V3.8I: direct image URL (lazy-resolved by frontend via /thumbnail-url)
+  thumbnail_url: string | null;
 }
 
 export interface PatentDetail {
@@ -126,6 +128,9 @@ export interface PatentDetail {
   presentation_rank_confidence: string | null;
   // Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
   figure_page_url: string | null;
+  // V3.8I: direct image URL (lazy-resolved by frontend via /thumbnail-url)
+  thumbnail_url: string | null;
+  figures_status: string | null;
 }
 
 export interface ExpiryItem {
@@ -181,6 +186,28 @@ export interface Freshness {
   total_patents: number;
   total_summarized: number;
   total_trend_snapshots: number;
+  // Ingestion pipeline health (V3.0)
+  last_ingestion_status: string | null;
+  last_ingestion_started_at: string | null;
+  last_ingestion_finished_at: string | null;
+  last_ingestion_new_records: number | null;
+  last_ingestion_error: string | null;
+}
+
+// ── V3.1 ──
+
+export interface UserPreferences {
+  persona: string | null;
+  use_case: string | null;
+  industry_focus: string | null;
+  interests_freetext: string | null;
+  digest_frequency: string;
+  digest_topics_only: boolean;
+  digest_min_opp_score: number;
+  followed_topic_count: number;
+  followed_company_count: number;
+  saved_patent_count: number;
+  saved_search_count: number;
 }
 
 export interface PatentListParams {
@@ -205,8 +232,24 @@ export interface SearchParams {
   assignee?: string;
   date_from?: string;
   date_to?: string;
+  legal_status?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  query: string;
+  mode: string;
+  filters_json: Record<string, unknown> | null;
+  sort_by: string;
+  sort_order: string;
+  created_at: string;
+  updated_at: string;
+  last_opened_at: string | null;
 }
 
 export interface ExpiryParams {
@@ -755,6 +798,7 @@ export interface CompanyProfile {
   name: string;
   country: string | null;
   entity_type: string | null;
+  enrichment_source: string | null;
   patent_count: number;
   active_patent_count: number;
   expiring_soon_count: number;
@@ -763,6 +807,7 @@ export interface CompanyProfile {
   supplier_score: number;
   top_cpc: { cpc: string; count: number }[];
   recent_patents: { id: string; doc_id: string; title: string | null; publication_date: string | null; opportunity_score: number | null }[];
+  top_inventors: { name: string; patent_count: number }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -835,4 +880,90 @@ export interface TodayHighlightsResponse {
   expiring_opportunity: ExpiringOpportunityCard | null;
   notable_patent: NotablePatentCard | null;
   company_move: CompanyMoveCard | null;
+}
+
+// -- Sprint 3: Today habit engine types --
+// -- Sprint 6: Expiry Radar opportunity types --
+
+export type ExpiryWindow = "expired" | "0-6m" | "6-12m" | "12-24m" | "24-36m" | "36m+";
+
+export interface ExpiryOpportunity {
+  id: string;
+  patent_id: string;
+  title: string | null;
+  publication_number?: string;
+  assignee?: string;
+  legal_status?: string;
+  filing_date?: string;
+  publication_date?: string;
+  grant_date?: string;
+  estimated_expiry_date?: string;
+  days_until_expiry?: number;
+  expiry_window: ExpiryWindow;
+  expiry_confidence: "high" | "medium" | "low" | "unknown";
+  expiry_basis?: string;
+  legal_caveat: string;
+  technology_tags?: string[];
+  cpc_codes?: string[];
+  summary?: string;
+  opportunity_score?: number;
+  opportunity_score_label?: "high" | "medium" | "low";
+  score_components?: {
+    expiry_proximity?: number;
+    data_completeness?: number;
+    commercial_relevance?: number;
+    assignee_signal?: number;
+    topic_signal?: number;
+  };
+  why_it_matters: string;
+  evidence: Array<{
+    label: string;
+    value: string | number;
+    href?: string;
+  }>;
+  primary_action: {
+    label: string;
+    href: string;
+  };
+  secondary_actions?: Array<{
+    label: string;
+    href?: string;
+    action?: string;
+  }>;
+  active_family_risk?: boolean;
+  usage_signal_evidence_count?: number | null;
+  usage_has_self_citation_risk?: boolean | null;
+}
+
+// -- Sprint 3: Today habit engine types --
+
+export interface TodayState {
+  generated_at: string;       // ISO 8601 UTC
+  last_seen_at: string | null; // ISO 8601 UTC
+  comparison_label: string;    // e.g. "Since June 14, 2026"
+}
+
+export type TodayInsightType = "signal" | "risk" | "opportunity" | "update" | "recommendation";
+
+export interface TodayInsight {
+  id: string;
+  type: TodayInsightType;
+  title: string;
+  summary: string;
+  why_it_matters: string;
+  evidence: Array<{
+    label: string;
+    value: string | number;
+    href?: string;
+  }>;
+  confidence: "high" | "medium" | "low";
+  timestamp: string;
+  primary_action: {
+    label: string;
+    href: string;
+  };
+  secondary_action?: {
+    label: string;
+    href: string;
+  };
 }

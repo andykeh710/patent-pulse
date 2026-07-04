@@ -84,6 +84,7 @@ coverage/
 
 # Build
 *.egg-info/
+*.tsbuildinfo
 
 # Celery
 backend/celerybeat-schedule
@@ -105,4 +106,4 @@ fresh_patent_pulse.dump
 @tailwind
 @*
 *.sql
-celerybeat-schedule*
+celerybeat-schedule*backups/

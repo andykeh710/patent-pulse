@@ -39,7 +39,8 @@ SELECT
 FROM (
     SELECT
         normalize_assignee(av.val) AS name,
-        MIN(av.val) AS display_name,
+        -- Pick the longest raw name as the display form.
+        (array_agg(av.val ORDER BY length(av.val) DESC))[1] AS display_name,
         COUNT(DISTINCT p.id) AS patent_count
     FROM patent_publications p
     JOIN LATERAL jsonb_array_elements_text(p.assignees) AS av(val) ON true
@@ -50,6 +51,11 @@ ON CONFLICT (normalized_name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     patent_count = EXCLUDED.patent_count,
     updated_at = now()
+-- NOTE: entity_type and country are intentionally NOT set by this backfill.
+-- entity_type enrichment requires an external data source (USPTO PatentsView,
+-- EPO Open Patent Services, or similar) with provenance tracking.
+-- Country enrichment likewise requires authoritative source data.
+-- See docs/v3-v4-roadmap.md § V3.5 for the enrichment plan.
 """
 
 
@@ -63,9 +69,7 @@ async def backfill_assignees() -> dict[str, Any]:
 
     async with async_session_maker() as session:
         # Count rows before
-        before = await session.execute(
-            text("SELECT COUNT(*) FROM assignees")
-        )
+        before = await session.execute(text("SELECT COUNT(*) FROM assignees"))
         before_count = before.scalar() or 0
 
         # Run the upsert
@@ -73,9 +77,7 @@ async def backfill_assignees() -> dict[str, Any]:
         await session.commit()
 
         # Count rows after
-        after = await session.execute(
-            text("SELECT COUNT(*) FROM assignees")
-        )
+        after = await session.execute(text("SELECT COUNT(*) FROM assignees"))
         after_count = after.scalar() or 0
 
         stats["total_processed"] = after_count
@@ -101,17 +103,13 @@ async def backfill_assignees_for_session(
     """
     stats: dict[str, int] = {"total_processed": 0, "inserted": 0, "updated": 0}
 
-    before = await session.execute(
-        text("SELECT COUNT(*) FROM assignees")
-    )
+    before = await session.execute(text("SELECT COUNT(*) FROM assignees"))
     before_count = before.scalar() or 0
 
     await session.execute(text(BACKFILL_SQL))
     await session.commit()
 
-    after = await session.execute(
-        text("SELECT COUNT(*) FROM assignees")
-    )
+    after = await session.execute(text("SELECT COUNT(*) FROM assignees"))
     after_count = after.scalar() or 0
 
     stats["total_processed"] = after_count

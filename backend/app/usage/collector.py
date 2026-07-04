@@ -3,6 +3,7 @@ Evidence collection orchestrator (Sprint 5).
 
 Runs both collectors and deduplicates evidence by source_patent_id.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

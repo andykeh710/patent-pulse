@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 const CONFIDENCE_PILLS = [
   { label: "active_estimated", color: "bg-[var(--score-high-bg)] text-[var(--score-high)]" },
   { label: "expiring_soon", color: "bg-[var(--score-medium-bg)] text-[var(--score-medium)]" },
-  { label: "lapsed_possible", color: "bg-orange-500/15 text-orange-400" },
-  { label: "lapsed_confirmed", color: "bg-red-500/15 text-red-400" },
+  { label: "lapsed_possible", color: "bg-[var(--warn-bg)] text-[var(--warn)]" },
+  { label: "lapsed_confirmed", color: "bg-[var(--danger-bg)] text-[var(--danger)]" },
 ];
 
 const TIER_BADGES = [
@@ -233,7 +233,7 @@ export default function LandingPage() {
                 {b.label}
               </span>
             ))}
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn)]/30">
               ⚠ self-citation risk
             </span>
           </div>
@@ -358,7 +358,7 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════
           6. PRICING TEASER — 4 cards
           ═══════════════════════════════════════════ */}
-      <section className="bg-[var(--bg-base)] py-20">
+      <section id="pricing" className="bg-[var(--bg-base)] py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-4">
@@ -469,7 +469,7 @@ export default function LandingPage() {
           7. TRUST BLOCK
           ═══════════════════════════════════════════ */}
       <Reveal delay={0.1}>
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-[var(--border-subtle)]">
+      <section id="about" className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-[var(--border-subtle)]">
         <h2 className="text-xl font-bold text-[var(--text-primary)] text-center mb-6">
           We show our work.
         </h2>
@@ -481,7 +481,7 @@ export default function LandingPage() {
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)] mb-6">
           <span>Data: USPTO + EPO + WIPO</span>
           <span>Updated weekly</span>
-          <span>AI: Claude Sonnet narratives</span>
+          <span>AI: DeepSeek-powered patent analysis</span>
           <span>Not legal advice</span>
         </div>
         <div className="text-center">

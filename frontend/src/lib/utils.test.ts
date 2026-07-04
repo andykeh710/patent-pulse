@@ -1,9 +1,5 @@
 import {
   formatDate,
-  formatDateRelative,
-  getScoreLabel,
-  getScoreColor,
-  getScoreBgClass,
   truncate,
   formatNumber,
   pluralize,
@@ -20,45 +16,6 @@ describe("formatDate", () => {
 
   it("returns original string for invalid date", () => {
     expect(formatDate("invalid")).toBe("invalid");
-  });
-});
-
-describe("getScoreLabel", () => {
-  it("returns high for scores >= 0.7", () => {
-    expect(getScoreLabel(0.9)).toBe("high");
-    expect(getScoreLabel(0.7)).toBe("high");
-  });
-
-  it("returns medium for scores >= 0.4 and < 0.7", () => {
-    expect(getScoreLabel(0.5)).toBe("medium");
-    expect(getScoreLabel(0.4)).toBe("medium");
-  });
-
-  it("returns low for scores < 0.4", () => {
-    expect(getScoreLabel(0.3)).toBe("low");
-    expect(getScoreLabel(0.1)).toBe("low");
-  });
-
-  it("returns unknown for null", () => {
-    expect(getScoreLabel(null)).toBe("unknown");
-  });
-});
-
-describe("getScoreColor", () => {
-  it("returns green for high scores", () => {
-    expect(getScoreColor(0.9)).toBe("#22c55e");
-  });
-
-  it("returns yellow for medium scores", () => {
-    expect(getScoreColor(0.5)).toBe("#eab308");
-  });
-
-  it("returns gray for low scores", () => {
-    expect(getScoreColor(0.2)).toBe("#6b7280");
-  });
-
-  it("returns gray for null", () => {
-    expect(getScoreColor(null)).toBe("#6b7280");
   });
 });
 

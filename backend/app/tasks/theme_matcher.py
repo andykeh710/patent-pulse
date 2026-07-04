@@ -7,10 +7,12 @@ and title keywords.
 
 import asyncio
 import logging
+import re
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import Text as TextType
+from sqlalchemy import bindparam, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.models import PatentPublication
@@ -112,16 +114,18 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
 
     if theme.cpc_prefixes:
         for prefix in theme.cpc_prefixes:
+            # cpc is JSONB, not PostgreSQL ARRAY. Use jsonb_array_elements_text + LIKE.
             conditions.append(
-                PatentPublication.cpc.op("@>")(func.array([prefix]))
+                text(
+                    "EXISTS (SELECT 1 FROM jsonb_array_elements_text(patent_publications.cpc) AS elem WHERE elem LIKE :pat)"
+                ).bindparams(bindparam("pat", value=f"{prefix}%"))
             )
 
     if theme.assignee_keywords:
         for keyword in theme.assignee_keywords:
+            # assignees is JSONB, cast to text for ILIKE search
             conditions.append(
-                func.array_to_string(PatentPublication.assignees, " ").ilike(
-                    f"%{keyword}%"
-                )
+                func.cast(PatentPublication.assignees, TextType).ilike(f"%{keyword}%")
             )
 
     if theme.title_keywords:
@@ -131,14 +135,10 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
     if theme.keywords:
         for keyword in theme.keywords:
             conditions.append(PatentPublication.title.ilike(f"%{keyword}%"))
-            conditions.append(
-                func.coalesce(PatentPublication.abstract, "").ilike(f"%{keyword}%")
-            )
+            conditions.append(func.coalesce(PatentPublication.abstract, "").ilike(f"%{keyword}%"))
 
     if not conditions:
         return stats
-
-    from sqlalchemy import or_
 
     query = (
         select(PatentPublication)
@@ -176,7 +176,9 @@ async def _match_single_theme(session, theme: Theme, limit: int) -> dict:
             stats["matched"] += 1
 
             # Sprint 6: enqueue instant alerts for this match.
-            cnt = await _enqueue_match_alerts(session, theme.id, patent.id, patent.opportunity_score or 0)
+            cnt = await _enqueue_match_alerts(
+                session, theme.id, patent.id, patent.opportunity_score or 0
+            )
             stats["alerts_enqueued"] += cnt
         else:
             stats["skipped"] += 1
@@ -209,8 +211,35 @@ async def _enqueue_match_alerts(session, theme_id, patent_id, opportunity_score:
     return enqueued
 
 
+_WORD_PATTERN_CACHE: dict[str, re.Pattern] = {}
+
+
+def _contains_word(haystack: str, keyword: str) -> bool:
+    """Whole-word, case-insensitive containment check.
+
+    Uses alphanumeric boundaries so short keywords like "AI" match the token
+    "AI" but NOT a substring inside another word (e.g. "Hyundai", "said").
+    Multi-word keywords ("machine learning") and hyphenated company names are
+    handled correctly. This is what prevents the false-positive theme matches
+    that the substring (`in`) check produced.
+    """
+    kw = keyword.strip().lower()
+    if not kw:
+        return False
+    pattern = _WORD_PATTERN_CACHE.get(kw)
+    if pattern is None:
+        pattern = re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])")
+        _WORD_PATTERN_CACHE[kw] = pattern
+    return pattern.search(haystack.lower()) is not None
+
+
 def _calculate_match_score(patent: PatentPublication, theme: Theme) -> tuple[float, list[str]]:
-    """Calculate how well a patent matches a theme."""
+    """Calculate how well a patent matches a theme.
+
+    Text keywords use whole-word matching (see `_contains_word`) so short or
+    ambiguous keywords cannot substring-match unrelated words. CPC matching is
+    a deliberate prefix match (e.g. "G06N" matches "G06N3/084").
+    """
     score = 0.0
     reasons = []
 
@@ -223,28 +252,25 @@ def _calculate_match_score(patent: PatentPublication, theme: Theme) -> tuple[flo
                     break
 
     if theme.assignee_keywords and patent.assignees:
-        assignee_text = " ".join(patent.assignees).lower()
+        assignee_text = " ".join(patent.assignees)
         for keyword in theme.assignee_keywords:
-            if keyword.lower() in assignee_text:
+            if _contains_word(assignee_text, keyword):
                 score += 0.3
                 reasons.append(f"Assignee: {keyword}")
 
     if theme.title_keywords and patent.title:
-        title_lower = patent.title.lower()
         for keyword in theme.title_keywords:
-            if keyword.lower() in title_lower:
+            if _contains_word(patent.title, keyword):
                 score += 0.3
                 reasons.append(f"Title: {keyword}")
 
     if theme.keywords and patent.title:
-        title_lower = patent.title.lower()
-        abstract_lower = (patent.abstract or "").lower()
+        abstract_text = patent.abstract or ""
         for keyword in theme.keywords:
-            kw = keyword.lower()
-            if kw in title_lower:
+            if _contains_word(patent.title, keyword):
                 score += 0.3
                 reasons.append(f"Keyword(title): {keyword}")
-            elif kw in abstract_lower:
+            elif _contains_word(abstract_text, keyword):
                 score += 0.15
                 reasons.append(f"Keyword(abstract): {keyword}")
 

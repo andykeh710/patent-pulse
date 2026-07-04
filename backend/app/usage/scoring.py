@@ -4,6 +4,7 @@ Deterministic usage signal scoring engine (Sprint 5).
 Computes usage_signal_score and derived fields from evidence dicts.
 Pure math — no DB access, no LLM. Matches scope doc §3 exactly.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -99,7 +100,9 @@ def compute_usage_signal_score(
 
         # Most recent evidence date.
         filing_date = row.get("source_patent_filing_date")
-        if isinstance(filing_date, date) and (most_recent_date is None or filing_date > most_recent_date):
+        if isinstance(filing_date, date) and (
+            most_recent_date is None or filing_date > most_recent_date
+        ):
             most_recent_date = filing_date
 
     evidence_strength = min(total_strength, MAX_EVIDENCE_STRENGTH)
@@ -145,13 +148,7 @@ def compute_usage_signal_score(
         cpc_overlap_score = 0
 
     # ── Composite score ───────────────────────────────────────────
-    raw = (
-        evidence_strength
-        + recency
-        + diversity
-        + assignee_activity
-        + cpc_overlap_score
-    )
+    raw = evidence_strength + recency + diversity + assignee_activity + cpc_overlap_score
     score = max(0, min(100, raw))
 
     # ── Confidence label ──────────────────────────────────────────
@@ -169,9 +166,7 @@ def compute_usage_signal_score(
     has_self_citation_risk = self_cite_ratio >= SELF_CITE_THRESHOLD
 
     # ── Top companies (by evidence count, deduped) ────────────────
-    top_companies = sorted(
-        assignee_counter.items(), key=lambda x: x[1], reverse=True
-    )[:5]
+    top_companies = sorted(assignee_counter.items(), key=lambda x: x[1], reverse=True)[:5]
     top_company_names = [name for name, _ in top_companies]
 
     breakdown = {

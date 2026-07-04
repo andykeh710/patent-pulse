@@ -1,4 +1,5 @@
 """Tests for async citation fetcher (Sprint 6.5)."""
+
 from unittest.mock import patch
 from uuid import uuid4
 

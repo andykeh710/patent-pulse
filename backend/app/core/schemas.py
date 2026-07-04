@@ -45,6 +45,10 @@ class PatentListItem(BaseModel):
     days_until_expiry: int | None = None
     similarity: float | None = None
 
+    # V3.8I: explicit image contract
+    figure_page_url: str | None = None
+    thumbnail_url: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -68,15 +72,15 @@ class PatentListItem(BaseModel):
             publication_date=patent.publication_date,
             grant_date=patent.grant_date,
             legal_status=patent.legal_status,
-            legal_status_confidence=getattr(
-                patent, "legal_status_confidence", None
-            ) or "estimated",
+            legal_status_confidence=getattr(patent, "legal_status_confidence", None) or "estimated",
             interesting_score=patent.interesting_score,
             opportunity_score=getattr(patent, "opportunity_score", None),
             tags=getattr(patent, "tags", None),
             summary_what_it_is=summary_what,
             estimated_expiry_date=patent.estimated_expiry_date,
             days_until_expiry=days_until,
+            figure_page_url=getattr(patent, "figure_page_url", None),
+            thumbnail_url=getattr(patent, "thumbnail_url", None),
         )
 
 
@@ -125,6 +129,10 @@ class PatentDetailResponse(BaseModel):
     # Sprint 4.5: link-out to Google Patents thumbnails (not inline image).
     figure_page_url: str | None = None
 
+    # V3.8I: direct image URL when resolvable (lazy-resolved by frontend).
+    thumbnail_url: str | None = None
+    figures_status: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -157,9 +165,7 @@ class PatentDetailResponse(BaseModel):
             abstract=patent.abstract,
             claims_text=patent.claims_text,
             legal_status=patent.legal_status,
-            legal_status_confidence=getattr(
-                patent, "legal_status_confidence", None
-            ) or "estimated",
+            legal_status_confidence=getattr(patent, "legal_status_confidence", None) or "estimated",
             maintenance_status=patent.maintenance_status,
             estimated_expiry_date=patent.estimated_expiry_date,
             summary=summary,
@@ -181,6 +187,7 @@ class PatentDetailResponse(BaseModel):
             presentation_rank_reason=getattr(patent, "presentation_rank_reason", None),
             presentation_rank_confidence=getattr(patent, "presentation_rank_confidence", None),
             figure_page_url=getattr(patent, "figure_page_url", None),
+            thumbnail_url=getattr(patent, "thumbnail_url", None),
         )
 
 
@@ -300,3 +307,67 @@ class FreshnessResponse(BaseModel):
     total_patents: int
     total_summarized: int
     total_trend_snapshots: int
+    # Ingestion pipeline health
+    last_ingestion_status: str | None = None
+    last_ingestion_started_at: str | None = None
+    last_ingestion_finished_at: str | None = None
+    last_ingestion_new_records: int | None = None
+    last_ingestion_error: str | None = None
+    # Primary source info (V3.8F)
+    primary_source: str | None = None
+    source_diagnostics: dict | None = None
+
+
+# ── V3.1 Preference Center ───────────────────────────────────────────
+
+
+class UserPreferencesResponse(BaseModel):
+    """Full user preference state returned by GET /me/preferences."""
+
+    persona: str | None = None
+    use_case: str | None = None
+    industry_focus: str | None = None
+    interests_freetext: str | None = None
+    digest_frequency: str = "weekly"
+    digest_topics_only: bool = False
+    digest_min_opp_score: float = 0.0
+    followed_topic_count: int = 0
+    followed_company_count: int = 0
+    saved_patent_count: int = 0
+    saved_search_count: int = 0
+
+
+class UserPreferencesUpdate(BaseModel):
+    """Fields accepted by PATCH /me/preferences. All optional."""
+
+    persona: str | None = None
+    use_case: str | None = None
+    industry_focus: str | None = None
+    interests_freetext: str | None = None
+    digest_frequency: str | None = None
+    digest_topics_only: bool | None = None
+    digest_min_opp_score: float | None = None
+
+
+class FeedInteractionRequest(BaseModel):
+    """Create a feed interaction event."""
+
+    object_type: str
+    object_id: str
+    interaction_type: str
+    metadata: dict | None = None
+
+
+class HideFeedItemRequest(BaseModel):
+    """Hide a feed item."""
+
+    object_type: str
+    object_id: str
+
+
+class FeedFeedbackRequest(BaseModel):
+    """Submit useful/not_useful feedback on a feed item."""
+
+    object_type: str
+    object_id: str
+    feedback_type: str  # "useful" | "not_useful"

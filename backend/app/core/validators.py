@@ -1,4 +1,5 @@
 """Input validators shared across API endpoints."""
+
 import re
 
 # CPC prefix format: section letter (A-H) + 2-digit class + subclass letter + optional /digits

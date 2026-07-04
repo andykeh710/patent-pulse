@@ -2,21 +2,68 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import useSWR from "swr";
 import { useWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
-import { PatentCardSkeleton } from "@/components/ui/Skeleton";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { Score } from "@/components/ui/Score";
 import { formatDate } from "@/lib/utils";
-import type { WatchlistItemResponse } from "@/lib/types";
+import { savedSearchesApi } from "@/lib/api";
+import type { WatchlistItemResponse, SavedSearch } from "@/lib/types";
+
+type Tab = "patents" | "companies" | "searches";
 
 const PAGE_SIZE = 12;
 
 export default function WatchlistPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("patents");
+
+  return (
+    <div>
+      <PageHeader
+        title="Your Workspace"
+        description="Saved patents, followed companies, and saved searches — your personal intelligence space."
+      />
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-6">
+        {[
+          { id: "patents" as Tab, label: "Saved Patents" },
+          { id: "companies" as Tab, label: "Followed Companies" },
+          { id: "searches" as Tab, label: "Saved Searches" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--bg-glass)]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "patents" && <SavedPatentsTab />}
+      {activeTab === "companies" && <FollowedCompaniesTab />}
+      {activeTab === "searches" && <SavedSearchesTab />}
+    </div>
+  );
+}
+
+// ── Saved Patents Tab ──────────────────────────────────────────
+
+function SavedPatentsTab() {
   const { data: items, isLoading, mutate } = useWatchlist();
   const [removing, setRemoving] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const paginated = useMemo(() => {
-    if (!items) return { pageItems: [], totalPages: 0, total: 0 };
+    if (!items) return { pageItems: [] as WatchlistItemResponse[], totalPages: 0, total: 0 };
     const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
     const safePage = Math.min(page, totalPages);
     const start = (safePage - 1) * PAGE_SIZE;
@@ -37,131 +84,186 @@ export default function WatchlistPage() {
     }
   };
 
+  if (isLoading) return <LoadingState variant="card" count={6} />;
+
+  if (!items || items.length === 0) {
+    return (
+      <EmptyState
+        icon="bookmark"
+        title="No patents saved yet"
+        message="Bookmark patents from any page to build your personal watchlist. Saved patents appear in your Today briefing."
+        actions={[
+          { label: "Browse patents", href: "/patents", primary: true },
+          { label: "Search patents", href: "/search" },
+        ]}
+      />
+    );
+  }
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Watchlist</h1>
-        <p className="text-[var(--text-secondary)] mt-1">
-          {paginated.total
-            ? `${paginated.total} saved ${paginated.total === 1 ? "patent" : "patents"}`
-            : "Save patents to track them here"}
-        </p>
+    <>
+      <div className="space-y-3">
+        {paginated.pageItems.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-start gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--border-default)] transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                <span className="font-mono">{item.patent.doc_id}</span>
+                <span>·</span>
+                <span>Saved {formatDate(item.added_at)}</span>
+              </div>
+              <Link
+                href={`/patents/${item.patent.id}`}
+                className="mt-1 block font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
+              >
+                {item.patent.title || "Untitled patent"}
+              </Link>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-[var(--text-muted)]">
+                  {item.patent.assignees[0] || "Unknown assignee"}
+                </span>
+                {item.patent.opportunity_score != null && (
+                  <Score value={item.patent.opportunity_score} kind="opportunity" size="sm" />
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => handleRemove(item)}
+              disabled={removing === item.id}
+              className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--expiry-lapsed-confirmed)] transition-colors disabled:opacity-50"
+              title="Remove from watchlist"
+              aria-label="Remove from watchlist"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        ))}
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <PatentCardSkeleton key={i} />
-          ))}
+      {paginated.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-[var(--text-secondary)]">
+            Page {page} of {paginated.totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= paginated.totalPages}
+            className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
+          >
+            Next
+          </button>
         </div>
-      ) : !items || items.length === 0 ? (
-        <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] py-16 px-8 text-center">
-          <svg className="mx-auto h-12 w-12 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
-          <p className="text-[var(--text-muted)] mt-3 font-medium">No patents saved yet</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1 max-w-sm mx-auto">
-            Bookmark patents from any page to build your personal watchlist.
-            Saved patents will also appear in your Today briefing.
-          </p>
-          <div className="flex items-center justify-center gap-3 mt-5">
-            <Link
-              href="/patents"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)] transition-colors"
-            >
-              Browse patents
-            </Link>
-            <Link
-              href="/search"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--bg-base)] transition-colors"
-            >
-              Search patents
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-3">
-            {paginated.pageItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--border-default)] transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <span className="font-mono">{item.patent.doc_id}</span>
-                    <span>·</span>
-                    <span>Saved {formatDate(item.added_at)}</span>
-                  </div>
-                  <Link
-                    href={`/patents/${item.patent.id}`}
-                    className="mt-1 block font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
-                  >
-                    {item.patent.title || "Untitled patent"}
-                  </Link>
-                  {item.patent.summary_what_it_is && (
-                    <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">
-                      {item.patent.summary_what_it_is}
-                    </p>
-                  )}
-                  {item.note && (
-                    <p className="text-sm text-[var(--accent)] mt-2 italic">
-                      Note: {item.note}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-[var(--text-muted)]">
-                      {item.patent.assignees[0] || "Unknown assignee"}
-                    </span>
-                    {item.patent.opportunity_score != null && (
-                      <Badge variant="default" size="sm">
-                        Opp: {item.patent.opportunity_score.toFixed(0)}
-                      </Badge>
-                    )}
-                    {item.tags.map((tag) => (
-                      <Badge key={tag} variant="default" size="sm">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRemove(item)}
-                  disabled={removing === item.id}
-                  className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--expiry-lapsed-confirmed)] transition-colors disabled:opacity-50"
-                  title="Remove from watchlist"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {paginated.totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-[var(--text-secondary)]">
-                Page {page} of {paginated.totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= paginated.totalPages}
-                className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--bg-glass)]"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
       )}
+    </>
+  );
+}
+
+// ── Followed Companies Tab ─────────────────────────────────────
+
+function FollowedCompaniesTab() {
+  const { data, isLoading } = useSWR(
+    "followed-companies",
+    () =>
+      fetch("/api/v1/suppliers/follows", { credentials: "include" }).then(
+        (r) => (r.ok ? r.json() : [])
+      ),
+    { revalidateOnFocus: false }
+  );
+
+  if (isLoading) return <LoadingState variant="card" count={4} />;
+
+  if (!data || data.length === 0) {
+    return (
+      <EmptyState
+        icon="search"
+        title="No companies followed"
+        message="Follow companies from the Company Intelligence page to track their patent portfolio activity."
+        actions={[
+          { label: "Browse companies", href: "/companies", primary: true },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {data.map((f: { company_name: string; normalized_name: string }) => (
+        <Link
+          key={f.normalized_name}
+          href={`/companies/${encodeURIComponent(f.company_name)}`}
+          className="flex items-center justify-between bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--border-default)] transition-colors"
+        >
+          <span className="font-medium text-[var(--text-primary)]">{f.company_name}</span>
+          <span className="text-xs text-[var(--text-muted)]">View profile →</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+// ── Saved Searches Tab ─────────────────────────────────────────
+
+function SavedSearchesTab() {
+  const { data, isLoading, mutate } = useSWR(
+    "saved-searches-workspace",
+    () => savedSearchesApi.list(),
+    { revalidateOnFocus: false }
+  );
+
+  if (isLoading) return <LoadingState variant="card" count={4} />;
+
+  if (!data || data.items.length === 0) {
+    return (
+      <EmptyState
+        icon="search"
+        title="No saved searches"
+        message="Save your search queries from the Search page to return to them later. Saved searches preserve your query, filters, and sort order."
+        actions={[
+          { label: "Open search", href: "/search", primary: true },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {data.items.map((s: SavedSearch) => (
+        <div
+          key={s.id}
+          className="flex items-center justify-between bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4"
+        >
+          <Link
+            href={`/search?q=${encodeURIComponent(s.query)}&mode=${s.mode}${s.sort_by !== "relevance" ? `&sort_by=${s.sort_by}&sort_order=${s.sort_order}` : ""}`}
+            className="flex-1 min-w-0"
+          >
+            <p className="font-medium text-[var(--text-primary)] truncate">{s.name}</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+              &ldquo;{s.query}&rdquo; · {s.mode}
+            </p>
+          </Link>
+          <button
+            onClick={async () => {
+              await savedSearchesApi.delete(s.id);
+              mutate();
+            }}
+            className="ml-3 text-xs text-[var(--text-muted)] hover:text-[var(--expiry-lapsed-confirmed)] shrink-0"
+            title="Delete saved search"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

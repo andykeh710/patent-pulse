@@ -5,9 +5,9 @@ import { Suspense, useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import { LegalConfidenceBadge } from "@/components/patents/LegalConfidenceBadge";
-import { OpportunityScoreBadge } from "@/components/patents/OpportunityScoreBadge";
+
 import { RiskFlagsBadge } from "@/components/patents/RiskFlagsBadge";
-import { ScoreBadge } from "@/components/patents/ScoreBadge";
+import { Score } from "@/components/ui/Score";
 import { TagsPanel } from "@/components/patents/TagsPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
@@ -295,8 +295,8 @@ function OpportunityContent() {
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <OpportunityScoreBadge score={item.opportunity_score} size="md" />
-                    <ScoreBadge score={item.interesting_score} showLabel={false} />
+                    <Score value={item.opportunity_score} kind="opportunity" size="md" />
+                    <Score value={item.interesting_score} kind="interesting" size="sm" showLabel={false} />
                   </div>
                 </div>
 

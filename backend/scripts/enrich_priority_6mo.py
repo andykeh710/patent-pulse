@@ -84,7 +84,9 @@ async def enrich_one(session, epo_client, gp_client, patent) -> dict:
     # Source 2: Google Patents for claims + description (and abstract fallback)
     need_claims = not patent.claims_text or len(patent.claims_text or "") <= 100
     need_desc = not patent.description_text or len(patent.description_text or "") <= 500
-    need_abs_fallback = "abstract" not in values and (not patent.abstract or len(patent.abstract or "") <= 100)
+    need_abs_fallback = "abstract" not in values and (
+        not patent.abstract or len(patent.abstract or "") <= 100
+    )
 
     if need_claims or need_desc or need_abs_fallback:
         try:
@@ -107,9 +109,7 @@ async def enrich_one(session, epo_client, gp_client, patent) -> dict:
     # Update only if we got something new
     if len(values) > 1:  # more than just updated_at
         await session.execute(
-            update(PatentPublication)
-            .where(PatentPublication.id == patent.id)
-            .values(**values)
+            update(PatentPublication).where(PatentPublication.id == patent.id).values(**values)
         )
         await session.commit()
 
@@ -150,14 +150,18 @@ async def main() -> None:
                     totals["descriptions_added"] += 1
 
                 # Queue summarization if we have content (new or cached)
-                has_abstract = stats["abstract"] or bool(patent.abstract and len(patent.abstract) > 100)
+                has_abstract = stats["abstract"] or bool(
+                    patent.abstract and len(patent.abstract) > 100
+                )
                 if has_abstract:
                     queued_summaries.append(str(patent.id))
 
     logger.info(f"Enrichment complete: {totals}")
 
     # Summarization phase — queue via Celery (forces re-summarize with new abstract)
-    logger.info(f"Queueing {len(queued_summaries)} summarization tasks (~${len(queued_summaries) * 0.021:.2f})")
+    logger.info(
+        f"Queueing {len(queued_summaries)} summarization tasks (~${len(queued_summaries) * 0.021:.2f})"
+    )
     for pid in queued_summaries:
         summarize_patent.delay(pid, force=True)
 

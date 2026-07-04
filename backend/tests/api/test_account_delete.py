@@ -17,11 +17,18 @@ def _cookie(user_id="local-user"):
     import jwt
 
     from app.config import settings
-    return {"auth_session": jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc),
-         "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        settings.auth_secret_key, algorithm="HS256",
-    )}
+
+    return {
+        "auth_session": jwt.encode(
+            {
+                "sub": user_id,
+                "iat": datetime.now(timezone.utc),
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            },
+            settings.auth_secret_key,
+            algorithm="HS256",
+        )
+    }
 
 
 def _delete(client: AsyncClient, email: str, **kwargs):
@@ -47,6 +54,7 @@ async def test_delete_without_auth_returns_401(client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_delete_wrong_email_returns_400(client: AsyncClient, db_session):
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "real@example.com"
     await db_session.commit()
@@ -61,6 +69,7 @@ async def test_delete_wrong_email_returns_400(client: AsyncClient, db_session):
 @pytest.mark.asyncio(loop_scope="function")
 async def test_delete_with_matching_email_returns_204(client: AsyncClient, db_session):
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "good@example.com"
     await db_session.commit()
@@ -75,6 +84,7 @@ async def test_delete_with_matching_email_returns_204(client: AsyncClient, db_se
 @pytest.mark.asyncio(loop_scope="function")
 async def test_user_row_gone_after_delete(client: AsyncClient, db_session):
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.email = "vanish@example.com"
     await db_session.commit()
@@ -82,7 +92,9 @@ async def test_user_row_gone_after_delete(client: AsyncClient, db_session):
     r = await _delete(client, "vanish@example.com", cookies=_cookie())
     assert r.status_code == 204
 
-    gone = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one_or_none()
+    gone = (
+        await db_session.execute(select(User).where(User.id == "local-user"))
+    ).scalar_one_or_none()
     assert gone is None
 
 
@@ -109,9 +121,9 @@ async def test_email_deliveries_anonymized_not_deleted(client: AsyncClient, db_s
     r = await _delete(client, "ed@example.com", cookies=_cookie())
     assert r.status_code == 204
 
-    kept = (await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.id == delivery.id)
-    )).scalar_one_or_none()
+    kept = (
+        await db_session.execute(select(EmailDelivery).where(EmailDelivery.id == delivery.id))
+    ).scalar_one_or_none()
     assert kept is not None, "email_deliveries row should be kept"
     assert kept.user_id is None, "user_id should be NULL after anonymization"
 
@@ -139,16 +151,13 @@ async def test_ai_runs_anonymized_not_deleted(client: AsyncClient, db_session):
     r = await _delete(client, "air@example.com", cookies=_cookie())
     assert r.status_code == 204
 
-    kept = (await db_session.execute(
-        select(AIRun).where(AIRun.id == run.id)
-    )).scalar_one_or_none()
+    kept = (await db_session.execute(select(AIRun).where(AIRun.id == run.id))).scalar_one_or_none()
     assert kept is not None, "ai_runs row should be kept"
     assert kept.created_by is None, "created_by should be NULL after anonymization"
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_subscriptions_cascaded_after_delete(client: AsyncClient, db_session):
-
     from app.core.ai_models import User
     from app.core.subscription_models import TopicSubscription
     from app.core.theme_models import Theme
@@ -180,7 +189,7 @@ async def test_subscriptions_cascaded_after_delete(client: AsyncClient, db_sessi
     r = await _delete(client, "subs@example.com", cookies=_cookie())
     assert r.status_code == 204
 
-    gone = (await db_session.execute(
-        select(TopicSubscription).where(TopicSubscription.id == sub_id)
-    )).scalar_one_or_none()
+    gone = (
+        await db_session.execute(select(TopicSubscription).where(TopicSubscription.id == sub_id))
+    ).scalar_one_or_none()
     assert gone is None, "subscriptions should cascade-delete"

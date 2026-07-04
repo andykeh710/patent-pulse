@@ -83,6 +83,32 @@ clean:
 	rm -rf backend/.pytest_cache backend/.coverage backend/htmlcov
 	rm -rf frontend/.next frontend/node_modules
 
+# Export pip requirements from poetry.lock (prod + dev split)
+deps-export:
+	cd backend && poetry export --without-hashes -f requirements.txt -o requirements.txt
+	cd backend && poetry export --without-hashes --only dev -f requirements.txt -o requirements-dev.txt
+	@echo "requirements.txt ($(shell wc -l < backend/requirements.txt) lines)"
+	@echo "requirements-dev.txt ($(shell wc -l < backend/requirements-dev.txt) lines)"
+
+# CI check: fail if requirements.txt is stale relative to poetry.lock
+deps-check:
+	cd backend && poetry export --without-hashes -f requirements.txt -o /tmp/req-check.txt
+	cd backend && poetry export --without-hashes --only dev -f requirements.txt -o /tmp/req-dev-check.txt
+	diff backend/requirements.txt /tmp/req-check.txt || (echo "ERROR: requirements.txt is stale — run 'make deps-export'" && exit 1)
+	diff backend/requirements-dev.txt /tmp/req-dev-check.txt || (echo "ERROR: requirements-dev.txt is stale — run 'make deps-export'" && exit 1)
+	@rm -f /tmp/req-check.txt /tmp/req-dev-check.txt
+	@echo "requirements.txt and requirements-dev.txt are up to date."
+
+# Database backup (compressed custom format) + figure_data volume
+backup:
+	mkdir -p backups/figures_$(shell date +%Y%m%d)
+	docker compose exec db pg_dump -U patent -Fc patent_pulse -f /tmp/pp_$(shell date +%Y%m%d).dump
+	docker compose cp db:/tmp/pp_$(shell date +%Y%m%d).dump backups/pp_$(shell date +%Y%m%d).dump
+	docker compose exec db rm /tmp/pp_$(shell date +%Y%m%d).dump
+	docker compose cp backend:/data/figures/. backups/figures_$(shell date +%Y%m%d)/
+	@ls -lh backups/pp_$(shell date +%Y%m%d).dump
+	@echo "Backup complete. See docs/OPERATIONS.md for restore procedure."
+
 # Production build
 build-prod:
 	docker compose -f docker-compose.yml build

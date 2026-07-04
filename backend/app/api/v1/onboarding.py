@@ -27,6 +27,7 @@ class OnboardingCompleteRequest(BaseModel):
     persona: str
     industry_focus: str
     interests_freetext: str = ""
+    use_case: str | None = None
 
 
 class SuggestedCompany(BaseModel):
@@ -50,7 +51,7 @@ class OnboardingCompleteResponse(BaseModel):
 
 class OnboardingConfirmRequest(BaseModel):
     company_ids: list[str]  # normalized_name values
-    theme_ids: list[str]    # UUID strings
+    theme_ids: list[str]  # UUID strings
 
 
 class OnboardingConfirmResponse(BaseModel):
@@ -84,6 +85,8 @@ async def onboarding_complete(
     user.industry_focus = body.industry_focus
     if body.interests_freetext:
         user.interests_freetext = body.interests_freetext
+    if body.use_case is not None:
+        user.use_case = body.use_case
     await db.commit()
 
     # Get CPC prefixes for this industry
@@ -116,9 +119,7 @@ async def onboarding_complete(
     themes: list[SuggestedTheme] = []
     if cpc_prefixes:
         # Use ANY to match JSON array
-        like_clauses = " OR ".join(
-            [f"cpc_prefixes::text ILIKE '%{cpc}%'" for cpc in cpc_prefixes]
-        )
+        like_clauses = " OR ".join([f"cpc_prefixes::text ILIKE '%{cpc}%'" for cpc in cpc_prefixes])
         theme_rows = await db.execute(
             text(
                 f"""
@@ -207,9 +208,7 @@ async def onboarding_status(
     db=Depends(get_db),
 ):
     """Check whether the current user has completed onboarding."""
-    result = await db.execute(
-        select(User.onboarded_at, User.persona).where(User.id == user_id)
-    )
+    result = await db.execute(select(User.onboarded_at, User.persona).where(User.id == user_id))
     row = result.one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")

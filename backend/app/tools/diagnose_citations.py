@@ -9,6 +9,7 @@ Usage:
     cd /opt/invention-index-8
     docker compose exec backend python -m app.tools.diagnose_citations
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,9 +41,9 @@ async def diagnose_all() -> dict:
         pub = patent["number"]
 
         # ── Citation test ──
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Testing citations: {label} ({pub})")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         try:
             cit_result = await _test_citations(pub, label)
@@ -73,6 +74,7 @@ async def _test_citations(pub_number: str, label: str) -> dict:
     start = time.monotonic()
     try:
         from patent_client import PatentBiblio
+
         patent = PatentBiblio.objects.get(pub_number)
 
         citations = []
@@ -181,9 +183,9 @@ if __name__ == "__main__":
     print("=" * 60)
     results = asyncio.run(diagnose_all())
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     citation_ok = sum(
         1 for r in results["citations"].values() if "error" not in r and r.get("count", 0) > 0

@@ -15,6 +15,7 @@ Task types implemented today:
   Phase 1: ``tags`` (LLM, Haiku) and ``opportunity_score`` (rules, $0)
 Other types still return 501 until the respective Phase 2-4 modules land.
 """
+
 from __future__ import annotations
 
 import logging
@@ -121,7 +122,15 @@ class CohortFilter(BaseModel):
 
 # Task types the estimator can price today. Add Phase 2-4 types as the
 # respective modules land.
-ESTIMATABLE_TASK_TYPES = {"summary", "tags", "opportunity_score", "why_now", "opportunity_narrative", "trend_snapshot", "assignee_intelligence"}
+ESTIMATABLE_TASK_TYPES = {
+    "summary",
+    "tags",
+    "opportunity_score",
+    "why_now",
+    "opportunity_narrative",
+    "trend_snapshot",
+    "assignee_intelligence",
+}
 # Subset that produces $0 rules-based artifacts.
 RULES_TASK_TYPES = {"opportunity_score", "trend_snapshot", "assignee_intelligence"}
 
@@ -229,9 +238,7 @@ async def _resolve_cohort(
 
     # dev_fixture + sample are opinionated, preset filters
     if run_mode == "dev_fixture":
-        stmt = stmt.where(PatentPublication.abstract.isnot(None)).limit(
-            DEV_FIXTURE_SIZE
-        )
+        stmt = stmt.where(PatentPublication.abstract.isnot(None)).limit(DEV_FIXTURE_SIZE)
     elif run_mode == "sample":
         stmt = (
             select(PatentPublication.id)
@@ -241,9 +248,7 @@ async def _resolve_cohort(
     else:
         # Explicit patent ids short-circuit all other filters.
         if cohort.patent_ids:
-            stmt = select(PatentPublication.id).where(
-                PatentPublication.id.in_(cohort.patent_ids)
-            )
+            stmt = select(PatentPublication.id).where(PatentPublication.id.in_(cohort.patent_ids))
         else:
             conditions = []
             if cohort.cpc_prefix:
@@ -257,24 +262,19 @@ async def _resolve_cohort(
                 )
             if cohort.grant_year_from:
                 conditions.append(
-                    func.extract("year", PatentPublication.grant_date)
-                    >= cohort.grant_year_from
+                    func.extract("year", PatentPublication.grant_date) >= cohort.grant_year_from
                 )
             if cohort.grant_year_to:
                 conditions.append(
-                    func.extract("year", PatentPublication.grant_date)
-                    <= cohort.grant_year_to
+                    func.extract("year", PatentPublication.grant_date) <= cohort.grant_year_to
                 )
             if cohort.expiry_within_days is not None:
-                cutoff = datetime.utcnow().date() + timedelta(
-                    days=cohort.expiry_within_days
-                )
+                cutoff = datetime.utcnow().date() + timedelta(days=cohort.expiry_within_days)
                 conditions.append(
                     and_(
                         PatentPublication.estimated_expiry_date.isnot(None),
                         PatentPublication.estimated_expiry_date <= cutoff,
-                        PatentPublication.estimated_expiry_date
-                        >= datetime.utcnow().date(),
+                        PatentPublication.estimated_expiry_date >= datetime.utcnow().date(),
                     )
                 )
             if cohort.has_abstract is True:
@@ -295,13 +295,11 @@ async def _resolve_cohort(
                 conditions.append(PatentPublication.opportunity_score.is_(None))
             if cohort.min_interesting_score is not None:
                 conditions.append(
-                    PatentPublication.interesting_score
-                    >= cohort.min_interesting_score
+                    PatentPublication.interesting_score >= cohort.min_interesting_score
                 )
             if cohort.max_interesting_score is not None:
                 conditions.append(
-                    PatentPublication.interesting_score
-                    <= cohort.max_interesting_score
+                    PatentPublication.interesting_score <= cohort.max_interesting_score
                 )
 
             # Per-task-type sensible defaults.
@@ -503,9 +501,7 @@ async def estimate_run(
     )
     cohort_size = len(patent_ids)
 
-    prompt_name, prompt_version, prompt_hash, model_tier = _prompt_for_task(
-        request.task_type
-    )
+    prompt_name, prompt_version, prompt_hash, model_tier = _prompt_for_task(request.task_type)
     is_rules = request.task_type in RULES_TASK_TYPES
     model = "rules:v" + str(prompt_version) if is_rules else _model_for_tier(model_tier)
 
@@ -523,9 +519,7 @@ async def estimate_run(
     est_cost = 0.0
     if not is_rules and uncached > 0:
         sample_ids = patent_ids[: min(20, len(patent_ids))]
-        stmt = select(PatentPublication).where(
-            PatentPublication.id.in_(sample_ids)
-        )
+        stmt = select(PatentPublication).where(PatentPublication.id.in_(sample_ids))
         patents = list((await db.execute(stmt)).scalars().all())
         in_tokens_list: list[int] = []
         out_tokens_list: list[int] = []
@@ -555,8 +549,7 @@ async def estimate_run(
 
     requires_confirmation = est_cost > settings.llm_run_auto_approve_usd
     requires_full_batch = (
-        request.run_mode == "full_batch"
-        or est_cost > settings.llm_run_full_batch_threshold_usd
+        request.run_mode == "full_batch" or est_cost > settings.llm_run_full_batch_threshold_usd
     )
 
     return EstimateResponse(
@@ -600,10 +593,7 @@ async def create_run(
             ),
         )
 
-    if (
-        request.run_mode == "full_batch"
-        and request.confirmation_phrase != "RUN FULL BATCH"
-    ):
+    if request.run_mode == "full_batch" and request.confirmation_phrase != "RUN FULL BATCH":
         raise HTTPException(
             status_code=400,
             detail="Full-batch runs require confirmation_phrase='RUN FULL BATCH'.",
@@ -668,9 +658,7 @@ async def create_run(
     return RunSummary.model_validate(run, from_attributes=True)
 
 
-def _dispatch_celery_per_patent(
-    *, task_type: str, patent_ids: list[UUID], run_id: str
-) -> int:
+def _dispatch_celery_per_patent(*, task_type: str, patent_ids: list[UUID], run_id: str) -> int:
     """Fan out one Celery task per patent for the given task_type.
 
     Returns the number of tasks enqueued. Each task is responsible for
@@ -792,11 +780,7 @@ async def get_run_artifacts(
     if run is None:
         raise HTTPException(status_code=404, detail="AIRun not found")
 
-    total_stmt = (
-        select(func.count())
-        .select_from(AIArtifact)
-        .where(AIArtifact.run_id == run_id)
-    )
+    total_stmt = select(func.count()).select_from(AIArtifact).where(AIArtifact.run_id == run_id)
     total = int((await db.execute(total_stmt)).scalar_one() or 0)
 
     stmt = (

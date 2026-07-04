@@ -1,4 +1,5 @@
 """Trend Snapshot — rules-based artifact."""
+
 from __future__ import annotations
 
 import logging
@@ -26,10 +27,21 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 }
 
 EMERGING_TECH = {
-    "machine_learning", "computer_vision", "nlp", "signal_processing",
-    "automation", "control_systems", "robotics", "quantum_computing",
-    "blockchain", "biotechnology", "nanotechnology", "materials_science",
-    "additive_manufacturing", "photonics", "sensor_networks",
+    "machine_learning",
+    "computer_vision",
+    "nlp",
+    "signal_processing",
+    "automation",
+    "control_systems",
+    "robotics",
+    "quantum_computing",
+    "blockchain",
+    "biotechnology",
+    "nanotechnology",
+    "materials_science",
+    "additive_manufacturing",
+    "photonics",
+    "sensor_networks",
 }
 
 
@@ -107,16 +119,24 @@ def extract_features(patent: PatentPublication) -> TrendFeatures:
     )
 
 
-def compute_snapshot(features: TrendFeatures, weights: dict[str, float] | None = None) -> dict[str, Any]:
+def compute_snapshot(
+    features: TrendFeatures, weights: dict[str, float] | None = None
+) -> dict[str, Any]:
     w = weights or DEFAULT_WEIGHTS
     components: dict[str, dict[str, Any]] = {}
     total = 0.0
     wt = 0.0
     funcs = {
-        "technology_momentum": lambda: _momentum_score(features.technology_method, features.materials),
-        "cross_industry_signal": lambda: _cross_industry(features.industries, features.novel_application_categories),
+        "technology_momentum": lambda: _momentum_score(
+            features.technology_method, features.materials
+        ),
+        "cross_industry_signal": lambda: _cross_industry(
+            features.industries, features.novel_application_categories
+        ),
         "time_horizon_alignment": lambda: _time_horizon(features.time_horizon),
-        "novel_application_breadth": lambda: _novel_breadth(features.novel_application_categories, features.opportunity_tags),
+        "novel_application_breadth": lambda: _novel_breadth(
+            features.novel_application_categories, features.opportunity_tags
+        ),
         "industry_diversity": lambda: _industry_diversity(features.industries),
     }
     for name, fn in funcs.items():

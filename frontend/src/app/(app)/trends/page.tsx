@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useTrends";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
 import type { TrendItem, ConvergenceItem, CliffClusterItem } from "@/lib/types";
 
@@ -90,13 +90,11 @@ function TrendsContent() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Trends</h1>
-        <FreshnessBanner show={["trends", "patents"]} className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Technology momentum, convergence signals, and patent cliff opportunities
-        </p>
-      </div>
+      <PageHeader
+        title="Trends"
+        description="Technology momentum, convergence signals, and patent cliff opportunities"
+        freshnessSources={["trends", "patents"]}
+      />
 
       {/* Summary stats */}
       {summary && (
@@ -216,7 +214,7 @@ function SummaryCard({
   return (
     <div
       className={`rounded-lg border p-4 ${
-        highlight ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
+        highlight ? "bg-[var(--bg-elevated)] border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"
       }`}
     >
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
@@ -276,7 +274,7 @@ function TrendList({
         <Link
           key={`${item.surface}-${item.key}-${idx}`}
           href={`/trends/${item.surface}/${item.key}`}
-          className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 transition-colors cursor-pointer block"
+          className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors cursor-pointer block"
         >
           <div className="text-lg font-bold text-[var(--text-muted)] w-8 text-right">{idx + 1}</div>
           <div className="flex-1 min-w-0">
@@ -286,7 +284,7 @@ function TrendList({
                 size="sm"
                 className={
                   item.surface === "cpc"
-                    ? "bg-[var(--accent-muted)] text-[var(--accent)] border-[var(--accent)]/30"
+                    ? "bg-[var(--accent-muted)] text-[var(--type-trend)] border-[var(--accent)]/30"
                     : item.surface === "tag"
                     ? "bg-[var(--accent-muted)] text-[var(--type-foryou)] border-[var(--type-foryou)]/30"
                     : "bg-[var(--score-medium-bg)] text-[var(--score-medium)] border-[var(--score-medium)]/30"
@@ -440,7 +438,7 @@ function CliffList({
           <Link
             key={item.id}
             href={`/trends/${item.key_type}/${item.key_value}`}
-            className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-border-[var(--accent)]/30 transition-colors cursor-pointer"
+            className="flex items-center gap-4 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4 hover:border-[var(--accent)]/30 transition-colors cursor-pointer"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">

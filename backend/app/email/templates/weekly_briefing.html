@@ -21,7 +21,7 @@
 </table>
 
 <!-- Items -->
-{% for item in items %}
+{% for item in items %}{% set section_name = item.type_label | lower | replace(' ', '_') %}
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px;">
 <tr>
 <td style="padding: 16px; background: #12161E; border-left: 3px solid #1E2433;">
@@ -56,13 +56,15 @@
 You received this weekly briefing because you have topics configured on Invention Index 8.
 </p>
 <p style="font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #6B7280; margin: 0 0 8px 0;">
-<a href="{{ unsubscribe_url }}" style="color: #6B8CFF; text-decoration: underline;">Unsubscribe from weekly briefings</a>
+<a href="{{ unsubscribe_url }}?utm_source=briefing&utm_campaign=weekly-{{ date_slug }}&utm_content=footer_unsubscribe" style="color: #6B8CFF; text-decoration: underline;">Unsubscribe from weekly briefings</a>
 &nbsp;·&nbsp;
-<a href="{{ base_url }}/account/email-preferences" style="color: #6B8CFF; text-decoration: underline;">Manage preferences</a>
+<a href="{{ base_url }}/account/email-preferences?utm_source=briefing&utm_campaign=weekly-{{ date_slug }}&utm_content=footer_preferences" style="color: #6B8CFF; text-decoration: underline;">Manage preferences</a>
 </p>
 <p style="font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #4B5563; margin: 16px 0 0 0; line-height: 1.5;">
 Invention Index 8 · Research intelligence only. Not legal, financial, or investment advice. Verify with official patent office registers before relying on any expiry or status information.
 </p>
+<!-- Phase 5: tracking pixel for open detection (Resend handles this for us) -->
+<img src="https://inventionindex8.com/pixel.gif?utm_source=briefing&utm_campaign=weekly-{{ date_slug }}" width="1" height="1" alt="" style="display:none;" />
 </td>
 </tr>
 </table>

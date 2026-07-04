@@ -3,6 +3,7 @@ import type {
   CliffListResponse,
   ConvergenceItem,
   CreateRunRequest,
+  UserPreferences,
   EstimateRequest,
   EstimateResponse,
   ExpiryItem,
@@ -21,6 +22,7 @@ import type {
   RunMetadata,
   RunSummary,
   SearchParams,
+  SavedSearch,
   SimilarPatentsResponse,
   Stats,
   SupplierListParams,
@@ -39,6 +41,7 @@ import type {
   TrendResponse,
   TrendsSummary,
   TodayHighlightsResponse,
+  TodayState,
   WatchlistItemResponse,
   SemanticSearchResponse,
   LinkedInPostResponse,
@@ -108,10 +111,11 @@ export const patentsApi = {
 
   getFreshness: () => apiFetch<Freshness>(`/api/v1/patents/freshness`),
 
-  getThumbnailUrl: (publicationNumber: string) =>
-    apiFetch<{ url: string | null; cached: boolean; error: string | null }>(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/thumbnail-url`
+  getPatentFigures: (patentId: string) =>
+    apiFetch<{ figures: { ordinal: number; thumbnail_url: string; full_url: string; width: number | null; height: number | null }[] }>(
+      `/api/v1/patents/${patentId}/figures`
     ),
+
 
   getExpirySummary: () => apiFetch<ExpirySummary>(`/api/v1/patents/expiry-summary`),
 
@@ -162,6 +166,14 @@ export const patentsApi = {
 export const todayApi = {
   highlights: () =>
     apiFetch<TodayHighlightsResponse>(`/api/v1/today/highlights`),
+  state: () =>
+    apiFetch<TodayState>(`/api/v1/today/state`),
+  markSeen: () =>
+    apiFetch<{ status: string; marked_at: string }>(`/api/v1/today/mark-seen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
 };
 
 export const searchApi = {
@@ -169,6 +181,21 @@ export const searchApi = {
     apiFetch<PaginatedResponse<PatentListItem>>(
       `/api/v1/search?${toQueryString(params)}`
     ),
+};
+
+export const savedSearchesApi = {
+  list: () =>
+    apiFetch<{ items: SavedSearch[]; total: number }>(`/api/v1/saved-searches`),
+  create: (data: { name: string; query: string; mode: string; filters_json?: Record<string, unknown>; sort_by: string; sort_order: string }) =>
+    apiFetch<SavedSearch>(`/api/v1/saved-searches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiFetch<{ status: string }>(`/api/v1/saved-searches/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const expiryApi = {
@@ -353,6 +380,9 @@ export const suppliersApi = {
 
   profile: (name: string) =>
     apiFetch<CompanyProfile>(`/api/v1/suppliers/profile/${encodeURIComponent(name)}`),
+
+  follows: () =>
+    apiFetch<Array<{ company_name: string; normalized_name: string }>>(`/api/v1/suppliers/follows`),
 };
 
 // Sprint 5
@@ -439,4 +469,18 @@ export const authApi = {
     ),
 
   logout: () => apiFetch<{ ok: boolean }>("/api/v1/auth/logout", { method: "POST" }),
+};
+
+export const preferencesApi = {
+  get: () => apiFetch<UserPreferences>("/api/v1/me/preferences"),
+  update: (body: Partial<UserPreferences>) =>
+    apiFetch<UserPreferences>("/api/v1/me/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  hideItem: (objectType: string, objectId: string) =>
+    apiFetch<{ ok: boolean }>("/api/v1/me/feed/hide", {
+      method: "POST",
+      body: JSON.stringify({ object_type: objectType, object_id: objectId }),
+    }),
 };

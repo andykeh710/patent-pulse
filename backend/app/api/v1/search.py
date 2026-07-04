@@ -20,8 +20,13 @@ MAX_AGE_SECONDS = 365.25 * 24 * 3600 * 20
 # ── Filter builder ────────────────────────────────────────────────
 
 
-def _filter_clauses(cpc: str | None, assignee: str | None,
-                    date_from: date | None, date_to: date | None) -> list[str]:
+def _filter_clauses(
+    cpc: str | None,
+    assignee: str | None,
+    date_from: date | None,
+    date_to: date | None,
+    legal_status: str | None = None,
+) -> list[str]:
     """Build SQL WHERE clause fragments for optional filters."""
     clauses: list[str] = []
     if cpc:
@@ -32,14 +37,17 @@ def _filter_clauses(cpc: str | None, assignee: str | None,
         clauses.append("p.publication_date >= :date_from")
     if date_to:
         clauses.append("p.publication_date <= :date_to")
+    if legal_status:
+        clauses.append("p.legal_status = :legal_status")
     return clauses
 
 
 # ── Paged query helper ────────────────────────────────────────────
 
 
-async def _paged_raw_query(db, select_sql: str, count_sql: str, params: dict,
-                           page: int, page_size: int):
+async def _paged_raw_query(
+    db, select_sql: str, count_sql: str, params: dict, page: int, page_size: int
+):
     """Execute a raw-SQL search with pagination.
 
     Returns (items, total) where items are lists of dicts (row._mapping).
@@ -110,6 +118,13 @@ async def search_patents(
     assignee: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    legal_status: str | None = Query(
+        default=None, description="Filter by legal status: GRANTED, PUBLISHED, etc."
+    ),
+    sort_by: str = Query(
+        default="relevance", description="Sort: relevance, publication_date, estimated_expiry_date"
+    ),
+    sort_order: str = Query(default="desc", description="Sort order: asc or desc"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedResponse[PatentListItem]:
@@ -146,19 +161,29 @@ async def search_patents(
             conditions.append(PatentPublication.publication_date >= date_from)
         if date_to:
             conditions.append(PatentPublication.publication_date <= date_to)
+        if legal_status:
+            conditions.append(PatentPublication.legal_status == legal_status)
 
         base_query = select(PatentPublication).where(and_(*conditions))
 
-        count_result = await db.execute(
-            select(func.count()).select_from(base_query.subquery())
-        )
+        count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
         total = count_result.scalar() or 0
 
-        rank = func.ts_rank(PatentPublication.search_vector, search_query)
+        # Sort
+        if sort_by == "publication_date":
+            order_col = PatentPublication.publication_date
+        elif sort_by == "estimated_expiry_date":
+            order_col = PatentPublication.estimated_expiry_date
+        else:
+            order_col = func.ts_rank(PatentPublication.search_vector, search_query)
+
+        if sort_order == "asc":
+            base_query = base_query.order_by(order_col.asc())
+        else:
+            base_query = base_query.order_by(order_col.desc())
+
         offset = (page - 1) * page_size
-        result = await db.execute(
-            base_query.order_by(rank.desc()).offset(offset).limit(page_size)
-        )
+        result = await db.execute(base_query.offset(offset).limit(page_size))
         patents = result.scalars().all()
 
         items = [PatentListItem.from_patent(p) for p in patents]
@@ -186,14 +211,13 @@ async def search_patents(
     except EmbeddingError as exc:
         raise HTTPException(
             status_code=503,
-            detail="Embedding generation failed. "
-                   "Try mode=fulltext for keyword search.",
+            detail="Embedding generation failed. Try mode=fulltext for keyword search.",
         ) from exc
 
     emb_str = f"[{','.join(str(x) for x in query_embedding)}]"
 
     # Build filter clauses
-    filter_clauses = _filter_clauses(cpc, assignee, date_from, date_to)
+    filter_clauses = _filter_clauses(cpc, assignee, date_from, date_to, legal_status)
     filter_sql = " AND ".join(filter_clauses) if filter_clauses else "TRUE"
 
     params: dict = {
@@ -204,6 +228,7 @@ async def search_patents(
         "assignee": assignee,
         "date_from": date_from,
         "date_to": date_to,
+        "legal_status": legal_status,
         "max_age": MAX_AGE_SECONDS,
         "vw": VECTOR_WEIGHT,
         "kw": KEYWORD_WEIGHT,
@@ -221,7 +246,12 @@ async def search_patents(
         count_sql = _HYBRID_SELECT.format(filters=filter_sql)
 
     rows, total = await _paged_raw_query(
-        db, select_sql, count_sql, params, page, page_size,
+        db,
+        select_sql,
+        count_sql,
+        params,
+        page,
+        page_size,
     )
 
     items: list[PatentListItem] = []
@@ -229,9 +259,7 @@ async def search_patents(
         mapping = row._mapping
         # Exclude computed columns from ORM construction
         exclude = {"similarity", "vector_score", "keyword_score", "recency_score"}
-        patent = PatentPublication(
-            **{k: v for k, v in mapping.items() if k not in exclude}
-        )
+        patent = PatentPublication(**{k: v for k, v in mapping.items() if k not in exclude})
         item = PatentListItem.from_patent(patent)
         sim = float(mapping["similarity"])
         item.similarity = 0.0 if sim != sim else sim  # NaN → 0.0

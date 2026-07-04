@@ -4,6 +4,7 @@ Weekly digest fan-out task (Sprint 6).
 Scheduled Sunday 7am. Generates and delivers Sonnet weekly briefings
 to all weekly_digest subscribers. One AIArtifact per user-week.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -79,9 +80,9 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
 
     for user_id, sub_list in user_subs.items():
         try:
-            user = (await session.execute(
-                select(User).where(User.id == user_id)
-            )).scalar_one_or_none()
+            user = (
+                await session.execute(select(User).where(User.id == user_id))
+            ).scalar_one_or_none()
             if not user or not user.email:
                 continue
 
@@ -90,45 +91,67 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             has_any = False
 
             for sub in sub_list:
-                theme = (await session.execute(
-                    select(Theme).where(Theme.id == sub.theme_id)
-                )).scalar_one_or_none()
+                theme = (
+                    await session.execute(select(Theme).where(Theme.id == sub.theme_id))
+                ).scalar_one_or_none()
                 if not theme:
                     continue
 
-                match_rows = (await session.execute(
-                    select(ThemeMatch).where(
-                        ThemeMatch.theme_id == sub.theme_id,
-                        ThemeMatch.matched_at >= week_start,
-                    ).order_by(ThemeMatch.match_score.desc()).limit(5)
-                )).scalars().all()
+                match_rows = (
+                    (
+                        await session.execute(
+                            select(ThemeMatch)
+                            .where(
+                                ThemeMatch.theme_id == sub.theme_id,
+                                ThemeMatch.matched_at >= week_start,
+                            )
+                            .order_by(ThemeMatch.match_score.desc())
+                            .limit(5)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 if not match_rows:
-                    topics_data.append({
-                        "name": theme.name, "match_count": 0,
-                        "keywords": theme.keywords or [], "cpc_prefixes": theme.cpc_prefixes or [],
-                    })
+                    topics_data.append(
+                        {
+                            "name": theme.name,
+                            "match_count": 0,
+                            "keywords": theme.keywords or [],
+                            "cpc_prefixes": theme.cpc_prefixes or [],
+                        }
+                    )
                     continue
 
                 has_any = True
-                topics_data.append({
-                    "name": theme.name, "match_count": len(match_rows),
-                    "keywords": theme.keywords or [], "cpc_prefixes": theme.cpc_prefixes or [],
-                })
+                topics_data.append(
+                    {
+                        "name": theme.name,
+                        "match_count": len(match_rows),
+                        "keywords": theme.keywords or [],
+                        "cpc_prefixes": theme.cpc_prefixes or [],
+                    }
+                )
 
                 for m in match_rows:
                     from app.core.models import PatentPublication
-                    patent = (await session.execute(
-                        select(PatentPublication).where(PatentPublication.id == m.patent_id)
-                    )).scalar_one_or_none()
+
+                    patent = (
+                        await session.execute(
+                            select(PatentPublication).where(PatentPublication.id == m.patent_id)
+                        )
+                    ).scalar_one_or_none()
                     if patent:
-                        matches_data.append({
-                            "topic_name": theme.name,
-                            "doc_id": patent.doc_id,
-                            "title": patent.title or patent.doc_id,
-                            "assignee": (patent.assignees or ["unknown"])[0],
-                            "cpc": patent.cpc or [],
-                        })
+                        matches_data.append(
+                            {
+                                "topic_name": theme.name,
+                                "doc_id": patent.doc_id,
+                                "title": patent.title or patent.doc_id,
+                                "assignee": (patent.assignees or ["unknown"])[0],
+                                "cpc": patent.cpc or [],
+                            }
+                        )
 
             if not has_any:
                 continue
@@ -141,12 +164,11 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             # Collect followed companies (normalized names) for briefing weighting
             from app.core.ai_models import UserCompanyFollow
             from app.services.briefing import assemble_briefing
+
             follows_result = await session.execute(
                 select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id)
             )
-            followed_companies = [
-                f.company_normalized_name for f in follows_result.scalars().all()
-            ]
+            followed_companies = [f.company_normalized_name for f in follows_result.scalars().all()]
             company_count = len(followed_companies)
             topic_count = len(sub_list)
 
@@ -185,40 +207,65 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
             for item in items[:8]:
                 confidence = item.get("confidence") or {}
                 freshness = item.get("freshness", {})
-                email_items.append({
-                    "type_label": type_labels.get(item.get("type", ""), item.get("label", "Update")),
-                    "title": (item.get("title") or "")[:120],
-                    "reason": (item.get("reason") or "")[:200],
-                    "source": item.get("source") or "",
-                    "freshness": freshness.get("relative") or "",
-                    "confidence_caveat": confidence.get("caveat") or "",
-                })
+                email_items.append(
+                    {
+                        "type_label": type_labels.get(
+                            item.get("type", ""), item.get("label", "Update")
+                        ),
+                        "title": (item.get("title") or "")[:120],
+                        "reason": (item.get("reason") or "")[:200],
+                        "source": item.get("source") or "",
+                        "freshness": freshness.get("relative") or "",
+                        "confidence_caveat": confidence.get("caveat") or "",
+                    }
+                )
             if not email_items:
-                email_items.append({
-                    "type_label": "Update",
-                    "title": "No new patent activity in your topics this week",
-                    "reason": "We'll let you know when new patents match your interests.",
-                    "source": "Invention Index 8",
-                    "freshness": "just now",
-                    "confidence_caveat": "",
-                })
+                email_items.append(
+                    {
+                        "type_label": "Update",
+                        "title": "No new patent activity in your topics this week",
+                        "reason": "We'll let you know when new patents match your interests.",
+                        "source": "Invention Index 8",
+                        "freshness": "just now",
+                        "confidence_caveat": "",
+                    }
+                )
 
             unsubscribe_token = _sign_user_id(user_id)
             from app.email.sender import send_email
+            from app.email.weekly_briefing import build_subject, pick_variant
+
+            # Phase 5: pick A/B subject variant
+            variant = pick_variant(user_id)
+            # Build items dicts for subject template
+            raw_items = []
+            for item in items:
+                raw_items.append(
+                    {
+                        "title": item.get("title", ""),
+                        "type": item.get("type", ""),
+                        "source": item.get("source", ""),
+                        "topic_name": item.get("topic_name", ""),
+                    }
+                )
+            subject_line = build_subject(variant, raw_items, topic_count, company_count)
+
             result = await send_email(
                 db_session=session,
                 to=user.email,
-                subject=f"Invention Index 8 Weekly — {hero_stat}",
+                subject=subject_line,
                 template_name="weekly_briefing.html",
                 template_kwargs={
                     "hero_stat": hero_stat,
                     "items": email_items,
                     "unsubscribe_url": f"{settings.magic_link_base_url}/unsubscribe/{unsubscribe_token}",
                     "base_url": settings.magic_link_base_url,
+                    "date_slug": week_end.isoformat(),
                 },
                 user_id=user_id,
                 email_type="weekly_briefing",
                 artifact_id=None,
+                subject_variant=variant,
             )
 
             if result.get("status") in ("sent", "dev", "dry_run"):
@@ -241,10 +288,13 @@ async def _fan_out_with_session(session: AsyncSession) -> dict:
 def _sign_user_id(user_id: str) -> str:
     """Create a JWT token for unsubscribe links. Valid for 1 year."""
     import jwt
+
     return jwt.encode(
-        {"user_id": user_id, "purpose": "unsubscribe", "exp": int(
-            (datetime.now(timezone.utc).timestamp()) + 31536000
-        )},
+        {
+            "user_id": user_id,
+            "purpose": "unsubscribe",
+            "exp": int((datetime.now(timezone.utc).timestamp()) + 31536000),
+        },
         settings.auth_secret_key or "dev-secret-change-me",
         algorithm="HS256",
     )

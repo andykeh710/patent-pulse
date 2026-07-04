@@ -1,4 +1,5 @@
 """Stripe client wrapper (Sprint 7). TEST MODE ONLY per AGENTS.md."""
+
 from __future__ import annotations
 
 import logging
@@ -43,8 +44,8 @@ def create_checkout_session(
 
     params: dict = {
         "mode": mode,
-        "success_url": f"{base_url}/account/billing?success=true",
-        "cancel_url": f"{base_url}/account/billing?canceled=true",
+        "success_url": f"{base_url}/account/billing?upgraded={tier}",
+        "cancel_url": f"{base_url}/account/billing?cancelled=true",
         "metadata": {"user_id": user_id, "tier": tier},
         "line_items": [{"price": price_id, "quantity": 1}],
     }
@@ -75,6 +76,4 @@ def verify_webhook_signature(payload: bytes, sig_header: str) -> stripe.Event:
     """Verify Stripe webhook signature. Raises on invalid signature."""
     if not settings.stripe_webhook_secret:
         raise RuntimeError("STRIPE_WEBHOOK_SECRET is not set")
-    return stripe.Webhook.construct_event(
-        payload, sig_header, settings.stripe_webhook_secret
-    )
+    return stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)

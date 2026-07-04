@@ -1,4 +1,5 @@
 """Celery tasks for the Why Now narrative generator."""
+
 from __future__ import annotations
 
 import asyncio

@@ -7,6 +7,7 @@ baseline, z-score, growth percentage, and diversity metrics.
 
 Designed to run weekly after ingestion completes (Sunday schedule).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -85,16 +86,15 @@ async def _compute_all_surfaces(week_start: date) -> dict[str, Any]:
     return stats
 
 
-async def _compute_cpc_trends(
-    session: AsyncSession, week_start: date
-) -> list[dict[str, Any]]:
+async def _compute_cpc_trends(session: AsyncSession, week_start: date) -> list[dict[str, Any]]:
     """Compute trends for CPC 4-char prefixes (e.g. G06F, A61B)."""
     today = week_start + timedelta(days=6)
     four_weeks_ago = today - timedelta(days=FOUR_WEEKS)
     twelve_weeks_ago = today - timedelta(days=TWELVE_WEEKS)
     twelve_months_ago = today - timedelta(days=TWELVE_MONTHS_DAYS)
 
-    rows_4w = await session.execute(text("""
+    rows_4w = await session.execute(
+        text("""
         SELECT substr(c.val, 1, :plen) AS prefix,
                count(DISTINCT p.id) AS cnt,
                count(DISTINCT p.assignees->0) AS assignee_cnt
@@ -104,10 +104,13 @@ async def _compute_cpc_trends(
           AND jsonb_array_length(p.cpc) > 0
         GROUP BY prefix
         HAVING count(DISTINCT p.id) >= 1
-    """), {"plen": MIN_CPC_PREFIX_LENGTH, "start": four_weeks_ago, "end": today})
+    """),
+        {"plen": MIN_CPC_PREFIX_LENGTH, "start": four_weeks_ago, "end": today},
+    )
     counts_4w = {r[0]: (r[1], r[2]) for r in rows_4w}
 
-    rows_12w = await session.execute(text("""
+    rows_12w = await session.execute(
+        text("""
         SELECT substr(c.val, 1, :plen) AS prefix,
                count(DISTINCT p.id) AS cnt
         FROM patent_publications p,
@@ -115,10 +118,13 @@ async def _compute_cpc_trends(
         WHERE p.publication_date >= :start AND p.publication_date <= :end
           AND jsonb_array_length(p.cpc) > 0
         GROUP BY prefix
-    """), {"plen": MIN_CPC_PREFIX_LENGTH, "start": twelve_weeks_ago, "end": today})
+    """),
+        {"plen": MIN_CPC_PREFIX_LENGTH, "start": twelve_weeks_ago, "end": today},
+    )
     counts_12w = {r[0]: r[1] for r in rows_12w}
 
-    rows_12mo = await session.execute(text("""
+    rows_12mo = await session.execute(
+        text("""
         SELECT substr(c.val, 1, :plen) AS prefix,
                count(DISTINCT p.id) AS cnt
         FROM patent_publications p,
@@ -126,7 +132,9 @@ async def _compute_cpc_trends(
         WHERE p.publication_date >= :start AND p.publication_date <= :end
           AND jsonb_array_length(p.cpc) > 0
         GROUP BY prefix
-    """), {"plen": MIN_CPC_PREFIX_LENGTH, "start": twelve_months_ago, "end": today})
+    """),
+        {"plen": MIN_CPC_PREFIX_LENGTH, "start": twelve_months_ago, "end": today},
+    )
     counts_12mo = {r[0]: r[1] for r in rows_12mo}
 
     top_patents = await _top_patents_by_cpc(session, four_weeks_ago, today)
@@ -143,26 +151,26 @@ async def _compute_cpc_trends(
         z = _z_score(weekly_count_4w, weekly_avg_12mo, c12mo)
         growth = _growth_pct(c4[0], c12, FOUR_WEEKS, TWELVE_WEEKS)
 
-        results.append({
-            "surface": "cpc",
-            "key": prefix,
-            "week_start": datetime.combine(week_start, datetime.min.time()),
-            "count_4w": c4[0],
-            "count_12w": c12,
-            "baseline_12mo": round(weekly_avg_12mo, 4),
-            "z_score": round(z, 4),
-            "growth_pct": round(growth, 4),
-            "assignee_diversity": _diversity_ratio(c4[1], c4[0]),
-            "cpc_diversity": 0.0,
-            "top_patent_ids": top_patents.get(prefix, [])[:TOP_PATENTS_PER_TREND],
-        })
+        results.append(
+            {
+                "surface": "cpc",
+                "key": prefix,
+                "week_start": datetime.combine(week_start, datetime.min.time()),
+                "count_4w": c4[0],
+                "count_12w": c12,
+                "baseline_12mo": round(weekly_avg_12mo, 4),
+                "z_score": round(z, 4),
+                "growth_pct": round(growth, 4),
+                "assignee_diversity": _diversity_ratio(c4[1], c4[0]),
+                "cpc_diversity": 0.0,
+                "top_patent_ids": top_patents.get(prefix, [])[:TOP_PATENTS_PER_TREND],
+            }
+        )
 
     return results
 
 
-async def _compute_tag_trends(
-    session: AsyncSession, week_start: date
-) -> list[dict[str, Any]]:
+async def _compute_tag_trends(session: AsyncSession, week_start: date) -> list[dict[str, Any]]:
     """Compute trends for trend_tags from patent tags."""
     today = week_start + timedelta(days=6)
     four_weeks_ago = today - timedelta(days=FOUR_WEEKS)
@@ -180,16 +188,19 @@ async def _compute_tag_trends(
             GROUP BY tag
         """)
 
-    rows_4w = await session.execute(_tag_query(four_weeks_ago, today),
-                                     {"start": four_weeks_ago, "end": today})
+    rows_4w = await session.execute(
+        _tag_query(four_weeks_ago, today), {"start": four_weeks_ago, "end": today}
+    )
     counts_4w = {r[0]: r[1] for r in rows_4w}
 
-    rows_12w = await session.execute(_tag_query(twelve_weeks_ago, today),
-                                      {"start": twelve_weeks_ago, "end": today})
+    rows_12w = await session.execute(
+        _tag_query(twelve_weeks_ago, today), {"start": twelve_weeks_ago, "end": today}
+    )
     counts_12w = {r[0]: r[1] for r in rows_12w}
 
-    rows_12mo = await session.execute(_tag_query(twelve_months_ago, today),
-                                       {"start": twelve_months_ago, "end": today})
+    rows_12mo = await session.execute(
+        _tag_query(twelve_months_ago, today), {"start": twelve_months_ago, "end": today}
+    )
     counts_12mo = {r[0]: r[1] for r in rows_12mo}
 
     results = []
@@ -200,26 +211,26 @@ async def _compute_tag_trends(
         weekly_avg = c12mo / (TWELVE_MONTHS_DAYS / WEEK_DAYS) if c12mo else 0
         weekly_4w = c4 / (FOUR_WEEKS / WEEK_DAYS)
 
-        results.append({
-            "surface": "tag",
-            "key": tag,
-            "week_start": datetime.combine(week_start, datetime.min.time()),
-            "count_4w": c4,
-            "count_12w": c12,
-            "baseline_12mo": round(weekly_avg, 4),
-            "z_score": round(_z_score(weekly_4w, weekly_avg, c12mo), 4),
-            "growth_pct": round(_growth_pct(c4, c12, FOUR_WEEKS, TWELVE_WEEKS), 4),
-            "assignee_diversity": 0.0,
-            "cpc_diversity": 0.0,
-            "top_patent_ids": [],
-        })
+        results.append(
+            {
+                "surface": "tag",
+                "key": tag,
+                "week_start": datetime.combine(week_start, datetime.min.time()),
+                "count_4w": c4,
+                "count_12w": c12,
+                "baseline_12mo": round(weekly_avg, 4),
+                "z_score": round(_z_score(weekly_4w, weekly_avg, c12mo), 4),
+                "growth_pct": round(_growth_pct(c4, c12, FOUR_WEEKS, TWELVE_WEEKS), 4),
+                "assignee_diversity": 0.0,
+                "cpc_diversity": 0.0,
+                "top_patent_ids": [],
+            }
+        )
 
     return results
 
 
-async def _compute_assignee_trends(
-    session: AsyncSession, week_start: date
-) -> list[dict[str, Any]]:
+async def _compute_assignee_trends(session: AsyncSession, week_start: date) -> list[dict[str, Any]]:
     """Compute trends for top assignees."""
     today = week_start + timedelta(days=6)
     four_weeks_ago = today - timedelta(days=FOUR_WEEKS)
@@ -238,28 +249,35 @@ async def _compute_assignee_trends(
             HAVING count(DISTINCT p.id) >= 2
         """)
 
-    rows_4w = await session.execute(_assignee_query(four_weeks_ago, today),
-                                     {"start": four_weeks_ago, "end": today})
+    rows_4w = await session.execute(
+        _assignee_query(four_weeks_ago, today), {"start": four_weeks_ago, "end": today}
+    )
     data_4w = {r[0]: (r[1], r[2]) for r in rows_4w}
 
-    rows_12w = await session.execute(text("""
+    rows_12w = await session.execute(
+        text("""
         SELECT a.val AS assignee, count(DISTINCT p.id) AS cnt
         FROM patent_publications p,
              jsonb_array_elements_text(p.assignees) AS a(val)
         WHERE p.publication_date >= :start AND p.publication_date <= :end
         GROUP BY assignee
         HAVING count(DISTINCT p.id) >= 2
-    """), {"start": twelve_weeks_ago, "end": today})
+    """),
+        {"start": twelve_weeks_ago, "end": today},
+    )
     counts_12w = {r[0]: r[1] for r in rows_12w}
 
-    rows_12mo = await session.execute(text("""
+    rows_12mo = await session.execute(
+        text("""
         SELECT a.val AS assignee, count(DISTINCT p.id) AS cnt
         FROM patent_publications p,
              jsonb_array_elements_text(p.assignees) AS a(val)
         WHERE p.publication_date >= :start AND p.publication_date <= :end
         GROUP BY assignee
         HAVING count(DISTINCT p.id) >= 2
-    """), {"start": twelve_months_ago, "end": today})
+    """),
+        {"start": twelve_months_ago, "end": today},
+    )
     counts_12mo = {r[0]: r[1] for r in rows_12mo}
 
     results = []
@@ -270,19 +288,21 @@ async def _compute_assignee_trends(
         weekly_avg = c12mo / (TWELVE_MONTHS_DAYS / WEEK_DAYS) if c12mo else 0
         weekly_4w = d4[0] / (FOUR_WEEKS / WEEK_DAYS)
 
-        results.append({
-            "surface": "assignee",
-            "key": assignee,
-            "week_start": datetime.combine(week_start, datetime.min.time()),
-            "count_4w": d4[0],
-            "count_12w": c12,
-            "baseline_12mo": round(weekly_avg, 4),
-            "z_score": round(_z_score(weekly_4w, weekly_avg, c12mo), 4),
-            "growth_pct": round(_growth_pct(d4[0], c12, FOUR_WEEKS, TWELVE_WEEKS), 4),
-            "assignee_diversity": 0.0,
-            "cpc_diversity": _diversity_ratio(d4[1], d4[0]),
-            "top_patent_ids": [],
-        })
+        results.append(
+            {
+                "surface": "assignee",
+                "key": assignee,
+                "week_start": datetime.combine(week_start, datetime.min.time()),
+                "count_4w": d4[0],
+                "count_12w": c12,
+                "baseline_12mo": round(weekly_avg, 4),
+                "z_score": round(_z_score(weekly_4w, weekly_avg, c12mo), 4),
+                "growth_pct": round(_growth_pct(d4[0], c12, FOUR_WEEKS, TWELVE_WEEKS), 4),
+                "assignee_diversity": 0.0,
+                "cpc_diversity": _diversity_ratio(d4[1], d4[0]),
+                "top_patent_ids": [],
+            }
+        )
 
     return results
 
@@ -291,7 +311,8 @@ async def _top_patents_by_cpc(
     session: AsyncSession, start: date, end: date
 ) -> dict[str, list[str]]:
     """Return top patent IDs per CPC prefix in the date window."""
-    rows = await session.execute(text("""
+    rows = await session.execute(
+        text("""
         SELECT substr(c.val, 1, :plen) AS prefix,
                p.id::text AS pid,
                COALESCE(p.interesting_score, 0) AS score
@@ -300,7 +321,9 @@ async def _top_patents_by_cpc(
         WHERE p.publication_date >= :start AND p.publication_date <= :end
           AND jsonb_array_length(p.cpc) > 0
         ORDER BY prefix, score DESC
-    """), {"plen": MIN_CPC_PREFIX_LENGTH, "start": start, "end": end})
+    """),
+        {"plen": MIN_CPC_PREFIX_LENGTH, "start": start, "end": end},
+    )
 
     by_prefix: dict[str, list[str]] = defaultdict(list)
     for r in rows:
@@ -309,9 +332,7 @@ async def _top_patents_by_cpc(
     return dict(by_prefix)
 
 
-async def _upsert_snapshots(
-    session: AsyncSession, rows: list[dict[str, Any]]
-) -> None:
+async def _upsert_snapshots(session: AsyncSession, rows: list[dict[str, Any]]) -> None:
     """Upsert trend snapshot rows using ON CONFLICT."""
     for row in rows:
         stmt = pg_insert(TrendSnapshot).values(**row)
@@ -346,8 +367,10 @@ def _z_score(recent_weekly: float, baseline_weekly: float, total_12mo: int) -> f
 
 
 def _growth_pct(
-    count_short: int, count_long: int,
-    days_short: int, days_long: int,
+    count_short: int,
+    count_long: int,
+    days_short: int,
+    days_long: int,
 ) -> float:
     """Compute growth percentage: short-window rate vs long-window rate."""
     if count_long == 0 or days_long == 0:

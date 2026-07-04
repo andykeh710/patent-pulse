@@ -12,6 +12,7 @@ prompt). This module owns the validator that enforces the structure on
 the response and the day-one tag-vocabulary constants used by the
 opportunity scorer + frontend filters.
 """
+
 from __future__ import annotations
 
 import logging
@@ -82,8 +83,7 @@ def build_tag_payload(patent: PatentPublication) -> dict[str, Any]:
     return {
         "title": patent.title or "(no title provided)",
         "abstract": patent.abstract or "(no abstract provided)",
-        "claims_text": extract_independent_claims(patent.claims_text)
-        or "(no claims available)",
+        "claims_text": extract_independent_claims(patent.claims_text) or "(no claims available)",
         "cpc_codes": ", ".join(patent.cpc or []) or "(no classifications)",
         "assignees": ", ".join(patent.assignees or []) or "(no assignees)",
     }
@@ -165,11 +165,9 @@ async def tag_patent(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:  # pragma: no cover - network path
-        raise SummarizationError(f"Claude API error during tagging: {e}") from e
+        raise SummarizationError(f"AI API error during tagging: {e}") from e
 
     if response.content_json is None:
-        raise SummarizationError(
-            f"Tag artifact {response.artifact_id} did not parse as JSON."
-        )
+        raise SummarizationError(f"Tag artifact {response.artifact_id} did not parse as JSON.")
     validated = validate_tags(response.content_json)
     return validated, response.artifact_id

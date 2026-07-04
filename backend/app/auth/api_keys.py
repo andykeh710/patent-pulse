@@ -2,6 +2,7 @@
 
 Keys are stored hashed (SHA-256). Raw tokens are shown once at creation.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,12 +35,14 @@ async def authenticate_api_key(
     Checks key_hash exists, revoked_at IS NULL, then updates last_used_at.
     """
     key_hash = hash_api_key(raw_token)
-    key_row = (await session.execute(
-        select(APIKey).where(
-            APIKey.key_hash == key_hash,
-            APIKey.revoked_at.is_(None),
+    key_row = (
+        await session.execute(
+            select(APIKey).where(
+                APIKey.key_hash == key_hash,
+                APIKey.revoked_at.is_(None),
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
 
     if not key_row:
         return None
@@ -47,8 +50,8 @@ async def authenticate_api_key(
     key_row.last_used_at = datetime.now(timezone.utc)
     await session.commit()
 
-    user = (await session.execute(
-        select(User).where(User.id == key_row.user_id)
-    )).scalar_one_or_none()
+    user = (
+        await session.execute(select(User).where(User.id == key_row.user_id))
+    ).scalar_one_or_none()
 
     return user

@@ -10,6 +10,7 @@ user-created topics alongside system/CPC-section themes.
 
 Differentiation: user_id is NULL for system themes, non-NULL for user topics.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

@@ -30,7 +30,7 @@ def _strip_prefix(doc_id: str) -> str:
     """
     for p in _CITATION_PREFIXES:
         if doc_id.startswith(p):
-            return doc_id[len(p):]
+            return doc_id[len(p) :]
     return doc_id
 
 
@@ -74,12 +74,6 @@ def verify_citations(
     # Build a normalised known set (prefixes stripped) for matching.
     normalised_known: set[str] = {_strip_prefix(d) for d in known_doc_ids}
 
-    verified = [
-        d for d in cited_doc_ids
-        if _strip_prefix(d) in normalised_known
-    ]
-    unverified = [
-        d for d in cited_doc_ids
-        if _strip_prefix(d) not in normalised_known
-    ]
+    verified = [d for d in cited_doc_ids if _strip_prefix(d) in normalised_known]
+    unverified = [d for d in cited_doc_ids if _strip_prefix(d) not in normalised_known]
     return {"verified": verified, "unverified": unverified}

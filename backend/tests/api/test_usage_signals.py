@@ -1,4 +1,5 @@
 """Tests for Sprint 5 usage signals API endpoints."""
+
 from datetime import date
 from unittest.mock import patch
 from uuid import uuid4

@@ -1,6 +1,5 @@
 """Tests for Phase 3 PR 4 — citation extraction and verification."""
 
-
 from app.services.chat_citations import extract_citations, verify_citations
 
 # ── extract_citations ──────────────────────────────────────────────────
@@ -18,10 +17,7 @@ class TestExtractCitations:
         assert result == ["USPTO:US12345678"]
 
     def test_multiple_citations(self):
-        text = (
-            "[USPTO:US12345] describes method A, while "
-            "[EPO:EP67890B1] covers method B."
-        )
+        text = "[USPTO:US12345] describes method A, while [EPO:EP67890B1] covers method B."
         result = extract_citations(text)
         assert result == ["USPTO:US12345", "EPO:EP67890B1"]
 

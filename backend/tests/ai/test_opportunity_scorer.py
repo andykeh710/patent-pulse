@@ -1,4 +1,5 @@
 """Tests for the rules-based opportunity scorer."""
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -110,12 +111,16 @@ async def test_score_writes_artifact_and_caches(
     assert art_id1 == art_id2
 
     rows = (
-        await db_session.execute(
-            select(AIArtifact)
-            .where(AIArtifact.patent_publication_id == p.id)
-            .where(AIArtifact.artifact_type == "opportunity_score")
+        (
+            await db_session.execute(
+                select(AIArtifact)
+                .where(AIArtifact.patent_publication_id == p.id)
+                .where(AIArtifact.artifact_type == "opportunity_score")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].model.startswith("rules:v")
     assert rows[0].input_tokens == 0
@@ -139,13 +144,17 @@ async def test_score_recomputes_when_features_change(
     bd2, art2 = await score_patent_opportunity(db_session, p)
     assert art1 != art2
     rows = (
-        await db_session.execute(
-            select(AIArtifact)
-            .where(AIArtifact.patent_publication_id == p.id)
-            .where(AIArtifact.artifact_type == "opportunity_score")
-            .order_by(AIArtifact.artifact_version.asc())
+        (
+            await db_session.execute(
+                select(AIArtifact)
+                .where(AIArtifact.patent_publication_id == p.id)
+                .where(AIArtifact.artifact_type == "opportunity_score")
+                .order_by(AIArtifact.artifact_version.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 2
     assert rows[0].artifact_version == 1
     assert rows[1].artifact_version == 2

@@ -15,6 +15,7 @@ from app.services.chat_tools import (
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
+
 def _vec(val: float = 0.0, pos: int = 0) -> list[float]:
     """Return a 1536-dim vector with *val* at position *pos*, zeros elsewhere."""
     v = [0.0] * 1536
@@ -59,9 +60,7 @@ def _make_patent(
 
 class TestSearchPatents:
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_valid_query_returns_list(
-        self, db_session: AsyncSession, monkeypatch
-    ):
+    async def test_valid_query_returns_list(self, db_session: AsyncSession, monkeypatch):
         """search_patents with a valid query returns results + count."""
         p = _make_patent(
             doc_id="USPTO:US10001",
@@ -172,9 +171,7 @@ class TestSearchPatents:
         assert result["count"] >= 1
 
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_embedding_failure_returns_error(
-        self, db_session: AsyncSession, monkeypatch
-    ):
+    async def test_embedding_failure_returns_error(self, db_session: AsyncSession, monkeypatch):
         """When embedding fails, returns error dict with empty results."""
         monkeypatch.setattr(
             "app.services.chat_tools.PatentEmbedder.generate_embedding",
@@ -192,9 +189,7 @@ class TestSearchPatents:
 
 class TestOpenPatent:
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_existing_doc_id_returns_full_record(
-        self, db_session: AsyncSession
-    ):
+    async def test_existing_doc_id_returns_full_record(self, db_session: AsyncSession):
         """open_patent with a known doc_id returns all fields."""
         p = _make_patent(
             doc_id="USPTO:US50001",
@@ -253,9 +248,7 @@ class TestOpenPatent:
 
 class TestCompareCompanies:
     @pytest.mark.asyncio(loop_scope="function")
-    async def test_two_companies_returns_comparison(
-        self, db_session: AsyncSession
-    ):
+    async def test_two_companies_returns_comparison(self, db_session: AsyncSession):
         """compare_companies with 2 companies returns comparison dict."""
         p1 = _make_patent(
             doc_id="USPTO:US60001",
@@ -301,9 +294,7 @@ class TestCompareCompanies:
         db_session.add(p)
         await db_session.commit()
 
-        result = await _compare_companies(
-            db_session, ["Known Corp", "Unknown Corp"]
-        )
+        result = await _compare_companies(db_session, ["Known Corp", "Unknown Corp"])
         assert result["compared"] == 2
         companies = {c["company"]: c for c in result["companies"]}
         assert companies["Known Corp"]["total_patents"] >= 1
@@ -328,8 +319,6 @@ class TestExecuteTool:
         db_session.add(p)
         await db_session.commit()
 
-        result = await execute_tool(
-            "open_patent", {"doc_id": "USPTO:US70001"}, db_session
-        )
+        result = await execute_tool("open_patent", {"doc_id": "USPTO:US70001"}, db_session)
         assert result["doc_id"] == "USPTO:US70001"
         assert result["title"] == "Test dispatch"

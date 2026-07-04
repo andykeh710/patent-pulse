@@ -153,9 +153,7 @@ async def test_get_patent_summary(client: AsyncClient, db_session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_patent_summary_not_yet_summarized(
-    client: AsyncClient, db_session
-) -> None:
+async def test_get_patent_summary_not_yet_summarized(client: AsyncClient, db_session) -> None:
     patent = PatentPublication(
         doc_id="USPTO:NOSUM001",
         office="USPTO",

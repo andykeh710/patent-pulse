@@ -4,6 +4,7 @@ Expiry assessment backfill task.
 Computes or recomputes ExpiryAssessment rows for patent records.
 Idempotent — safe to run repeatedly.
 """
+
 from __future__ import annotations
 
 import logging
@@ -60,7 +61,9 @@ async def backfill_expiry_assessments_for_session(
     patent_ids = [row[0] for row in result.all()]
     logger.info(
         "Backfill: found %d patent(s) to assess (limit=%s, offset=%s)",
-        len(patent_ids), limit, offset,
+        len(patent_ids),
+        limit,
+        offset,
     )
 
     for patent_id in patent_ids:
@@ -76,9 +79,7 @@ async def backfill_expiry_assessments_for_session(
         opp_score = compute_expiry_opportunity_score(patent, payload)
 
         existing_result = await session.execute(
-            select(ExpiryAssessment).where(
-                ExpiryAssessment.patent_publication_id == patent_id
-            )
+            select(ExpiryAssessment).where(ExpiryAssessment.patent_publication_id == patent_id)
         )
         existing = existing_result.scalar_one_or_none()
 
@@ -101,14 +102,19 @@ async def backfill_expiry_assessments_for_session(
             await session.commit()
             logger.info(
                 "Backfill progress: %d processed (%d created, %d updated)",
-                stats["total_processed"], stats["created"], stats["updated"],
+                stats["total_processed"],
+                stats["created"],
+                stats["updated"],
             )
 
     await session.commit()
 
     logger.info(
         "Backfill complete: %d processed (%d created, %d updated, %d skipped)",
-        stats["total_processed"], stats["created"], stats["updated"], stats["skipped"],
+        stats["total_processed"],
+        stats["created"],
+        stats["updated"],
+        stats["skipped"],
     )
     return stats
 
@@ -125,7 +131,9 @@ async def backfill_expiry_assessments(
     """
     async with async_session_maker() as session:
         return await backfill_expiry_assessments_for_session(
-            session, limit=limit, offset=offset,
+            session,
+            limit=limit,
+            offset=offset,
         )
 
 

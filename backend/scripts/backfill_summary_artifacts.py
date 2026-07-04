@@ -12,6 +12,7 @@ Usage::
     python -m scripts.backfill_summary_artifacts --dry-run
     python -m scripts.backfill_summary_artifacts --batch-size 200
 """
+
 from __future__ import annotations
 
 import argparse

@@ -5,6 +5,7 @@ Used by the backfill task (S65-3). Uses session injection pattern
 from S6-9 — the session is passed in by the caller, never created
 internally.
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,9 +44,7 @@ async def fetch_forward_citations(
         return 0
 
     if not patent.publication_number:
-        logger.warning(
-            "fetch_forward_citations: patent %s has no publication_number", patent_id
-        )
+        logger.warning("fetch_forward_citations: patent %s has no publication_number", patent_id)
         return 0
 
     citations = await _fetch_from_uspto(patent.publication_number)
@@ -58,7 +57,9 @@ async def fetch_forward_citations(
 
     logger.info(
         "Fetched %d forward citations for %s (%s)",
-        len(citations), patent.doc_id, patent.publication_number,
+        len(citations),
+        patent.doc_id,
+        patent.publication_number,
     )
     return len(citations)
 
@@ -78,6 +79,7 @@ async def _fetch_from_uspto(pub_number: str) -> list[str]:
         nonlocal result
         try:
             from patent_client import PatentBiblio
+
             patent = PatentBiblio.objects.get(pub_number)
             for cit in getattr(patent, "forward_citations", []) or []:
                 num = getattr(cit, "publication_number", None)

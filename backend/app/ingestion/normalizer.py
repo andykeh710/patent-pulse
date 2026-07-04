@@ -65,7 +65,9 @@ class USPTONormalizer:
         app_number = raw.get("application_number")
 
         if not pub_number and not app_number:
-            raise NormalizationError("Application missing publication_number and application_number")
+            raise NormalizationError(
+                "Application missing publication_number and application_number"
+            )
 
         identifier = pub_number or app_number
 

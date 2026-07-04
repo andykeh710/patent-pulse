@@ -192,9 +192,7 @@ class WIPOClient:
                 return elem.text if elem is not None and elem.text else default
 
             def find_all_text(xpath: str) -> list[str]:
-                return [
-                    elem.text for elem in root.findall(xpath, ns) if elem.text
-                ]
+                return [elem.text for elem in root.findall(xpath, ns) if elem.text]
 
             return {
                 "publication_number": publication_number,
@@ -205,18 +203,9 @@ class WIPOClient:
                 or find_text(".//pat:InventionTitle"),
                 "abstract": find_text(".//pat:Abstract[@lang='EN']")
                 or find_text(".//pat:Abstract"),
-                "applicants": [
-                    {"name": name}
-                    for name in find_all_text(".//pat:ApplicantName")
-                ],
-                "inventors": [
-                    {"name": name}
-                    for name in find_all_text(".//pat:InventorName")
-                ],
-                "ipc_codes": [
-                    {"code": code}
-                    for code in find_all_text(".//pat:IPCClassification")
-                ],
+                "applicants": [{"name": name} for name in find_all_text(".//pat:ApplicantName")],
+                "inventors": [{"name": name} for name in find_all_text(".//pat:InventorName")],
+                "ipc_codes": [{"code": code} for code in find_all_text(".//pat:IPCClassification")],
                 "designated_states": find_all_text(".//pat:DesignatedState"),
                 "priority_claims": self._extract_priority_claims(root, ns),
             }
@@ -228,9 +217,7 @@ class WIPOClient:
                 "parse_error": str(e),
             }
 
-    def _extract_priority_claims(
-        self, root: ElementTree.Element, ns: dict
-    ) -> list[dict]:
+    def _extract_priority_claims(self, root: ElementTree.Element, ns: dict) -> list[dict]:
         """Extract priority claim information."""
         claims = []
         for claim in root.findall(".//pat:PriorityClaim", ns):

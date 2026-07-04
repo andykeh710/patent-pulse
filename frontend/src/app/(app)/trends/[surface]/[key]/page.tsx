@@ -13,7 +13,6 @@ import { trendsApi, expiryApi } from "@/lib/api";
 import type {
   TrendItem,
   PatentListItem,
-  TrendNarrativeResponse,
   TrendAssigneeItem,
   ExpiryItem,
 } from "@/lib/types";
@@ -85,7 +84,7 @@ function TrendDrilldownContent() {
   // ── narrative ──
   const {
     data: narrative,
-    isLoading: narrativeLoading,
+    isLoading: _narrativeLoading,
     mutate: mutateNarrative,
   } = useSWR(
     `trend-narrative-${surface}-${key}`,
@@ -238,7 +237,7 @@ function TrendDrilldownContent() {
 
             {isGenerating ? (
               <div className="flex items-center gap-3 text-[var(--text-muted)] py-4">
-                <div className="animate-spin h-4 w-4 border-2 border-border-[var(--accent)]/30 border-t-bg-[var(--accent)] rounded-full" />
+                <div className="animate-spin h-4 w-4 border-2 border-[var(--accent)]/30 border-t-bg-[var(--accent)] rounded-full" />
                 <span className="text-sm">Generating trend analysis...</span>
               </div>
             ) : narrative?.summary ? (

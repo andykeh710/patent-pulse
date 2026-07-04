@@ -7,6 +7,7 @@ Create Date: 2026-05-23
 Adds citations_forward column to patent_publications.
 Mirrors the existing citations_backward pattern (JSONB, default []).
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

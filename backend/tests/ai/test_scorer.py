@@ -34,7 +34,9 @@ def unknown_patent() -> PatentPublication:
 
 
 class TestPatentScorer:
-    def test_score_returns_tuple(self, scorer: PatentScorer, google_patent: PatentPublication) -> None:
+    def test_score_returns_tuple(
+        self, scorer: PatentScorer, google_patent: PatentPublication
+    ) -> None:
         score, breakdown = scorer.score(google_patent)
 
         assert isinstance(score, float)

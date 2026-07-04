@@ -7,6 +7,7 @@ where multiple related patents expire, creating an opportunity opening.
 
 Designed to run weekly alongside trend computation.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -52,9 +53,7 @@ async def _compute_all_windows() -> dict[str, Any]:
     async with async_session_maker() as session:
         for months in WINDOW_MONTHS:
             window_end = today + timedelta(days=months * 30)
-            clusters = await _compute_cpc_clusters(
-                session, today, window_end, months
-            )
+            clusters = await _compute_cpc_clusters(session, today, window_end, months)
             stats[f"{months}mo"] = len(clusters)
             total += len(clusters)
 
@@ -74,7 +73,8 @@ async def _compute_cpc_clusters(
     window_months: int,
 ) -> list[dict[str, Any]]:
     """Find CPC prefixes with multiple patents expiring in the window."""
-    rows = await session.execute(text("""
+    rows = await session.execute(
+        text("""
         SELECT substr(c.val, 1, :plen) AS prefix,
                count(DISTINCT p.id) AS cnt,
                array_agg(DISTINCT p.id::text ORDER BY p.id::text) AS patent_ids
@@ -87,32 +87,34 @@ async def _compute_cpc_clusters(
         GROUP BY prefix
         HAVING count(DISTINCT p.id) >= :min_size
         ORDER BY cnt DESC
-    """), {
-        "plen": MIN_CPC_PREFIX_LENGTH,
-        "start": window_start,
-        "end": window_end,
-        "min_size": MIN_CLUSTER_SIZE,
-    })
+    """),
+        {
+            "plen": MIN_CPC_PREFIX_LENGTH,
+            "start": window_start,
+            "end": window_end,
+            "min_size": MIN_CLUSTER_SIZE,
+        },
+    )
 
     clusters = []
     ws = datetime.combine(window_start, datetime.min.time())
     for r in rows:
         prefix, count, patent_ids = r[0], r[1], r[2]
-        clusters.append({
-            "key_type": "cpc",
-            "key_value": prefix,
-            "window_months": window_months,
-            "window_start": ws,
-            "patent_count": count,
-            "representative_patent_ids": patent_ids[:MAX_REPRESENTATIVE_PATENTS],
-        })
+        clusters.append(
+            {
+                "key_type": "cpc",
+                "key_value": prefix,
+                "window_months": window_months,
+                "window_start": ws,
+                "patent_count": count,
+                "representative_patent_ids": patent_ids[:MAX_REPRESENTATIVE_PATENTS],
+            }
+        )
 
     return clusters
 
 
-async def _upsert_clusters(
-    session: AsyncSession, clusters: list[dict[str, Any]]
-) -> None:
+async def _upsert_clusters(session: AsyncSession, clusters: list[dict[str, Any]]) -> None:
     """Insert or update cliff cluster rows.
 
     We delete existing clusters for the same (key_type, key_value,

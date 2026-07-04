@@ -7,6 +7,7 @@ into patent_publications. Resumable — skips days already attempted.
 Usage:
     docker compose exec backend python scripts/backfill_wipo.py --start=2025-06-01 --end=2026-04-09 --max-per-day=100
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -62,13 +63,20 @@ async def process_day(
             status="failed",
             error_message=str(e)[:500],
         )
-        return {"day": day.isoformat(), "created": 0, "updated": 0, "failed": 0, "error": str(e)[:200]}
+        return {
+            "day": day.isoformat(),
+            "created": 0,
+            "updated": 0,
+            "failed": 0,
+            "error": str(e)[:200],
+        }
 
     return {"day": day.isoformat(), "created": created, "updated": updated, "failed": failed}
 
 
 async def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", required=True, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", required=True, help="End date (YYYY-MM-DD)")
@@ -93,12 +101,16 @@ async def main():
         total_updated += result["updated"]
         total_failed += result["failed"]
         days_processed += 1
-        print(f"created={result['created']} updated={result['updated']} failed={result['failed']} "
-              f"(total created={total_created})")
+        print(
+            f"created={result['created']} updated={result['updated']} failed={result['failed']} "
+            f"(total created={total_created})"
+        )
         current += timedelta(days=1)
 
-    print(f"\nDone. {days_processed} days processed. "
-          f"Created={total_created} Updated={total_updated} Failed={total_failed}")
+    print(
+        f"\nDone. {days_processed} days processed. "
+        f"Created={total_created} Updated={total_updated} Failed={total_failed}"
+    )
 
 
 if __name__ == "__main__":

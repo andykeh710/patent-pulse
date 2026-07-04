@@ -1,4 +1,5 @@
 """Sprint 6 — Magic-link auth endpoints."""
+
 from __future__ import annotations
 
 import logging
@@ -75,18 +76,36 @@ def _set_session_cookie(
     )
 
 
+def _admin_email_set() -> set[str]:
+    """Lowercased allowlist of admin emails from settings.admin_emails."""
+    raw = settings.admin_emails or ""
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
 async def _get_or_create_user(session, email: str) -> User:
-    """Find or create a user by email, returning the User row."""
-    result = await session.execute(
-        select(User).where(User.email == email.strip().lower())
-    )
+    """Find or create a user by email, returning the User row.
+
+    Users are non-admin by default. Admin is granted only to addresses in the
+    ADMIN_EMAILS allowlist — on creation and, self-healing, on subsequent
+    sign-ins if the allowlist changed.
+    """
+    normalized = email.strip().lower()
+    is_allowlisted_admin = normalized in _admin_email_set()
+
+    result = await session.execute(select(User).where(User.email == normalized))
     user = result.scalar_one_or_none()
     if not user:
         user = User(
-            email=email.strip().lower(),
+            email=normalized,
+            is_admin=is_allowlisted_admin,
             # User.id is auto-generated (VARCHAR from the users table).
         )
         session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    elif is_allowlisted_admin and not user.is_admin:
+        # Promote a known admin whose account predates the allowlist entry.
+        user.is_admin = True
         await session.commit()
         await session.refresh(user)
     return user
@@ -114,8 +133,16 @@ async def request_link(
 
         magic_link = f"{settings.magic_link_base_url}/login/verify?token={raw_token}"
 
+        # Always log the magic link in dev/dry_run so Andy can QA locally
+        if settings.email_send_mode in ("dev", "dry_run"):
+            logger.info(
+                "DEV MAGIC LINK: %s",
+                magic_link,
+            )
+
         # Send magic link via Resend
         from app.email.sender import send_email
+
         await send_email(
             db_session=session,
             to=email,
@@ -169,9 +196,7 @@ async def me(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = jwt.decode(
-            auth_session, settings.auth_secret_key, algorithms=["HS256"]
-        )
+        payload = jwt.decode(auth_session, settings.auth_secret_key, algorithms=["HS256"])
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401)

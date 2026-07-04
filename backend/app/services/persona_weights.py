@@ -75,9 +75,14 @@ def get_weights(persona: str | None) -> dict[str, float]:
     Returns all 1.0 for None, "Other", or unknown persona strings.
     """
     if persona is None or persona == "Other":
-        return {"expiring": 1.0, "company": 1.0, "trend": 1.0,
-                "notable": 1.0, "foryou": 1.0}
-    return _PERSONA_WEIGHTS.get(persona, {
-        "expiring": 1.0, "company": 1.0, "trend": 1.0,
-        "notable": 1.0, "foryou": 1.0,
-    })
+        return {"expiring": 1.0, "company": 1.0, "trend": 1.0, "notable": 1.0, "foryou": 1.0}
+    return _PERSONA_WEIGHTS.get(
+        persona,
+        {
+            "expiring": 1.0,
+            "company": 1.0,
+            "trend": 1.0,
+            "notable": 1.0,
+            "foryou": 1.0,
+        },
+    )

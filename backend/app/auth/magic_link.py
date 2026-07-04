@@ -12,6 +12,7 @@ Security:
   - 15-min expiry, single-use.
   - Always return 202 on request-link (no user-enumeration disclosure).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -56,9 +57,7 @@ async def create_token_for_email(
     Returns (raw_token, token_hash).
     """
     raw, token_hash = generate_token()
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.magic_link_ttl_minutes
-    )
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.magic_link_ttl_minutes)
 
     token_row = AuthMagicLinkToken(
         token_hash=token_hash,
@@ -80,10 +79,9 @@ async def verify_token(session, raw_token: str) -> AuthMagicLinkToken | None:
     token_hash = _compute_token_hash(raw_token)
 
     from sqlalchemy import select
+
     result = await session.execute(
-        select(AuthMagicLinkToken).where(
-            AuthMagicLinkToken.token_hash == token_hash
-        )
+        select(AuthMagicLinkToken).where(AuthMagicLinkToken.token_hash == token_hash)
     )
     row = result.scalar_one_or_none()
 

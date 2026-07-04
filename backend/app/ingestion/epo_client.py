@@ -43,6 +43,7 @@ async def _epo_source_fetch(
     """Fire-and-forget source_fetch recording for EPO API calls."""
     try:
         from app.ingestion.source_fetch import record_source_fetch_async
+
         await record_source_fetch_async(
             provider="epo_ops",
             office="EP",
@@ -292,6 +293,7 @@ class EPOClient:
             Raw publication data dictionary
         """
         import asyncio
+
         path = f"/published-data/publication/epodoc/{publication_number}/biblio"
         result = self._request("GET", path)
         try:
@@ -306,6 +308,79 @@ class EPOClient:
         except RuntimeError:
             pass
         return result
+
+    def fetch_drawings(self, publication_number: str) -> list[bytes]:
+        """Fetch patent drawings/images from EPO OPS published-images API.
+
+        Args:
+            publication_number: EPODOC-format number (e.g., 'US12586484B2').
+
+        Returns:
+            List of raw image bytes (may be TIFF). Empty list if none found.
+        """
+        clean = publication_number.replace("-", "").replace("/", "").strip()
+        path = f"/published-data/images/{clean}/drawings"
+        try:
+            result = self._request("GET", path, accept="application/tiff")
+            # OPS returns a multi-page TIFF. Split into individual pages.
+            pages = self._split_tiff_pages(result)
+            return pages
+        except IngestionError as e:
+            if "404" in str(e) or "Not Found" in str(e):
+                logger.debug("No drawings found for %s", clean)
+                return []
+            raise
+        except Exception as e:
+            logger.warning("Drawings fetch failed for %s: %s", clean, e)
+            return []
+
+    @staticmethod
+    def _split_tiff_pages(result: dict) -> list[bytes]:
+        """Split multi-page TIFF response into individual page bytes.
+
+        EPO OPS returns either a single TIFF with multiple pages or a
+        multipart response. Extract each page into its own byte buffer.
+        """
+        import io
+
+        from PIL import Image
+
+        raw = result.get("raw", "")
+        if not raw or not isinstance(raw, str):
+            return []
+
+        # The raw response may be base64-encoded or binary text
+        try:
+            import base64
+
+            data = base64.b64decode(raw)
+        except Exception:
+            # Try treating as latin-1 encoded binary
+            data = raw.encode("latin-1")
+
+        pages: list[bytes] = []
+        try:
+            img = Image.open(io.BytesIO(data))
+            page_idx = 0
+            while True:
+                buf = io.BytesIO()
+                img.seek(page_idx)
+                img.save(buf, format="TIFF")
+                pages.append(buf.getvalue())
+                page_idx += 1
+        except EOFError:
+            pass  # no more pages
+        except Exception:
+            # Single page or non-TIFF — return as single page
+            try:
+                img = Image.open(io.BytesIO(data))
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                pages = [buf.getvalue()]
+            except Exception:
+                pages = [data]
+
+        return pages
 
     def fetch_publications_by_date(self, publication_date: date) -> Iterator[dict]:
         """
@@ -333,6 +408,7 @@ class EPOClient:
             try:
                 import asyncio
                 import time as _time
+
                 _start = _time.monotonic()
                 response = self._request("GET", path, params=params)
                 _duration = int((_time.monotonic() - _start) * 1000)
@@ -340,13 +416,15 @@ class EPOClient:
 
                 # Record source_fetch for this page
                 try:
-                    asyncio.ensure_future(_epo_source_fetch(
-                        target_type="search_by_date",
-                        target_id=date_str,
-                        status="success",
-                        records_found=len(publications),
-                        duration_ms=_duration,
-                    ))
+                    asyncio.ensure_future(
+                        _epo_source_fetch(
+                            target_type="search_by_date",
+                            target_id=date_str,
+                            status="success",
+                            records_found=len(publications),
+                            duration_ms=_duration,
+                        )
+                    )
                 except RuntimeError:
                     pass
 
@@ -364,12 +442,15 @@ class EPOClient:
 
             except IngestionError:
                 import asyncio as _aio
+
                 try:
-                    _aio.ensure_future(_epo_source_fetch(
-                        target_type="search_by_date",
-                        target_id=date_str,
-                        status="failed",
-                    ))
+                    _aio.ensure_future(
+                        _epo_source_fetch(
+                            target_type="search_by_date",
+                            target_id=date_str,
+                            status="failed",
+                        )
+                    )
                 except RuntimeError:
                     pass
                 break
@@ -403,9 +484,7 @@ class EPOClient:
     def _extract_publications(self, response: dict) -> list[dict]:
         """Extract publication records from search response."""
         try:
-            search_result = response.get("ops:world-patent-data", {}).get(
-                "ops:biblio-search", {}
-            )
+            search_result = response.get("ops:world-patent-data", {}).get("ops:biblio-search", {})
             search_result = search_result.get("ops:search-result", {})
             publications = search_result.get("exchange-documents", [])
 
@@ -432,15 +511,11 @@ class EPOClient:
         """Normalize EPO bibliographic data to common format."""
         biblio = doc.get("bibliographic-data", {})
 
-        publication_ref = biblio.get("publication-reference", {}).get(
-            "document-id", {}
-        )
+        publication_ref = biblio.get("publication-reference", {}).get("document-id", {})
         if isinstance(publication_ref, list):
             publication_ref = publication_ref[0] if publication_ref else {}
 
-        application_ref = biblio.get("application-reference", {}).get(
-            "document-id", {}
-        )
+        application_ref = biblio.get("application-reference", {}).get("document-id", {})
         if isinstance(application_ref, list):
             application_ref = application_ref[0] if application_ref else {}
 
@@ -518,9 +593,7 @@ class EPOClient:
         if not cls_data:
             cls_data = biblio.get(cls_type, {})
 
-        cls_list = cls_data.get("classification-cpc", []) or cls_data.get(
-            "classification-ipcr", []
-        )
+        cls_list = cls_data.get("classification-cpc", []) or cls_data.get("classification-ipcr", [])
 
         if isinstance(cls_list, dict):
             cls_list = [cls_list]

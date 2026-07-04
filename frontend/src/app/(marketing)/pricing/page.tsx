@@ -18,24 +18,6 @@ interface FeatureRow {
   enterprise: string;
 }
 
-function Check() {
-  return (
-    <svg
-      className="w-5 h-5 text-green-500 inline-block"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M5 13l4 4L19 7"
-      />
-    </svg>
-  );
-}
-
 function Faq({ q, a }: { q: string; a: string }) {
   return (
     <details className="group border-b border-[var(--border-subtle)] pb-6">
@@ -268,7 +250,7 @@ export default function PricingPage() {
                 <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
                   Basic
                 </th>
-                <th className="p-4 text-center font-semibold text-[var(--text-primary)] bg-bg-[var(--bg-elevated)]">
+                <th className="p-4 text-center font-semibold text-[var(--text-primary)] bg-[var(--bg-elevated)]">
                   Lifetime
                 </th>
                 <th className="p-4 text-center font-semibold text-[var(--text-primary)]">
@@ -284,7 +266,7 @@ export default function PricingPage() {
                   </td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">{row.free}</td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">{row.basic}</td>
-                  <td className="p-4 text-center text-[var(--text-secondary)] bg-bg-[var(--bg-elevated)]/50">
+                  <td className="p-4 text-center text-[var(--text-secondary)] bg-[var(--bg-elevated)]/50">
                     {row.lifetime}
                   </td>
                   <td className="p-4 text-center text-[var(--text-secondary)]">

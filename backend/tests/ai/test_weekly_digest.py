@@ -1,4 +1,5 @@
 """Tests for weekly digest AI module."""
+
 import pytest
 
 from app.ai.weekly_digest import build_payload, validate_output
@@ -7,7 +8,15 @@ from app.core.exceptions import SummarizationError
 
 def test_build_payload_structure():
     topics = [{"name": "AI", "match_count": 3, "keywords": ["ml"], "cpc_prefixes": ["G06N"]}]
-    matches = [{"topic_name": "AI", "title": "Patent X", "doc_id": "USPTO:123", "assignee": "Acme", "cpc": ["G06N"]}]
+    matches = [
+        {
+            "topic_name": "AI",
+            "title": "Patent X",
+            "doc_id": "USPTO:123",
+            "assignee": "Acme",
+            "cpc": ["G06N"],
+        }
+    ]
     payload = build_payload(topics, matches)
     assert "topic_list" in payload
     assert "matches_list" in payload
@@ -17,12 +26,24 @@ def test_build_payload_structure():
 
 def test_validate_output_rejects_forbidden_phrase():
     with pytest.raises(SummarizationError):
-        validate_output({"headline": "This patent is definitely used in product X", "highlights": [], "patterns": "", "caveats": []})
+        validate_output(
+            {
+                "headline": "This patent is definitely used in product X",
+                "highlights": [],
+                "patterns": "",
+                "caveats": [],
+            }
+        )
 
 
 def test_validate_output_adds_disclaimer():
-    result = validate_output({"headline": "A headline", "highlights": [], "patterns": "", "caveats": []})
-    assert result["caveats"][0] == "Evidence is patent-based only — verify with official registers before acting."
+    result = validate_output(
+        {"headline": "A headline", "highlights": [], "patterns": "", "caveats": []}
+    )
+    assert (
+        result["caveats"][0]
+        == "Evidence is patent-based only — verify with official registers before acting."
+    )
 
 
 def test_validate_output_defaults_missing_fields():

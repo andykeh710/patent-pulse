@@ -4,6 +4,7 @@ Per-tier quota enforcement (Sprint 7).
 Centralized TIER_LIMITS dict. All quota checks are async and accept
 a session parameter (S6-9 pattern). HTTP 402 on quota exceeded.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -63,17 +64,22 @@ async def check_topic_quota(
     if max_topics is None:
         return
 
-    count = (await session.execute(
-        select(TopicSubscription).where(TopicSubscription.user_id == user_id)
-    )).scalars().all()
+    count = (
+        (
+            await session.execute(
+                select(TopicSubscription).where(TopicSubscription.user_id == user_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     existing = len(count)
 
     if existing >= max_topics:
         _next = _next_tier_with("max_topics", tier)
         raise HTTPException(
             status_code=402,
-            detail=f"Topic limit reached ({max_topics}). "
-            f"Upgrade to {_next} for unlimited topics.",
+            detail=f"Topic limit reached ({max_topics}). Upgrade to {_next} for unlimited topics.",
         )
 
 
@@ -89,13 +95,19 @@ async def check_alert_quota(
         return True
 
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    count = (await session.execute(
-        select(EmailDelivery).where(
-            EmailDelivery.user_id == user_id,
-            EmailDelivery.email_type == "instant_alert",
-            EmailDelivery.sent_at >= one_week_ago,
+    count = (
+        (
+            await session.execute(
+                select(EmailDelivery).where(
+                    EmailDelivery.user_id == user_id,
+                    EmailDelivery.email_type == "instant_alert",
+                    EmailDelivery.sent_at >= one_week_ago,
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
 
     return len(count) < max_alerts
 
@@ -131,7 +143,7 @@ def _next_tier_with(feature: str, current_tier: str) -> str:
     """Return the name of the closest higher tier that unlocks a feature."""
     order = ["free", "basic", "lifetime", "enterprise"]
     idx = order.index(current_tier) if current_tier in order else 0
-    for t in order[idx + 1:]:
+    for t in order[idx + 1 :]:
         if TIER_LIMITS.get(t, {}).get(feature) not in (0, None):
             return t
     return order[-1]
@@ -139,5 +151,6 @@ def _next_tier_with(feature: str, current_tier: str) -> str:
 
 async def _get_session():
     from app.api.deps import get_db
+
     async for s in get_db():
         return s

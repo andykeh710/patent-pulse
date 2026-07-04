@@ -79,7 +79,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     setTheme(order[(idx + 1) % order.length]);
   };
 
-  const label = theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light";
+  const label = theme === "system" ? "System" : theme === "dark" ? "Dark" : "Light";
 
   return (
     <button

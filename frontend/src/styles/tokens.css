@@ -1,142 +1,381 @@
 /* ═══════════════════════════════════════════════════════════════════
-   Invention Index 8 — Design Tokens
-   Dark + light modes. Steel-blue accent. Professional, readable.
+   Invention Index 8 — Design Tokens v3 — "The Bench"
+
+   Precision instrument-bench aesthetic. Warm neutral base (oiled maple,
+   brushed brass, drafting paper — NOT cold SaaS gray). High information
+   density with measurement-grade alignment. Status communicated by
+   calibrated color chips. Typography reads like a well-set technical manual.
+
+   Token hierarchy:
+     --bench-*    canonical names (use these in all new components)
+     legacy       backward-compat aliases for existing code
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Dark mode (default) ── */
+/* ── Dark mode (default) — The Bench ── */
 :root {
-  --bg-base: #0B0E14;
-  --bg-elevated: #12161E;
-  --bg-surface: #1A1F2A;
-  --bg-overlay: rgba(0, 0, 0, 0.60);
+  /* ═══════════════════════════════════════════════════════════════
+     Surface hierarchy — warm neutral base
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-surface: #0D0F14;        /* oiled maple — deepest background */
+  --bench-well: #13161D;           /* drafting paper — card/panel recess */
+  --bench-raised: #191D26;         /* raised panel — dialog/overlay bg */
+  --bench-line: rgba(163, 148, 128, 0.10);  /* brass rule — borders/dividers */
+  --bench-line-strong: rgba(163, 148, 128, 0.20);
 
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-glass-strong: rgba(255, 255, 255, 0.06);
+  /* ═══════════════════════════════════════════════════════════════
+     Ink — typography on warm base
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-ink: #E8E2D8;            /* warm off-white — primary text */
+  --bench-ink-secondary: #A09888;  /* muted warm — secondary text */
+  --bench-ink-muted: #6B6558;      /* dim warm — tertiary/metadata */
+  --bench-ink-disabled: #4A453B;
 
-  --border-subtle: rgba(255, 255, 255, 0.10);
-  --border-default: rgba(255, 255, 255, 0.14);
-  --border-strong: rgba(255, 255, 255, 0.20);
+  /* ═══════════════════════════════════════════════════════════════
+     Accent — calibrated blue, interactive ONLY
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-accent: #6B93F7;
+  --bench-accent-hover: #8BADFF;
+  --bench-accent-muted: rgba(107, 147, 247, 0.12);
+  --bench-accent-glow: rgba(107, 147, 247, 0.18);
 
-  --text-primary: #E8ECF2;
-  --text-secondary: #A1A9B8;
-  --text-muted: #6E7687;
-  --text-disabled: #4A505D;
+  /* ═══════════════════════════════════════════════════════════════
+     Provenance — warm neutral signature (evidence/source metadata)
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-provenance: #B8A98C;     /* brushed brass */
 
-  --accent: #6B8CFF;
-  --accent-hover: #8BA4FF;
-  --accent-muted: rgba(107, 140, 255, 0.12);
-  --accent-glow: rgba(107, 140, 255, 0.18);
+  /* ═══════════════════════════════════════════════════════════════
+     Status ramp — calibrated color chips, AA contrast on warm base
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-ok: #22C55E;
+  --bench-ok-bg: rgba(34, 197, 94, 0.10);
 
-  --score-high: #34D399;
-  --score-high-bg: rgba(52, 211, 153, 0.10);
-  --score-medium: #F59E0B;
-  --score-medium-bg: rgba(245, 158, 11, 0.10);
-  --score-low: #A1A9B8;
-  --score-low-bg: rgba(161, 169, 184, 0.08);
-  --warning: #F59E0B;
+  --bench-watch: #F59E0B;
+  --bench-watch-bg: rgba(245, 158, 11, 0.10);
 
-  --expiry-active-estimated: #34D399;
-  --expiry-expiring-soon: #F59E0B;
-  --expiry-lapsed-possible: #F97316;
-  --expiry-lapsed-confirmed: #EF4444;
-  --expiry-expired-estimated: #A1A9B8;
-  --expiry-unknown: #6E7687;
+  --bench-warn: #F97316;
+  --bench-warn-bg: rgba(249, 115, 22, 0.10);
 
-  --type-trend: var(--accent);
-  --type-notable: var(--score-high);
-  --type-company: #61AEEE;
-  --type-expiring: var(--warning);
-  --type-foryou: #A78BFA;
-  --type-news: #A78BFA;
+  --bench-critical: #EF4444;
+  --bench-critical-bg: rgba(239, 68, 68, 0.10);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* ═══════════════════════════════════════════════════════════════
+     Score tier — visual weight from status ramp
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-score-high: var(--bench-ok);
+  --bench-score-high-bg: var(--bench-ok-bg);
+  --bench-score-medium: var(--bench-watch);
+  --bench-score-medium-bg: var(--bench-watch-bg);
+  --bench-score-low: #908878;
+  --bench-score-low-bg: rgba(144, 136, 120, 0.10);
+
+  /* ═══════════════════════════════════════════════════════════════
+     Feed categorisation
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-feed-trend: var(--bench-accent);
+  --bench-feed-notable: var(--bench-ok);
+  --bench-feed-company: #61AEEE;
+  --bench-feed-expiring: var(--bench-watch);
+  --bench-feed-personal: #A78BFA;
+
+  /* ═══════════════════════════════════════════════════════════════
+     Expiry status
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-expiry-active: var(--bench-ok);
+  --bench-expiry-expiring: var(--bench-watch);
+  --bench-expiry-lapsed-possible: var(--bench-warn);
+  --bench-expiry-lapsed: var(--bench-critical);
+  --bench-expiry-estimated: var(--bench-ink-muted);
+  --bench-expiry-unknown: var(--bench-ink-disabled);
+
+  /* ═══════════════════════════════════════════════════════════════
+     Typography scale — 5-step measurement-grade
+     ═══════════════════════════════════════════════════════════════ */
+  --text-xs: 0.6875rem;    /* 11px — micro labels, legal, source attribution */
+  --text-sm: 0.8125rem;    /* 13px — body, metadata, secondary */
+  --text-base: 0.9375rem;  /* 15px — primary reading */
+  --text-lg: 1.125rem;     /* 18px — section headings */
+  --text-xl: 1.375rem;     /* 22px — page titles */
+  --text-2xl: 1.75rem;     /* 28px — hero/landing */
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* ═══════════════════════════════════════════════════════════════
+     Density — measurement-grade spacing multiplier
+     ═══════════════════════════════════════════════════════════════ */
+  --density: 1;
+
+  /* ═══════════════════════════════════════════════════════════════
+     Glass/overlay
+     ═══════════════════════════════════════════════════════════════ */
+  --bench-glass: rgba(163, 148, 128, 0.04);
+  --bench-glass-strong: rgba(163, 148, 128, 0.08);
+  --bench-overlay: rgba(0, 0, 0, 0.65);
+
+  /* ═══════════════════════════════════════════════════════════════
+     Radius scale
+     ═══════════════════════════════════════════════════════════════ */
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-full: 9999px;
 
+  /* ═══════════════════════════════════════════════════════════════
+     Elevation
+     ═══════════════════════════════════════════════════════════════ */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.40);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.50);
 
+  /* ═══════════════════════════════════════════════════════════════
+     Z-index scale
+     ═══════════════════════════════════════════════════════════════ */
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-modal-backdrop: 300;
   --z-modal: 400;
   --z-toast: 500;
   --z-tooltip: 600;
+  --z-lightbox: 700;
+
+  /* ═══════════════════════════════════════════════════════════════
+     Backward-compat aliases (existing code references these)
+     ═══════════════════════════════════════════════════════════════ */
+  --bg: var(--bench-surface);
+  --surface: var(--bench-well);
+  --elevated: var(--bench-raised);
+  --border: var(--bench-line);
+  --border-strong: var(--bench-line-strong);
+  --text: var(--bench-ink);
+  --text-2: var(--bench-ink-secondary);
+  --text-muted: var(--bench-ink-muted);
+  --text-disabled: var(--bench-ink-disabled);
+  --accent: var(--bench-accent);
+  --accent-hover: var(--bench-accent-hover);
+  --accent-muted: var(--bench-accent-muted);
+  --accent-glow: var(--bench-accent-glow);
+  --provenance: var(--bench-provenance);
+  --ok: var(--bench-ok);
+  --ok-bg: var(--bench-ok-bg);
+  --warn: var(--bench-warn);
+  --warn-bg: var(--bench-warn-bg);
+  --danger: var(--bench-critical);
+  --danger-bg: var(--bench-critical-bg);
+  --score-high: var(--bench-score-high);
+  --score-high-bg: var(--bench-score-high-bg);
+  --score-medium: var(--bench-score-medium);
+  --score-medium-bg: var(--bench-score-medium-bg);
+  --score-low: var(--bench-score-low);
+  --score-low-bg: var(--bench-score-low-bg);
+  --bg-glass: var(--bench-glass);
+  --bg-glass-strong: var(--bench-glass-strong);
+  --bg-overlay: var(--bench-overlay);
+  /* flat aliases — used directly throughout codebase */
+  --bg-base: var(--bench-surface);
+  --bg-surface: var(--bench-well);
+  --bg-elevated: var(--bench-raised);
+  --border-subtle: var(--bench-line);
+  --border-default: var(--bench-line-strong);
+  --text-primary: var(--bench-ink);
+  --text-secondary: var(--bench-ink-secondary);
+  --warning: var(--bench-warn);
+  --type-trend: var(--bench-feed-trend);
+  --type-notable: var(--bench-feed-notable);
+  --type-company: var(--bench-feed-company);
+  --type-expiring: var(--bench-feed-expiring);
+  --type-foryou: var(--bench-feed-personal);
+  --type-news: var(--bench-feed-personal);
+  --expiry-active-estimated: var(--bench-expiry-active);
+  --expiry-expiring-soon: var(--bench-expiry-expiring);
+  --expiry-lapsed-possible: var(--bench-expiry-lapsed-possible);
+  --expiry-lapsed-confirmed: var(--bench-expiry-lapsed);
+  --expiry-expired-estimated: var(--bench-expiry-estimated);
+  --expiry-unknown: var(--bench-expiry-unknown);
 }
 
-/* ── Light mode ── */
+/* ── Light mode — warmed drafting paper ── */
 [data-theme="light"] {
-  --bg-base: #F5F6F8;
-  --bg-elevated: #FFFFFF;
-  --bg-surface: #FFFFFF;
-  --bg-overlay: rgba(0, 0, 0, 0.40);
-
-  --bg-glass: rgba(0, 0, 0, 0.03);
-  --bg-glass-strong: rgba(0, 0, 0, 0.06);
-
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-default: rgba(0, 0, 0, 0.12);
-  --border-strong: rgba(0, 0, 0, 0.18);
-
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-muted: #9CA3AF;
-  --text-disabled: #D1D5DB;
-
-  --accent: #5570D4;
-  --accent-hover: #3F55AA;
-  --accent-muted: rgba(85, 112, 212, 0.10);
-  --accent-glow: rgba(85, 112, 212, 0.15);
-
-  --score-high: #10B981;
-  --score-high-bg: rgba(16, 185, 129, 0.08);
-  --score-medium: #D97706;
-  --score-medium-bg: rgba(217, 119, 6, 0.08);
-  --score-low: #6B7280;
-  --score-low-bg: rgba(107, 114, 128, 0.06);
-
+  --bench-surface: #F7F5F0;
+  --bench-well: #FFFFFF;
+  --bench-raised: #FFFFFF;
+  --bench-line: rgba(163, 148, 128, 0.15);
+  --bench-line-strong: rgba(163, 148, 128, 0.25);
+  --bench-ink: #2D2820;
+  --bench-ink-secondary: #5C5548;
+  --bench-ink-muted: #8B8475;
+  --bench-ink-disabled: #C4BEB0;
+  --bench-accent: #4F6FCF;
+  --bench-accent-hover: #3A56AA;
+  --bench-accent-muted: rgba(79, 111, 207, 0.10);
+  --bench-accent-glow: rgba(79, 111, 207, 0.12);
+  --bench-provenance: #8B7D63;
+  --bench-ok: #16A34A;
+  --bench-ok-bg: rgba(22, 163, 74, 0.08);
+  --bench-watch: #D97706;
+  --bench-watch-bg: rgba(217, 119, 6, 0.08);
+  --bench-warn: #EA580C;
+  --bench-warn-bg: rgba(234, 88, 12, 0.08);
+  --bench-critical: #DC2626;
+  --bench-critical-bg: rgba(220, 38, 38, 0.08);
+  --bench-glass: rgba(163, 148, 128, 0.06);
+  --bench-glass-strong: rgba(163, 148, 128, 0.10);
+  --bench-overlay: rgba(0, 0, 0, 0.40);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  /* Re-resolve backward compat */
+  --bg: var(--bench-surface);
+  --surface: var(--bench-well);
+  --elevated: var(--bench-raised);
+  --border: var(--bench-line);
+  --border-strong: var(--bench-line-strong);
+  --text: var(--bench-ink);
+  --text-2: var(--bench-ink-secondary);
+  --text-muted: var(--bench-ink-muted);
+  --text-disabled: var(--bench-ink-disabled);
+  --accent: var(--bench-accent);
+  --accent-hover: var(--bench-accent-hover);
+  --accent-muted: var(--bench-accent-muted);
+  --accent-glow: var(--bench-accent-glow);
+  --provenance: var(--bench-provenance);
+  --ok: var(--bench-ok);
+  --ok-bg: var(--bench-ok-bg);
+  --warn: var(--bench-warn);
+  --warn-bg: var(--bench-warn-bg);
+  --danger: var(--bench-critical);
+  --danger-bg: var(--bench-critical-bg);
+  --score-high: var(--bench-score-high);
+  --score-high-bg: var(--bench-score-high-bg);
+  --score-medium: var(--bench-score-medium);
+  --score-medium-bg: var(--bench-score-medium-bg);
+  --score-low: var(--bench-score-low);
+  --score-low-bg: var(--bench-score-low-bg);
+  --bg-glass: var(--bench-glass);
+  --bg-glass-strong: var(--bench-glass-strong);
+  --bg-overlay: var(--bench-overlay);
+  --bg-base: var(--bench-surface);
+  --bg-surface: var(--bench-well);
+  --bg-elevated: var(--bench-raised);
+  --border-subtle: var(--bench-line);
+  --border-default: var(--bench-line-strong);
+  --text-primary: var(--bench-ink);
+  --text-secondary: var(--bench-ink-secondary);
+  --warning: var(--bench-warn);
+  --type-trend: var(--bench-feed-trend);
+  --type-notable: var(--bench-feed-notable);
+  --type-company: var(--bench-feed-company);
+  --type-expiring: var(--bench-feed-expiring);
+  --type-foryou: var(--bench-feed-personal);
+  --type-news: var(--bench-feed-personal);
+  --expiry-active-estimated: var(--bench-expiry-active);
+  --expiry-expiring-soon: var(--bench-expiry-expiring);
+  --expiry-lapsed-possible: var(--bench-expiry-lapsed-possible);
+  --expiry-lapsed-confirmed: var(--bench-expiry-lapsed);
+  --expiry-expired-estimated: var(--bench-expiry-estimated);
+  --expiry-unknown: var(--bench-expiry-unknown);
 }
 
 /* ── System preference: auto light ── */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg-base: #F5F6F8;
-    --bg-elevated: #FFFFFF;
-    --bg-surface: #FFFFFF;
-    --bg-overlay: rgba(0, 0, 0, 0.40);
-
-    --bg-glass: rgba(0, 0, 0, 0.03);
-    --bg-glass-strong: rgba(0, 0, 0, 0.06);
-
-    --border-subtle: rgba(0, 0, 0, 0.08);
-    --border-default: rgba(0, 0, 0, 0.12);
-    --border-strong: rgba(0, 0, 0, 0.18);
-
-    --text-primary: #111827;
-    --text-secondary: #4B5563;
-    --text-muted: #9CA3AF;
-    --text-disabled: #D1D5DB;
-
-    --accent: #5570D4;
-    --accent-hover: #3F55AA;
-    --accent-muted: rgba(85, 112, 212, 0.10);
-    --accent-glow: rgba(85, 112, 212, 0.15);
-
-    --score-high: #10B981;
-    --score-high-bg: rgba(16, 185, 129, 0.08);
-    --score-medium: #D97706;
-    --score-medium-bg: rgba(217, 119, 6, 0.08);
-    --score-low: #6B7280;
-    --score-low-bg: rgba(107, 114, 128, 0.06);
-
+    --bench-surface: #F7F5F0;
+    --bench-well: #FFFFFF;
+    --bench-raised: #FFFFFF;
+    --bench-line: rgba(163, 148, 128, 0.15);
+    --bench-line-strong: rgba(163, 148, 128, 0.25);
+    --bench-ink: #2D2820;
+    --bench-ink-secondary: #5C5548;
+    --bench-ink-muted: #8B8475;
+    --bench-ink-disabled: #C4BEB0;
+    --bench-accent: #4F6FCF;
+    --bench-accent-hover: #3A56AA;
+    --bench-accent-muted: rgba(79, 111, 207, 0.10);
+    --bench-accent-glow: rgba(79, 111, 207, 0.12);
+    --bench-provenance: #8B7D63;
+    --bench-ok: #16A34A;
+    --bench-ok-bg: rgba(22, 163, 74, 0.08);
+    --bench-watch: #D97706;
+    --bench-watch-bg: rgba(217, 119, 6, 0.08);
+    --bench-warn: #EA580C;
+    --bench-warn-bg: rgba(234, 88, 12, 0.08);
+    --bench-critical: #DC2626;
+    --bench-critical-bg: rgba(220, 38, 38, 0.08);
+    --bench-glass: rgba(163, 148, 128, 0.06);
+    --bench-glass-strong: rgba(163, 148, 128, 0.10);
+    --bench-overlay: rgba(0, 0, 0, 0.40);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+    /* Re-resolve backward compat */
+    --bg: var(--bench-surface);
+    --surface: var(--bench-well);
+    --elevated: var(--bench-raised);
+    --border: var(--bench-line);
+    --border-strong: var(--bench-line-strong);
+    --text: var(--bench-ink);
+    --text-2: var(--bench-ink-secondary);
+    --text-muted: var(--bench-ink-muted);
+    --text-disabled: var(--bench-ink-disabled);
+    --accent: var(--bench-accent);
+    --accent-hover: var(--bench-accent-hover);
+    --accent-muted: var(--bench-accent-muted);
+    --accent-glow: var(--bench-accent-glow);
+    --provenance: var(--bench-provenance);
+    --ok: var(--bench-ok);
+    --ok-bg: var(--bench-ok-bg);
+    --warn: var(--bench-warn);
+    --warn-bg: var(--bench-warn-bg);
+    --danger: var(--bench-critical);
+    --danger-bg: var(--bench-critical-bg);
+    --score-high: var(--bench-score-high);
+    --score-high-bg: var(--bench-score-high-bg);
+    --score-medium: var(--bench-score-medium);
+    --score-medium-bg: var(--bench-score-medium-bg);
+    --score-low: var(--bench-score-low);
+    --score-low-bg: var(--bench-score-low-bg);
+    --bg-glass: var(--bench-glass);
+    --bg-glass-strong: var(--bench-glass-strong);
+    --bg-overlay: var(--bench-overlay);
+    --bg-base: var(--bench-surface);
+    --bg-surface: var(--bench-well);
+    --bg-elevated: var(--bench-raised);
+    --border-subtle: var(--bench-line);
+    --border-default: var(--bench-line-strong);
+    --text-primary: var(--bench-ink);
+    --text-secondary: var(--bench-ink-secondary);
+    --warning: var(--bench-warn);
+    --type-trend: var(--bench-feed-trend);
+    --type-notable: var(--bench-feed-notable);
+    --type-company: var(--bench-feed-company);
+    --type-expiring: var(--bench-feed-expiring);
+    --type-foryou: var(--bench-feed-personal);
+    --type-news: var(--bench-feed-personal);
+    --expiry-active-estimated: var(--bench-expiry-active);
+    --expiry-expiring-soon: var(--bench-expiry-expiring);
+    --expiry-lapsed-possible: var(--bench-expiry-lapsed-possible);
+    --expiry-lapsed-confirmed: var(--bench-expiry-lapsed);
+    --expiry-expired-estimated: var(--bench-expiry-estimated);
+    --expiry-unknown: var(--bench-expiry-unknown);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Global typography baseline
+   ═══════════════════════════════════════════════════════════════════ */
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for all data-dense contexts */
+.font-mono,
+[class*="tabular-nums"],
+table,
+[data-tabular] {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }

@@ -11,12 +11,20 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     uspto_api_key: str = ""
+    uspto_odp_api_key: str = ""
+    uspto_odp_base_url: str = "https://api.uspto.gov/api/v1"
     google_cloud_project: str | None = None
 
     # Sprint 6: magic-link auth
     auth_secret_key: str = ""
     magic_link_ttl_minutes: int = 15
     magic_link_base_url: str = "http://localhost:3000"
+
+    # Security: comma-separated allowlist of email addresses that are granted
+    # admin. Used by migration 0035 to preserve known admins when flipping the
+    # is_admin default to false, and by the auth flow to (re)grant admin to
+    # these accounts on sign-in. Everyone else is a normal (non-admin) user.
+    admin_emails: str = ""
 
     # Sprint 6: email
     resend_api_key: str = ""
@@ -87,19 +95,33 @@ class Settings(BaseSettings):
     claude_haiku_input_usd_per_mtok: float = 0.8
     claude_haiku_output_usd_per_mtok: float = 4.0
 
-    # DeepSeek — OpenAI-compatible API
+    # DeepSeek — primary AI provider (all text generation)
     deepseek_api_key: str = ""
-    deepseek_chat_model: str = "deepseek-chat"           # V3 — fast, cheap
-    deepseek_reasoner_model: str = "deepseek-reasoner"   # R1 — reasoning
-    deepseek_input_usd_per_mtok: float = 0.27            # $0.27/M input
-    deepseek_output_usd_per_mtok: float = 1.10           # $1.10/M output
+    deepseek_chat_model: str = "deepseek-v4-pro"
+    deepseek_reasoner_model: str = "deepseek-v4-pro"
+    deepseek_input_usd_per_mtok: float = 0.27
+    deepseek_output_usd_per_mtok: float = 1.10
 
-    # LLM provider: "anthropic" | "deepseek"
+    # LLM provider: "deepseek" (primary) | "anthropic" (compatibility only)
     llm_provider: str = "deepseek"
 
-    # Phase 3: Chatbot config
-    chat_model: str = "claude-sonnet-4-20250514"
+    # Anthropic SDK compatibility path (routes to DeepSeek when base_url set)
+    anthropic_base_url: str = "https://api.deepseek.com/anthropic"
+
+    # Phase 3: Chatbot config — DeepSeek via Anthropic-compatible endpoint
+    chat_model: str = "deepseek-v4-pro"
     chat_retrieve_k: int = 8
+    chat_quota_free: int = 50
+    chat_quota_basic: int = 100
+
+    # V3.8I: patent figure storage + rate limiting
+    figures_storage_dir: str = "/data/figures"
+    figures_serve_url_prefix: str = "/api/v1/patents"
+    epo_ops_max_rps: float = 2.0  # free tier: ~2 requests/second
+    uspto_odp_max_rps: float = 5.0
+    figure_retry_max_attempts: int = 3
+    figure_retry_backoff_base: float = 5.0  # seconds
+    google_patents_images_enabled: bool = False  # feature flag: ToS gray area
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

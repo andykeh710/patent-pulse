@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { BRAND, COPY } from "@/lib/brand";
@@ -7,6 +8,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 
+export const viewport: Viewport = { themeColor: "#4f46e5" };
 export const metadata: Metadata = {
   title: {
     default: `${BRAND.name}: ${COPY.tagline}`,

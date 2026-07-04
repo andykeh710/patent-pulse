@@ -1,4 +1,5 @@
 """Celery tasks for the Phase 1 patent tagger."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,9 +47,11 @@ async def _record_anthropic_error(error_type: str, error_message: str):
     global _anthropic_error_count, _LAST_ANTHROPIC_ERROR_AT
     _anthropic_error_count += 1
     from datetime import datetime, timezone
+
     _LAST_ANTHROPIC_ERROR_AT = datetime.now(timezone.utc).isoformat()
     try:
         from app.ingestion.source_fetch import record_source_fetch_async
+
         await record_source_fetch_async(
             provider="anthropic",
             target_type="tag_patent",
@@ -99,9 +102,7 @@ async def _tag_patent_async(patent_id: str, run_id: str | None) -> dict[str, Any
         return {
             "status": "success",
             "artifact_id": str(artifact_id),
-            "tag_count": sum(
-                len(v) if isinstance(v, list) else 0 for v in tags.values()
-            ),
+            "tag_count": sum(len(v) if isinstance(v, list) else 0 for v in tags.values()),
         }
 
 
@@ -139,7 +140,10 @@ async def _batch_tag_async(limit: int) -> dict[str, Any]:
                 await _record_anthropic_error(error_type, str(e))
                 stats["failed"] += 1
                 # Circuit-break: stop batch on 3 consecutive Anthropic errors
-                if error_type == "credits_exhausted" and _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE:
+                if (
+                    error_type == "credits_exhausted"
+                    and _anthropic_error_count >= ANTHROPIC_ERROR_MAX_CONSECUTIVE
+                ):
                     logger.critical(
                         "Tag batch HALTED after %d consecutive Anthropic credit errors. "
                         "Waiting for next beat cycle.",

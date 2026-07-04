@@ -7,6 +7,7 @@ import { PatentCardSkeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StarterTopics } from "@/components/ui/StarterTopics";
 import { topicsApi } from "@/lib/api";
 import type { Topic } from "@/lib/types";
@@ -16,8 +17,11 @@ export default function ThemesPage() {
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [unfollowing, setUnfollowing] = useState<string | null>(null);
+  const [createError, setCreateError] = useState("");
 
   // Create form state
   const [formName, setFormName] = useState("");
@@ -37,13 +41,14 @@ export default function ThemesPage() {
     e.preventDefault();
     if (!formName.trim()) return;
     setCreating(true);
+    setCreateError("");
     try {
       await topicsApi.create({
         name: formName.trim(),
         description: formDescription.trim() || undefined,
         cpc_prefixes: formCpc
           ? formCpc.split(",").map((s) => s.trim()).filter(Boolean)
-          : undefined,
+          : [],
         keywords: formKeywords
           ? formKeywords.split(",").map((s) => s.trim()).filter(Boolean)
           : undefined,
@@ -53,7 +58,10 @@ export default function ThemesPage() {
       setFormDescription("");
       setFormCpc("");
       setFormKeywords("");
+      setShowAdvanced(false);
       mutate();
+    } catch {
+      setCreateError("Could not create topic. It may already exist or the name is invalid.");
     } finally {
       setCreating(false);
     }
@@ -71,113 +79,129 @@ export default function ThemesPage() {
     }
   };
 
-  // Separate system themes (CPC sections, no user_id) from user topics
-  const systemThemes = themes?.filter((t) => !t.user_id) || [];
+  const handleFollow = async (theme: Topic) => {
+    try {
+      await topicsApi.create({
+        name: theme.name,
+        description: theme.description || undefined,
+        cpc_prefixes: theme.cpc_prefixes,
+        keywords: theme.keywords || undefined,
+      });
+      mutate();
+    } catch {
+      // silently fail — user can retry
+    }
+  };
+
+  const handleUnfollow = async (theme: Topic) => {
+    // Find the user-owned copy by matching system theme name
+    const userCopy = userTopics.find(
+      (t) => t.name.toLowerCase() === theme.name.toLowerCase()
+    );
+    if (!userCopy) return;
+    setUnfollowing(userCopy.id);
+    try {
+      await topicsApi.delete(userCopy.id);
+      mutate();
+    } finally {
+      setUnfollowing(null);
+    }
+  };
+
+  // Separate system themes from user topics.
+  // Hide system themes that the user has already followed.
   const userTopics = themes?.filter((t) => t.user_id) || [];
+  const followedNames = new Set(userTopics.map((t) => t.name.toLowerCase()));
+  const systemThemes = (themes?.filter((t) => !t.user_id) || []).filter(
+    (t) => !followedNames.has(t.name.toLowerCase())
+  );
+  const followedSystemThemes = (themes?.filter((t) => !t.user_id) || []).filter(
+    (t) => followedNames.has(t.name.toLowerCase())
+  );
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Topics</h1>
-          <p className="text-[var(--text-secondary)] mt-1">
-            Tracked technology areas and their matched patents
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(!showCreate)} variant="default">
-          {showCreate ? "Cancel" : "Create Topic"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Topics"
+        description="Track technology areas and their matched patents"
+        primaryAction={
+          <Button onClick={() => { setShowCreate(!showCreate); setCreateError(""); }} variant="default">
+            {showCreate ? "Cancel" : "Create Topic"}
+          </Button>
+        }
+      />
 
       {/* Create Topic Form */}
       {showCreate && (
         <form
           onSubmit={handleCreate}
-          className="mb-6 bg-[var(--bg-surface)] rounded-lg border border-border-[var(--accent)]/20 p-6"
+          className="mb-6 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-6"
         >
           <h2 className="font-semibold text-[var(--text-primary)] mb-4">New Topic</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Name *</label>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                What do you want to track?
+              </label>
               <input
                 type="text"
                 required
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder='e.g. "AI Agents & LLMs"'
-                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                placeholder='e.g. "LLM agents that use tools and reason autonomously"'
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Keywords (optional)</label>
               <input
                 type="text"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="What this topic tracks"
-                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                value={formKeywords}
+                onChange={(e) => setFormKeywords(e.target.value)}
+                placeholder="agent, LLM, autonomous, reasoning"
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
-            <div>
+          </div>
+
+          {/* Advanced: CPC prefix (collapsed by default) */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="mt-4 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+          >
+            {showAdvanced ? "▾" : "▸"} Advanced patent filters (optional)
+          </button>
+          {showAdvanced && (
+            <div className="mt-2">
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                CPC Prefixes <span className="text-[var(--text-muted)] text-xs">(comma-separated)</span>
+                CPC Prefixes <span className="text-[var(--text-muted)] text-xs">(comma-separated patent classification codes)</span>
               </label>
               <input
                 type="text"
                 value={formCpc}
                 onChange={(e) => setFormCpc(e.target.value)}
                 placeholder="G06N, G06F, H04L"
-                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-base)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                Keywords <span className="text-[var(--text-muted)] text-xs">(comma-separated)</span>
-              </label>
-              <input
-                type="text"
-                value={formKeywords}
-                onChange={(e) => setFormKeywords(e.target.value)}
-                placeholder="agent, LLM, autonomous, reasoning"
-                className="w-full rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
+          )}
+
+          {createError && (
+            <p className="text-xs text-red-400 mt-3">{createError}</p>
+          )}
+          <div className="mt-4">
             <Button type="submit" variant="default" disabled={creating || !formName.trim()}>
               {creating ? "Creating..." : "Create Topic"}
             </Button>
-            <p className="text-xs text-[var(--text-muted)]">
-              After creation, run theme matching via Admin → AI Runs to populate matches.
+            <p className="text-xs text-[var(--text-muted)] mt-2">
+              We&apos;ll start matching patents to this topic after creation. New topics may take a few minutes to populate.
             </p>
           </div>
         </form>
       )}
 
-      {/* System Themes section */}
-      {systemThemes.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
-            System Themes
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {systemThemes.map((theme) => (
-              <ThemeCard
-                key={theme.id}
-                theme={theme}
-                isSelected={selectedTheme === theme.id}
-                isSystem
-                onClick={() => {
-                  setSelectedTheme(selectedTheme === theme.id ? null : theme.id);
-                  setPage(1);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* User Topics section */}
+      {/* Your Topics section */}
       {userTopics.length > 0 && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
@@ -194,6 +218,58 @@ export default function ThemesPage() {
                 isDeleting={deleting === topic.id}
                 onClick={() => {
                   setSelectedTheme(selectedTheme === topic.id ? null : topic.id);
+                  setPage(1);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* System Themes section */}
+      {systemThemes.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            System Themes
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {systemThemes.map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                theme={theme}
+                isSelected={selectedTheme === theme.id}
+                isSystem
+                onFollow={() => handleFollow(theme)}
+                onClick={() => {
+                  setSelectedTheme(selectedTheme === theme.id ? null : theme.id);
+                  setPage(1);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Followed system themes */}
+      {followedSystemThemes.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            Following
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {followedSystemThemes.map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                theme={theme}
+                isSelected={selectedTheme === theme.id}
+                isSystem
+                isFollowing
+                onUnfollow={() => handleUnfollow(theme)}
+                isDeleting={unfollowing === userTopics.find(
+                  (t) => t.name.toLowerCase() === theme.name.toLowerCase()
+                )?.id}
+                onClick={() => {
+                  setSelectedTheme(selectedTheme === theme.id ? null : theme.id);
                   setPage(1);
                 }}
               />
@@ -296,7 +372,7 @@ export default function ThemesPage() {
             </>
           ) : (
             <div className="rounded-lg bg-[var(--bg-base)] py-8 text-center text-[var(--text-muted)]">
-              No patents matched this topic yet. Run theme matching via Admin.
+              Matching pending — new topics are queued for processing. Matches will appear here automatically.
             </div>
           )}
         </div>
@@ -312,6 +388,9 @@ function ThemeCard({
   onDelete,
   isDeleting,
   onClick,
+  onFollow,
+  onUnfollow,
+  isFollowing,
 }: {
   theme: Topic;
   isSelected: boolean;
@@ -319,16 +398,26 @@ function ThemeCard({
   onDelete?: () => void;
   isDeleting?: boolean;
   onClick: () => void;
+  onFollow?: () => void;
+  onUnfollow?: () => void;
+  isFollowing?: boolean;
 }) {
   const tagColor = theme.opportunity_tags?.length
     ? "bg-[var(--score-high-bg)] text-[var(--score-high)]"
     : "bg-[var(--accent-muted)] text-[var(--accent)]";
 
+  const showZero = theme.patent_count === 0;
+  const patentLabel = showZero
+    ? isSystem
+      ? "Matching pending"
+      : "Matching pending"
+    : `${theme.patent_count} ${theme.patent_count === 1 ? "patent" : "patents"}`;
+
   return (
     <div
       className={`rounded-lg border p-4 transition-all ${
         isSelected
-          ? "border-bg-[var(--accent)]/70 bg-[var(--bg-elevated)] shadow-sm"
+          ? "border-[var(--accent)]/70 bg-[var(--bg-elevated)] shadow-sm"
           : isSystem
           ? "border-[var(--border-subtle)] bg-[var(--bg-base)]"
           : "border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--border-default)] hover:shadow-sm"
@@ -343,7 +432,11 @@ function ThemeCard({
                 inactive
               </Badge>
             )}
-            {isSystem ? (
+            {isFollowing ? (
+              <Badge variant="default" size="sm" className="bg-[var(--score-high-bg)] text-[var(--score-high)]">
+                Following ✓
+              </Badge>
+            ) : isSystem ? (
               <Badge variant="default" size="sm" className="bg-[var(--accent-muted)] text-[var(--accent)]">
                 system
               </Badge>
@@ -385,7 +478,7 @@ function ThemeCard({
 
       <div className="flex items-center justify-between mt-3">
         <span className="text-xs text-[var(--text-muted)]">
-          {theme.patent_count} {theme.patent_count === 1 ? "patent" : "patents"}
+          {patentLabel}
         </span>
         {!isSystem && onDelete && (
           <button
@@ -397,6 +490,29 @@ function ThemeCard({
             className="text-xs text-[var(--expiry-lapsed-confirmed)] hover:opacity-80 disabled:opacity-50 transition-opacity"
           >
             {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        )}
+        {isFollowing && onUnfollow && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnfollow();
+            }}
+            disabled={isDeleting}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-50 transition-colors"
+          >
+            {isDeleting ? "Removing..." : "Unfollow"}
+          </button>
+        )}
+        {isSystem && !isFollowing && onFollow && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFollow();
+            }}
+            className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors"
+          >
+            + Follow
           </button>
         )}
       </div>

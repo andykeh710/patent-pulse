@@ -19,6 +19,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import SESSION_COOKIE_NAME, current_user, get_db
+from app.config import settings
 from app.core.ai_models import AIRun, User
 from app.core.billing_models import BillingSubscription
 from app.core.subscription_models import EmailDelivery
@@ -38,7 +39,7 @@ class DeleteAccountBody(BaseModel):
 async def delete_account(
     body: DeleteAccountBody,
     user_id: str = Depends(current_user),
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """Permanently delete the authenticated user's account.
 
@@ -60,9 +61,7 @@ async def delete_account(
     if user.id:
         billing = (
             await db.execute(
-                select(BillingSubscription).where(
-                    BillingSubscription.user_id == user.id
-                )
+                select(BillingSubscription).where(BillingSubscription.user_id == user.id)
             )
         ).scalar_one_or_none()
         if billing and billing.stripe_customer_id:
@@ -70,13 +69,9 @@ async def delete_account(
 
     # ── Anonymize audit rows ──────────────────────────────────────
     await db.execute(
-        update(EmailDelivery)
-        .where(EmailDelivery.user_id == user.id)
-        .values(user_id=None)
+        update(EmailDelivery).where(EmailDelivery.user_id == user.id).values(user_id=None)
     )
-    await db.execute(
-        update(AIRun).where(AIRun.created_by == user.id).values(created_by=None)
-    )
+    await db.execute(update(AIRun).where(AIRun.created_by == user.id).values(created_by=None))
 
     # ── Delete user (FK CASCADE handles subscriptions, api_keys,   ──
     #    billing_subscriptions, magic_link_tokens, exports)         ──
@@ -230,3 +225,310 @@ async def get_suggested_companies_endpoint(
     if persona not in ("operator", "investor", "curious"):
         persona = "curious"
     return await get_suggested_companies(db, persona=persona)
+
+
+# ── Phase 4 PR 3: Usage endpoint ───────────────────────────────
+
+
+class FeatureUsage(BaseModel):
+    used: int
+    limit: int | None = None
+    remaining: int | None = None
+    unlimited: bool = False
+    period: str | None = None  # "daily", "monthly", "yearly", or None
+
+
+class UsageResponse(BaseModel):
+    tier: str
+    features: dict[str, FeatureUsage]
+    renews_at: str | None = None
+
+
+@router.get("/usage", response_model=UsageResponse)
+async def get_account_usage(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return aggregated usage across all gated features.
+
+    Counts themes (topic subscriptions), companies followed, and chat
+    messages from Redis. Views and search are unlimited on all tiers.
+    """
+    from datetime import date
+
+    import redis.asyncio as aioredis
+    from sqlalchemy import func
+    from sqlalchemy import select as sa_select
+
+    from app.core.ai_models import User, UserCompanyFollow
+    from app.core.billing_models import BillingSubscription
+    from app.core.subscription_models import TopicSubscription as _TopicSubscription
+
+    # ── User + tier ──────────────────────────────────────────────
+    user = (await db.execute(sa_select(User).where(User.id == user_id))).scalar_one_or_none()
+    tier = user.tier if user else "free"
+
+    # ── Chat quota from Redis ────────────────────────────────────
+    chat_used = 0
+    chat_limit: int | None = 50  # basic default
+    chat_unlimited = False
+
+    if tier == "free":
+        chat_limit = settings.chat_quota_free
+    elif tier == "basic":
+        chat_limit = settings.chat_quota_basic
+    else:
+        chat_unlimited = True
+        chat_limit = None
+
+    try:
+        redis_client = aioredis.Redis.from_url(settings.redis_url, decode_responses=True)
+        today_str = date.today().isoformat()
+        key = f"chat:quota:{user_id}:{today_str}"
+        chat_used_raw = await redis_client.get(key)
+        chat_used = int(chat_used_raw) if chat_used_raw else 0
+        await redis_client.close()
+    except Exception:
+        chat_used = 0
+
+    chat_remaining: int | None = None
+    if chat_limit is not None:
+        chat_remaining = max(0, chat_limit - chat_used)
+
+    # ── Themes (topic subscriptions) ─────────────────────────────
+    themes_used_raw = await db.execute(
+        sa_select(func.count())
+        .select_from(_TopicSubscription)
+        .where(_TopicSubscription.user_id == user_id)
+    )
+    themes_used = themes_used_raw.scalar() or 0
+    themes_limit = 1 if tier == "free" else None
+    themes_unlimited = tier != "free"
+    themes_remaining: int | None = None
+    if themes_limit is not None:
+        themes_remaining = max(0, themes_limit - themes_used)
+
+    # ── Companies followed ───────────────────────────────────────
+    companies_used_raw = await db.execute(
+        sa_select(func.count())
+        .select_from(UserCompanyFollow)
+        .where(UserCompanyFollow.user_id == user_id)
+    )
+    companies_used = companies_used_raw.scalar() or 0
+    companies_limit = 3 if tier == "free" else None
+    companies_unlimited = tier != "free"
+    companies_remaining: int | None = None
+    if companies_limit is not None:
+        companies_remaining = max(0, companies_limit - companies_used)
+
+    # ── Renews_at from billing ───────────────────────────────────
+    renews_at: str | None = None
+    billing_sub = (
+        await db.execute(
+            sa_select(BillingSubscription).where(BillingSubscription.user_id == user_id)
+        )
+    ).scalar_one_or_none()
+    if billing_sub and billing_sub.current_period_end:
+        renews_at = billing_sub.current_period_end.isoformat()
+
+    return {
+        "tier": tier,
+        "features": {
+            "views": FeatureUsage(used=0, unlimited=True, period=None),
+            "search": FeatureUsage(used=0, unlimited=True, period=None),
+            "themes": FeatureUsage(
+                used=themes_used,
+                limit=themes_limit,
+                remaining=themes_remaining,
+                unlimited=themes_unlimited,
+            ),
+            "companies": FeatureUsage(
+                used=companies_used,
+                limit=companies_limit,
+                remaining=companies_remaining,
+                unlimited=companies_unlimited,
+            ),
+            "chat": FeatureUsage(
+                used=chat_used,
+                limit=chat_limit,
+                remaining=chat_remaining,
+                unlimited=chat_unlimited,
+                period="daily",
+            ),
+        },
+        "renews_at": renews_at,
+    }
+
+
+# ── Phase 5 PR 2: Alert webhook config ─────────────────────────────
+
+
+class WebhookConfigBody(BaseModel):
+    webhook_url: str | None = None
+    secret_key: str | None = None
+    enabled: bool = False
+
+
+class WebhookConfigResponse(BaseModel):
+    webhook_url: str | None = None
+    enabled: bool = False
+    last_success_at: str | None = None
+    last_failure_at: str | None = None
+
+
+@router.get("/webhook-config", response_model=WebhookConfigResponse)
+async def get_webhook_config(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the user's webhook config (no secret)."""
+    from app.core.alert_models import UserWebhookConfig
+
+    config = (
+        await db.execute(select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id))
+    ).scalar_one_or_none()
+
+    if not config:
+        return WebhookConfigResponse()
+
+    return WebhookConfigResponse(
+        webhook_url=config.webhook_url,
+        enabled=config.enabled,
+        last_success_at=config.last_success_at.isoformat() if config.last_success_at else None,
+        last_failure_at=config.last_failure_at.isoformat() if config.last_failure_at else None,
+    )
+
+
+@router.post("/webhook-config", response_model=WebhookConfigResponse)
+async def set_webhook_config(
+    body: WebhookConfigBody,
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set webhook URL + secret. Lifetime+ only."""
+    from datetime import datetime, timezone
+
+    from app.core.ai_models import User
+    from app.core.alert_models import UserWebhookConfig
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    tier = user.tier if user else "free"
+    if tier not in ("lifetime", "enterprise"):
+        raise HTTPException(402, "Webhook alerts require Lifetime or Enterprise tier")
+
+    existing = (
+        await db.execute(select(UserWebhookConfig).where(UserWebhookConfig.user_id == user_id))
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.webhook_url = body.webhook_url
+        existing.secret_key = body.secret_key
+        existing.enabled = body.enabled
+        existing.updated_at = datetime.now(timezone.utc)
+    else:
+        existing = UserWebhookConfig(
+            user_id=user_id,
+            webhook_url=body.webhook_url,
+            secret_key=body.secret_key,
+            enabled=body.enabled,
+        )
+        db.add(existing)
+    await db.commit()
+
+    return WebhookConfigResponse(
+        webhook_url=existing.webhook_url,
+        enabled=existing.enabled,
+        last_success_at=existing.last_success_at.isoformat() if existing.last_success_at else None,
+        last_failure_at=existing.last_failure_at.isoformat() if existing.last_failure_at else None,
+    )
+
+
+@router.post("/webhook-config/test")
+async def test_webhook_config(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a test webhook event to verify the webhook is configured correctly."""
+    from datetime import datetime, timezone
+
+    from app.core.alert_models import Alert, UserWebhookConfig
+    from app.tasks.alerts import _deliver_via_webhook
+
+    config = (
+        await db.execute(
+            select(UserWebhookConfig).where(
+                UserWebhookConfig.user_id == user_id,
+                UserWebhookConfig.enabled == True,  # noqa: E712
+                UserWebhookConfig.webhook_url.isnot(None),
+            )
+        )
+    ).scalar_one_or_none()
+
+    if not config:
+        raise HTTPException(400, "No webhook configured. Set webhook URL and enable it first.")
+
+    # Create a temporary alert object for the test
+
+    test_alert = Alert(
+        user_id=user_id,
+        type="test",
+        payload={
+            "message": "This is a test alert from Invention Index 8. Your webhook is working correctly.",
+        },
+        status="pending",
+    )
+    db.add(test_alert)
+    await db.commit()
+
+    success = await _deliver_via_webhook(test_alert, config)
+    if success:
+        test_alert.status = "sent"
+        test_alert.sent_at = datetime.now(timezone.utc)
+        test_alert.delivery_method = "webhook"
+    else:
+        test_alert.status = "failed"
+    await db.commit()
+
+    return {"success": success, "alert_id": str(test_alert.id)}
+
+
+@router.get("/alerts")
+async def list_alerts(
+    user_id: str = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+):
+    """Return the user's alerts from the last 30 days."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.alert_models import Alert
+
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    rows = (
+        (
+            await db.execute(
+                select(Alert)
+                .where(
+                    Alert.user_id == user_id,
+                    Alert.created_at >= since,
+                )
+                .order_by(Alert.created_at.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return [
+        {
+            "id": str(a.id),
+            "type": a.type,
+            "payload": a.payload,
+            "status": a.status,
+            "delivery_method": a.delivery_method,
+            "created_at": a.created_at.isoformat(),
+            "sent_at": a.sent_at.isoformat() if a.sent_at else None,
+        }
+        for a in rows
+    ]

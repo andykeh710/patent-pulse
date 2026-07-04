@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
 import { SourceAttribution } from "@/components/ui/SourceAttribution";
+import { Score } from "@/components/ui/Score";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSupplierMap, useSupplierSummary, useSuppliers } from "@/hooks/useSuppliers";
 import { formatNumber, humanizeTag } from "@/lib/utils";
 import type { SupplierItem, SupplierListParams, SupplierMapCountry } from "@/lib/types";
@@ -32,13 +33,11 @@ export default function CompaniesPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Companies / Assignees</h1>
-        <FreshnessBanner show={["patents"]} className="mt-2" />
-        <p className="text-[var(--text-secondary)] mt-1">
-          Portfolio strength, opportunity exposure, geographic coverage, and risk from patent assignee data
-        </p>
-      </div>
+      <PageHeader
+        title="Companies / Assignees"
+        description="Portfolio strength, opportunity exposure, geographic coverage, and risk from patent assignee data."
+        freshnessSources={["patents"]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SummaryCard label="Total Companies" value={summary?.total_suppliers} isLoading={summaryLoading} />
@@ -54,21 +53,9 @@ export default function CompaniesPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">Data Coverage</h2>
           <p className="text-xs text-[var(--text-muted)] mb-4">Uses normalized assignee metadata when available, with patent assignee aggregation as fallback.</p>
           <div className="space-y-4">
-            <CoverageBar label="Country Coverage" value={summary?.suppliers_with_country || 0} total={summary?.total_suppliers || 0} />
-            <CoverageBar label="Entity Type Coverage" value={summary?.suppliers_with_entity_type || 0} total={summary?.total_suppliers || 0} />
+            <CoverageBar label="Country Coverage" value={summary?.suppliers_with_country || 0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Country detection requires external data sources (not available from patent office feeds). Planned for a future data enrichment sprint." />
+            <CoverageBar label="Entity Type Coverage" value={0} total={summary?.total_suppliers || 0} isLoading={summaryLoading} enrichmentNote="Entity type enrichment requires authoritative external data (USPTO PatentsView). Previously inferred values are not shown as verified intelligence. See V3.5a roadmap." />
           </div>
-          {(summary?.entity_types?.length ?? 0) > 0 && (
-            <div className="mt-5">
-              <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Entity Mix</h3>
-              <div className="flex flex-wrap gap-2">
-                {summary?.entity_types.map((item, i) => (
-                  <Badge key={`entity-${item.entity_type}-${i}`} variant="default" size="sm">
-                    {humanizeTag(item.entity_type)} · {item.count}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -144,13 +131,13 @@ export default function CompaniesPage() {
 
 function SummaryCard({ label, value, isLoading, highlight, decimals }: { label: string; value?: number; isLoading: boolean; highlight?: boolean; decimals?: boolean }) {
   return (
-    <div className={`rounded-lg border p-4 ${highlight ? "bg-[var(--bg-elevated)] border-border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"}`}>
+    <div className={`rounded-lg border p-4 ${highlight ? "bg-[var(--bg-elevated)] border-[var(--accent)]/20" : "bg-[var(--bg-surface)] border-[var(--border-subtle)]"}`}>
       <p className="text-sm text-[var(--text-muted)]">{label}</p>
       {isLoading ? (
         <div className="h-8 w-20 bg-[var(--bg-surface)] animate-pulse rounded mt-1" />
       ) : (
         <p className={`text-2xl font-bold ${highlight ? "text-[var(--accent)]" : "text-[var(--text-primary)]"}`}>
-          {value !== undefined ? decimals ? value.toFixed(2) : formatNumber(value) : "—"}
+          {value !== undefined ? decimals ? Math.round(value).toString() : formatNumber(value) : "—"}
         </p>
       )}
     </div>
@@ -158,7 +145,14 @@ function SummaryCard({ label, value, isLoading, highlight, decimals }: { label: 
 }
 
 function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[]; isLoading: boolean }) {
-  const max = Math.max(...items.map((item) => item.patent_count), 1);
+  // Only entries with a real, known country count as geography. The map
+  // endpoint returns a single "Unknown" bucket while assignee-country
+  // enrichment is pending (currently 0% coverage); rendering it as a country
+  // bubble would present non-geography as if it were map-ready intelligence.
+  const knownItems = items.filter(
+    (item) => item.country && item.country.toLowerCase() !== "unknown",
+  );
+  const max = Math.max(...knownItems.map((item) => item.patent_count), 1);
 
   return (
     <div className="xl:col-span-2 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] p-4">
@@ -167,18 +161,19 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Company Geography</h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Country-level company distribution from patent assignee metadata.</p>
         </div>
-        <Badge variant="default" size="sm">Map-ready data</Badge>
+        {knownItems.length > 0 && <Badge variant="default" size="sm">Map-ready data</Badge>}
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full rounded-lg" />
-      ) : items.length === 0 ? (
-        <div className="h-64 rounded-lg bg-[var(--bg-base)] flex items-center justify-center text-sm text-[var(--text-muted)]">
-          No country metadata available yet
+      ) : knownItems.length === 0 ? (
+        <div className="h-64 rounded-lg bg-[var(--bg-base)] flex items-center justify-center text-center text-sm text-[var(--text-muted)] px-6">
+          Country-level geography isn&apos;t available yet — assignee country
+          enrichment is pending, so this distribution can&apos;t be shown.
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           <div className="h-64 rounded-lg bg-gradient-to-br from-bg-[var(--bg-elevated)] to-[var(--bg-surface)] border border-bg-[var(--accent-muted)] p-4 relative overflow-hidden">
-            {items.slice(0, 8).map((item, idx) => {
+            {knownItems.slice(0, 8).map((item, idx) => {
               const size = 36 + Math.round((item.patent_count / max) * 54);
               return (
                 <div
@@ -198,14 +193,14 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
             })}
           </div>
           <div className="space-y-3">
-            {items.slice(0, 6).map((item, i) => (
+            {knownItems.slice(0, 6).map((item, i) => (
               <div key={`country-bar-${item.country}-${i}`}>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium text-[var(--text-secondary)]">{item.country}</span>
                   <span className="text-[var(--text-muted)]">{formatNumber(item.patent_count)} patents</span>
                 </div>
                 <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-                  <div className="h-2 bg-bg-[var(--accent)]/70 rounded-full" style={{ width: `${Math.max((item.patent_count / max) * 100, 3)}%` }} />
+                  <div className="h-2 bg-[var(--accent)]/70 rounded-full" style={{ width: `${Math.max((item.patent_count / max) * 100, 3)}%` }} />
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
                   {item.supplier_count} companies · avg score {item.average_supplier_score}
@@ -219,7 +214,20 @@ function SupplierDistribution({ items, isLoading }: { items: SupplierMapCountry[
   );
 }
 
-function CoverageBar({ label, value, total }: { label: string; value: number; total: number }) {
+function CoverageBar({ label, value, total, isLoading, enrichmentNote }: { label: string; value: number; total: number; isLoading?: boolean; enrichmentNote?: string }) {
+  if (isLoading) {
+    return (
+      <div>
+        <div className="flex items-center justify-between text-sm mb-1">
+          <Skeleton className="h-4 w-28 rounded" />
+          <Skeleton className="h-4 w-8 rounded" />
+        </div>
+        <Skeleton className="h-2 w-full rounded-full" />
+        <Skeleton className="h-3 w-40 rounded mt-1" />
+      </div>
+    );
+  }
+
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div>
@@ -228,9 +236,14 @@ function CoverageBar({ label, value, total }: { label: string; value: number; to
         <span className="text-[var(--text-muted)]">{pct}%</span>
       </div>
       <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-        <div className="h-2 bg-bg-[var(--accent)]/70 rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-2 bg-[var(--accent)]/70 rounded-full" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-xs text-[var(--text-muted)] mt-1">{formatNumber(value)} of {formatNumber(total)} companies</p>
+      <p className="text-xs text-[var(--text-muted)] mt-1">
+        {formatNumber(value)} of {formatNumber(total)} companies
+      </p>
+      {enrichmentNote && value === 0 && total > 0 && (
+        <p className="text-xs text-[var(--text-muted)] mt-1 italic">{enrichmentNote}</p>
+      )}
     </div>
   );
 }
@@ -275,7 +288,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
   return (
     <div className="bg-[var(--bg-surface)] rounded-lg border border-[var(--border-subtle)] overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-[var(--border)]">
           <thead className="bg-[var(--bg-base)]">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Company</th>
@@ -287,7 +300,7 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
               <th className="px-4 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Expiry Risk</th>
             </tr>
           </thead>
-          <tbody className="bg-[var(--bg-surface)] divide-y divide-gray-200">
+          <tbody className="bg-[var(--bg-surface)] divide-y divide-[var(--border)]">
             {items.map((item) => (
               <tr key={item.name} className="hover:bg-[var(--bg-glass)]">
                 <td className="px-4 py-4">
@@ -303,13 +316,11 @@ function SupplierTable({ items, isLoading }: { items: SupplierItem[]; isLoading:
                   <div className="flex flex-wrap gap-1.5">
                     {item.country && <Badge variant="default" size="sm">{item.country}</Badge>}
                     {item.entity_type && <Badge variant="default" size="sm">{humanizeTag(item.entity_type)}</Badge>}
-                    {!item.country && !item.entity_type && <span className="text-xs text-[var(--text-muted)]">Metadata pending</span>}
+                    {!item.country && !item.entity_type && <span className="text-xs text-[var(--text-muted)]">Enrichment pending</span>}
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <span className={`text-sm font-semibold ${item.supplier_score >= 60 ? "text-[var(--score-high)]" : item.supplier_score >= 35 ? "text-[var(--score-medium)]" : "text-[var(--text-muted)]"}`}>
-                    {item.supplier_score}
-                  </span>
+                  <Score value={item.supplier_score} kind="composite" size="sm" />
                 </td>
                 <td className="px-4 py-4 text-right text-sm text-[var(--text-secondary)]">{formatNumber(item.patent_count)}</td>
                 <td className="px-4 py-4 text-right text-sm text-[var(--text-secondary)]">{formatNumber(item.active_patent_count)}</td>

@@ -1,4 +1,5 @@
 """Celery tasks for Trend Snapshot."""
+
 from __future__ import annotations
 
 import asyncio
@@ -17,21 +18,36 @@ from app.tasks.run_aggregates import recompute_run_aggregates
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, name="app.tasks.trend_snapshot.generate_trend_snapshot", max_retries=2, default_retry_delay=30)
+@celery_app.task(
+    bind=True,
+    name="app.tasks.trend_snapshot.generate_trend_snapshot",
+    max_retries=2,
+    default_retry_delay=30,
+)
 def generate_trend_snapshot_task(self, patent_id: str, run_id: str | None = None) -> dict[str, Any]:
     return asyncio.run(_gen_async(patent_id, run_id))
 
 
 async def _gen_async(patent_id: str, run_id: str | None) -> dict[str, Any]:
     async with async_session_maker() as session:
-        patent = (await session.execute(select(PatentPublication).where(PatentPublication.id == UUID(patent_id)))).scalar_one_or_none()
+        patent = (
+            await session.execute(
+                select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
+            )
+        ).scalar_one_or_none()
         if not patent:
             return {"status": "failed", "error": "patent not found"}
-        snapshot, artifact_id = await generate_trend_snapshot(session, patent, run_id=UUID(run_id) if run_id else None)
+        snapshot, artifact_id = await generate_trend_snapshot(
+            session, patent, run_id=UUID(run_id) if run_id else None
+        )
         await session.commit()
         if run_id:
             await recompute_run_aggregates(session, run_id)
-        return {"status": "success", "artifact_id": str(artifact_id), "trend_score": snapshot.get("trend_score")}
+        return {
+            "status": "success",
+            "artifact_id": str(artifact_id),
+            "trend_score": snapshot.get("trend_score"),
+        }
 
 
 @celery_app.task(bind=True, name="app.tasks.trend_snapshot.batch_trend_snapshot", max_retries=1)
@@ -42,7 +58,12 @@ def batch_trend_snapshot(self, limit: int = 200) -> dict[str, Any]:
 async def _batch_async(limit: int) -> dict[str, Any]:
     stats = {"processed": 0, "succeeded": 0, "failed": 0}
     async with async_session_maker() as session:
-        stmt = select(PatentPublication).where(PatentPublication.opportunity_score.isnot(None)).order_by(PatentPublication.opportunity_score.desc().nullslast()).limit(limit)
+        stmt = (
+            select(PatentPublication)
+            .where(PatentPublication.opportunity_score.isnot(None))
+            .order_by(PatentPublication.opportunity_score.desc().nullslast())
+            .limit(limit)
+        )
         patents = list((await session.execute(stmt)).scalars().all())
     for p in patents:
         try:

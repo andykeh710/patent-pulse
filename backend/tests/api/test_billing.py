@@ -1,4 +1,5 @@
 """Tests for billing API endpoints (Sprint 7). All Stripe calls mocked."""
+
 import json
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ SECRET = "test-secret-key-for-tests"
 def _patch_settings():
     """Ensure the global settings object has auth_secret_key for API tests."""
     from app.config import settings as global_settings
+
     global_settings.auth_secret_key = SECRET
     global_settings.resend_api_key = "re_test"
     global_settings.email_from_address = "test@example.com"
@@ -26,9 +28,15 @@ def _make_session_cookie(user_id="local-user"):
     from datetime import datetime, timedelta, timezone
 
     import jwt
+
     token = jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        SECRET, algorithm="HS256",
+        {
+            "sub": user_id,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=30),
+        },
+        SECRET,
+        algorithm="HS256",
     )
     return {"auth_session": token}
 
@@ -44,6 +52,7 @@ async def test_get_subscription_returns_free(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
@@ -114,16 +123,16 @@ async def test_webhook_checkout_subscription_creates_row(client, db_session):
     from app.core.ai_models import User
     from app.core.billing_models import BillingSubscription
 
-    sub = (await db_session.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
-    )).scalar_one_or_none()
+    sub = (
+        await db_session.execute(
+            select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
+        )
+    ).scalar_one_or_none()
     assert sub is not None
     assert sub.tier == "basic"
     assert sub.stripe_subscription_id == "sub_test456"
 
-    user = (await db_session.execute(
-        select(User).where(User.id == "local-user")
-    )).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     assert user.tier == "basic"
 
 
@@ -148,12 +157,18 @@ async def test_webhook_checkout_payment_creates_lifetime(client, db_session):
 
     with patch("app.api.v1.billing.verify_webhook_signature") as mock_verify:
         mock_verify.return_value = event
-        r = await client.post("/api/v1/billing/webhook", content=json.dumps(event).encode(), headers={"stripe-signature": "sig"})
+        r = await client.post(
+            "/api/v1/billing/webhook",
+            content=json.dumps(event).encode(),
+            headers={"stripe-signature": "sig"},
+        )
         assert r.status_code == 200
 
-    sub = (await db_session.execute(
-        select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
-    )).scalar_one_or_none()
+    sub = (
+        await db_session.execute(
+            select(BillingSubscription).where(BillingSubscription.user_id == "local-user")
+        )
+    ).scalar_one_or_none()
     assert sub.tier == "lifetime"
     assert sub.stripe_payment_intent_id == "pi_life789"
 
@@ -164,22 +179,28 @@ async def test_webhook_subscription_deleted_flips_to_free(client, db_session):
     from sqlalchemy import select
 
     from app.core.billing_models import BillingSubscription
-    sub = BillingSubscription(user_id="local-user", tier="enterprise", stripe_subscription_id="sub_del", status="active")
+
+    sub = BillingSubscription(
+        user_id="local-user", tier="enterprise", stripe_subscription_id="sub_del", status="active"
+    )
     db_session.add(sub)
     await db_session.commit()
 
     event = {
         "type": "customer.subscription.deleted",
-        "data": {
-            "object": {"id": "sub_del"}
-        },
+        "data": {"object": {"id": "sub_del"}},
     }
 
     with patch("app.api.v1.billing.verify_webhook_signature") as mock_verify:
         mock_verify.return_value = event
-        r = await client.post("/api/v1/billing/webhook", content=json.dumps(event).encode(), headers={"stripe-signature": "sig"})
+        r = await client.post(
+            "/api/v1/billing/webhook",
+            content=json.dumps(event).encode(),
+            headers={"stripe-signature": "sig"},
+        )
         assert r.status_code == 200
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     assert user.tier == "free"

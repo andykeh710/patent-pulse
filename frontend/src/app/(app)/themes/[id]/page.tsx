@@ -5,7 +5,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { themesApi } from "@/lib/api";
 import { SubscribePanel } from "@/components/topics/SubscribePanel";
-import type { Topic, PaginatedResponse, PatentListItem } from "@/lib/types";
+import type { Topic, PatentListItem } from "@/lib/types";
 
 export default function ThemeDetailPage() {
   const { id } = useParams<{ id: string }>();

@@ -1,0 +1,21 @@
+# Local development override — build the 'dev' Docker target so that
+# pytest and other dev tools are available inside the container.
+#
+# Usage (already the default for `docker compose up`):
+#   docker compose up -d
+#
+# Production deployments must not use this file:
+#   docker compose -f docker-compose.yml up -d
+
+services:
+  backend:
+    build:
+      target: dev
+
+  worker:
+    build:
+      target: dev
+
+  beat:
+    build:
+      target: dev

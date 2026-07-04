@@ -1,4 +1,5 @@
 """Tests for Sprint 2B expiry API endpoints."""
+
 from datetime import date, timedelta
 
 import pytest
@@ -10,6 +11,7 @@ from app.expiry.assessment import compute_expiry_assessment
 
 def _make_patent(**overrides) -> PatentPublication:
     from uuid import uuid4
+
     defaults = {
         "doc_id": f"USPTO:ETEST{uuid4().hex[:8]}",
         "office": "USPTO",
@@ -32,6 +34,7 @@ async def _create_assessment(db_session, patent, **overrides):
     """Create an ExpiryAssessment row for a patent."""
     payload = compute_expiry_assessment(patent)
     from app.expiry.assessment import compute_expiry_opportunity_score
+
     opp = compute_expiry_opportunity_score(patent, payload)
 
     assessment = ExpiryAssessment(
@@ -173,9 +176,7 @@ async def test_expiry_window_start_backward_looking(client, db_session):
     await _create_assessment(db_session, patent)
 
     start = (date.today() - timedelta(days=365)).isoformat()
-    resp = await client.get(
-        f"/api/v1/expiry?expiry_window_start={start}&days_ahead=1&page_size=50"
-    )
+    resp = await client.get(f"/api/v1/expiry?expiry_window_start={start}&days_ahead=1&page_size=50")
     assert resp.status_code == 200
     data = resp.json()
     found = any(i["doc_id"] == "USPTO:WINPAST" for i in data["items"])

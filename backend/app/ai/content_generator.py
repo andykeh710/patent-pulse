@@ -4,6 +4,7 @@ LinkedIn post generator.
 Produces a markdown LinkedIn post for a patent as an AIArtifact.
 Cache-first via :mod:`app.ai.llm_client`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,11 +43,15 @@ def build_payload(patent: PatentPublication) -> dict[str, Any]:
         "filing_date": str(patent.filing_date) if patent.filing_date else "(unknown)",
         "grant_date": str(patent.grant_date) if patent.grant_date else "(not granted)",
         "legal_status": patent.legal_status or "(unknown)",
-        "estimated_expiry": str(patent.estimated_expiry_date) if patent.estimated_expiry_date else "(not estimated)",
+        "estimated_expiry": str(patent.estimated_expiry_date)
+        if patent.estimated_expiry_date
+        else "(not estimated)",
         "abstract": patent.abstract or "(no abstract available)",
         "cpc_codes": ", ".join(patent.cpc or []) or "(none)",
         "ai_summary_what_it_is": summary_what or "(not yet summarized)",
-        "opportunity_score": str(round(patent.opportunity_score, 1)) if patent.opportunity_score is not None else "not scored",
+        "opportunity_score": str(round(patent.opportunity_score, 1))
+        if patent.opportunity_score is not None
+        else "not scored",
         "opportunity_tags_section": f"Opportunity tags: {opp_tag_str}",
     }
 
@@ -122,7 +127,7 @@ async def generate_linkedin_post(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:
-        raise SummarizationError(f"Claude API error during LinkedIn post generation: {e}") from e
+        raise SummarizationError(f"AI API error during content generation: {e}") from e
 
     if response.content_json is None:
         raise SummarizationError(

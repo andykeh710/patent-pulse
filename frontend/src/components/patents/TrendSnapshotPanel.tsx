@@ -23,7 +23,7 @@ interface TrendSnapshotPanelProps {
   onGenerate: () => Promise<void>;
 }
 
-export function TrendSnapshotPanel({ patent, artifact, isLoading, onGenerate }: TrendSnapshotPanelProps) {
+export function TrendSnapshotPanel({ artifact, isLoading, onGenerate }: TrendSnapshotPanelProps) {
   const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {

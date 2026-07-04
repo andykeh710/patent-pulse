@@ -81,7 +81,9 @@ async def semantic_search(
 
     results = []
     for row in rows:
-        patent = PatentPublication(**{k: v for k, v in row._mapping.items() if k not in ("similarity", "distance")})
+        patent = PatentPublication(
+            **{k: v for k, v in row._mapping.items() if k not in ("similarity", "distance")}
+        )
         results.append(
             SemanticSearchResult(
                 patent=PatentListItem.from_patent(patent),
@@ -159,7 +161,9 @@ async def find_similar_patents(
 
     results = []
     for row in rows:
-        patent = PatentPublication(**{k: v for k, v in row._mapping.items() if k not in ("similarity", "distance")})
+        patent = PatentPublication(
+            **{k: v for k, v in row._mapping.items() if k not in ("similarity", "distance")}
+        )
         results.append(
             SemanticSearchResult(
                 patent=PatentListItem.from_patent(patent),

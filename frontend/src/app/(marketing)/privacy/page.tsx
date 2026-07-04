@@ -22,7 +22,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 mt-2 space-y-1">
             <li><strong>Stripe</strong> — payment processing. Stripe collects your payment method and billing address. We never see your full card number.</li>
             <li><strong>Resend</strong> — transactional email delivery (magic links, weekly briefings).</li>
-            <li><strong>Anthropic</strong> (Claude) and <strong>DeepSeek</strong> — AI-powered patent analysis.</li>
+            <li><strong>DeepSeek</strong> — AI-powered patent analysis.</li>
             <li><strong>Google BigQuery</strong> — patent data retrieval from public datasets.</li>
             <li><strong>EPO OPS</strong> and <strong>USPTO</strong> — patent office data retrieval.</li>
           </ul>

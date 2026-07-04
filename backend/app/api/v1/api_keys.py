@@ -1,4 +1,5 @@
 """Sprint 7 — Enterprise API key management endpoints."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -37,9 +38,12 @@ async def create_api_key(
 ):
     # Enterprise tier gate (inlined to avoid double Depends(current_user))
     from app.core.ai_models import User as _U
+
     u = (await db.execute(select(_U).where(_U.id == user_id))).scalar_one_or_none()
     if not u or u.tier != "enterprise":
-        raise HTTPException(status_code=402, detail="API keys require Enterprise tier. Upgrade at /account/billing.")
+        raise HTTPException(
+            status_code=402, detail="API keys require Enterprise tier. Upgrade at /account/billing."
+        )
 
     raw_token, key_hash = generate_api_key()
     key_row = APIKey(
@@ -68,13 +72,15 @@ async def list_api_keys(
     user_id: str = Depends(current_user),
     db=Depends(get_db),
 ):
-    rows = (await db.execute(
-        select(APIKey).where(APIKey.user_id == user_id)
-    )).scalars().all()
+    rows = (await db.execute(select(APIKey).where(APIKey.user_id == user_id))).scalars().all()
     return [
         APIKeyResponse(
-            id=k.id, key_prefix=k.key_prefix, name=k.name,
-            last_used_at=k.last_used_at, revoked_at=k.revoked_at, created_at=k.created_at,
+            id=k.id,
+            key_prefix=k.key_prefix,
+            name=k.name,
+            last_used_at=k.last_used_at,
+            revoked_at=k.revoked_at,
+            created_at=k.created_at,
         )
         for k in rows
     ]
@@ -86,9 +92,7 @@ async def revoke_api_key(
     user_id: str = Depends(current_user),
     db=Depends(get_db),
 ):
-    key_row = (await db.execute(
-        select(APIKey).where(APIKey.id == api_key_id)
-    )).scalar_one_or_none()
+    key_row = (await db.execute(select(APIKey).where(APIKey.id == api_key_id))).scalar_one_or_none()
 
     if not key_row:
         raise HTTPException(status_code=404, detail="API key not found")

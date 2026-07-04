@@ -1,4 +1,5 @@
 """Integration tests for persona-aware briefing."""
+
 import pytest
 from httpx import AsyncClient
 
@@ -42,15 +43,11 @@ async def test_briefing_founder_vs_vc_ranking_differs(client: AsyncClient, db_se
     from app.core.ai_models import User
 
     # Set persona for local-user (Founder) and local-user-2 (VC)
-    user1 = (
-        await db_session.execute(select(User).where(User.id == "local-user"))
-    ).scalar_one()
+    user1 = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user1.persona = "Founder"
     user1.onboarded_at = __import__("datetime").datetime.utcnow()
 
-    user2 = (
-        await db_session.execute(select(User).where(User.id == "local-user-2"))
-    ).scalar_one()
+    user2 = (await db_session.execute(select(User).where(User.id == "local-user-2"))).scalar_one()
     user2.persona = "VC"
     user2.onboarded_at = __import__("datetime").datetime.utcnow()
     await db_session.commit()

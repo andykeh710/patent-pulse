@@ -92,9 +92,7 @@ async def generate_linkedin(
     """Generate a LinkedIn post for a patent. Cache-first via AI artifacts."""
     patent_id = UUID(body.patent_id)
 
-    result = await db.execute(
-        select(PatentPublication).where(PatentPublication.id == patent_id)
-    )
+    result = await db.execute(select(PatentPublication).where(PatentPublication.id == patent_id))
     patent = result.scalar_one_or_none()
     if not patent:
         raise HTTPException(status_code=404, detail="Patent not found")

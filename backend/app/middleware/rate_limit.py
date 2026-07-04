@@ -32,9 +32,7 @@ def _get_user_id_from_cookie(request: Request) -> str | None:
     if not cookie:
         return None
     try:
-        payload = _jwt.decode(
-            cookie, settings.auth_secret_key, algorithms=["HS256"]
-        )
+        payload = _jwt.decode(cookie, settings.auth_secret_key, algorithms=["HS256"])
         return payload.get("sub")
     except Exception:
         return None

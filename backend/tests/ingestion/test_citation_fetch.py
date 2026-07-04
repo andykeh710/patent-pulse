@@ -1,4 +1,5 @@
 """Tests for Sprint 6.5 citation fetch in USPTO client."""
+
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +9,7 @@ from app.ingestion.uspto_client import USPTOClient
 
 class MockPatent:
     """Minimal mock matching PatentBiblio attributes used by _patent_to_dict."""
+
     publication_number = "12345678"
     appl_id = "APP001"
     app_filing_date = None

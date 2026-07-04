@@ -6,11 +6,12 @@ Themes are tracked technology areas defined by CPC prefixes and keywords.
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, current_user
+from app.core.ai_models import User
 from app.core.models import PatentPublication
 from app.core.schemas import PaginatedResponse, PatentListItem
 from app.core.theme_models import Theme, ThemeMatch
@@ -78,9 +79,8 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
     themes = result.scalars().all()
 
     # Single GROUP BY query to avoid N+1
-    count_query = (
-        select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt"))
-        .group_by(ThemeMatch.theme_id)
+    count_query = select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt")).group_by(
+        ThemeMatch.theme_id
     )
     count_result = await db.execute(count_query)
     count_map = {row.theme_id: row.cnt for row in count_result}
@@ -111,8 +111,12 @@ async def list_themes(db: DbSession, include_inactive: bool = False) -> list[The
 
 
 @router.post("", response_model=ThemeResponse)
-async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
-    """Create a new theme."""
+async def create_theme(
+    db: DbSession,
+    theme_data: ThemeCreate,
+    user_id: str = Depends(current_user),
+) -> ThemeResponse:
+    """Create a new theme. User-scoped — the authenticated user's ID is used."""
     existing = await db.execute(select(Theme).where(Theme.name == theme_data.name))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Theme with this name already exists")
@@ -126,7 +130,7 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         keywords=theme_data.keywords,
         opportunity_tags=theme_data.opportunity_tags,
         min_opportunity_score=theme_data.min_opportunity_score,
-        user_id=theme_data.user_id or "anonymous",
+        user_id=user_id,  # use authenticated user's ID
     )
     db.add(theme)
     await db.commit()
@@ -147,6 +151,58 @@ async def create_theme(db: DbSession, theme_data: ThemeCreate) -> ThemeResponse:
         patent_count=0,
         created_at=theme.created_at.isoformat(),
     )
+
+
+# -- Sprint Boris: themes the user is subscribed to via onboarding --
+
+
+@router.get("/following", response_model=list[ThemeResponse])
+async def list_followed_themes(
+    db: DbSession,
+    user_id: str = Depends(current_user),
+) -> list[ThemeResponse]:
+    from app.core.subscription_models import TopicSubscription
+
+    sub_result = await db.execute(
+        select(TopicSubscription.theme_id).where(
+            TopicSubscription.user_id == user_id,
+        )
+    )
+    subscribed_ids = [row[0] for row in sub_result.fetchall()]
+    if not subscribed_ids:
+        return []
+
+    result = await db.execute(
+        select(Theme).where(Theme.id.in_(subscribed_ids)).order_by(Theme.name)
+    )
+    themes = result.scalars().all()
+
+    count_query = (
+        select(ThemeMatch.theme_id, func.count(ThemeMatch.id).label("cnt"))
+        .where(ThemeMatch.theme_id.in_(subscribed_ids))
+        .group_by(ThemeMatch.theme_id)
+    )
+    count_result = await db.execute(count_query)
+    count_map = {row.theme_id: row.cnt for row in count_result}
+
+    return [
+        ThemeResponse(
+            id=str(t.id),
+            name=t.name,
+            description=t.description,
+            cpc_prefixes=t.cpc_prefixes or [],
+            assignee_keywords=t.assignee_keywords or [],
+            title_keywords=t.title_keywords or [],
+            keywords=t.keywords,
+            opportunity_tags=t.opportunity_tags,
+            min_opportunity_score=t.min_opportunity_score,
+            user_id=t.user_id,
+            is_active=t.is_active,
+            patent_count=count_map.get(t.id, 0),
+            created_at=t.created_at.isoformat(),
+        )
+        for t in themes
+    ]
 
 
 @router.get("/{theme_id}", response_model=ThemeResponse)
@@ -182,14 +238,32 @@ async def get_theme(db: DbSession, theme_id: UUID) -> ThemeResponse:
 
 @router.patch("/{theme_id}", response_model=ThemeResponse)
 async def update_theme(
-    db: DbSession, theme_id: UUID, theme_data: ThemeUpdate
+    db: DbSession,
+    theme_id: UUID,
+    theme_data: ThemeUpdate,
+    user_id: str = Depends(current_user),
 ) -> ThemeResponse:
-    """Update a theme."""
+    """Update a theme.
+
+    Auth + ownership rules:
+      - custom (user) themes: only the owner may edit.
+      - system themes (user_id IS NULL): admin-only.
+    """
     result = await db.execute(select(Theme).where(Theme.id == theme_id))
     theme = result.scalar_one_or_none()
 
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
+
+    if theme.user_id is None:
+        # System theme — admin-only edit path.
+        user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if user is None or not user.is_admin:
+            raise HTTPException(
+                status_code=403, detail="System themes can only be edited by an admin"
+            )
+    elif theme.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You can only edit your own themes")
 
     update_data = theme_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -221,13 +295,19 @@ async def update_theme(
 
 
 @router.delete("/{theme_id}")
-async def delete_theme(db: DbSession, theme_id: UUID) -> dict:
-    """Delete a theme and its matches."""
+async def delete_theme(
+    db: DbSession,
+    theme_id: UUID,
+    user_id: str = Depends(current_user),
+) -> dict:
+    """Delete a theme and its matches. Only the owner can delete."""
     result = await db.execute(select(Theme).where(Theme.id == theme_id))
     theme = result.scalar_one_or_none()
 
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
+    if theme.user_id and theme.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own themes")
 
     await db.execute(delete(ThemeMatch).where(ThemeMatch.theme_id == theme_id))
     await db.delete(theme)
@@ -258,9 +338,7 @@ async def get_theme_patents(
         .where(ThemeMatch.match_score >= min_score)
     )
 
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar() or 0
 
     offset = (page - 1) * page_size

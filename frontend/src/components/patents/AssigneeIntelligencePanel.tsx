@@ -23,7 +23,7 @@ interface AssigneeIntelligencePanelProps {
   onGenerate: () => Promise<void>;
 }
 
-export function AssigneeIntelligencePanel({ patent, artifact, isLoading, onGenerate }: AssigneeIntelligencePanelProps) {
+export function AssigneeIntelligencePanel({ artifact, isLoading, onGenerate }: AssigneeIntelligencePanelProps) {
   const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {

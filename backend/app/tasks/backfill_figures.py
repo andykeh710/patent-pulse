@@ -1,128 +1,160 @@
-"""
-Figure URL backfill task (Sprint 4.5).
+"""Celery tasks for patent figure fetching."""
 
-Computes Google Patents thumbnails page URLs for patents that don't
-yet have a figure_page_url. Link-out only — no scraping, no image hosting.
-"""
 from __future__ import annotations
 
-import logging
-from typing import Any
+import asyncio
+from uuid import UUID
 
-from sqlalchemy import select, update
+from celery.utils.log import get_task_logger
+from sqlalchemy import select
 
-from app.core.models import PatentPublication
+from app.config import settings
 from app.database import async_session_maker
+from app.tasks.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = get_task_logger(__name__)
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.backfill_figures.backfill_figures",
+    max_retries=1,
+    default_retry_delay=300,
+)
+def backfill_figures(self, limit: int = 50, priority_order: str = "briefing") -> dict:
+    """Backfill figures for patents that need them.
+
+    Args:
+        limit: Max patents to process in this batch.
+        priority_order: 'briefing' (prioritize surfaced patents) or
+                        'recent' (newest first).
+
+    Returns:
+        Stats dict: total_processed, complete, partial, unavailable, errors.
+    """
+    logger.info("Starting figure backfill: limit=%d priority=%s", limit, priority_order)
+    stats = asyncio.run(_backfill_async(limit, priority_order))
+    logger.info("Figure backfill complete: %s", stats)
+    return stats
+
+
+async def _backfill_async(limit: int, priority_order: str) -> dict:
+    from app.core.models import PatentPublication
+    from app.ingestion.figure_fetcher import fetch_and_store_figures
+
+    stats = {
+        "total_processed": 0,
+        "complete": 0,
+        "partial": 0,
+        "unavailable": 0,
+        "errors": 0,
+        "per_source": {},
+    }
+
+    async with async_session_maker() as session:
+        # Build query: patents with figures_status='pending'
+        query = select(PatentPublication).where(PatentPublication.figures_status == "pending")
+
+        if priority_order == "briefing":
+            # Prioritize patents surfaced in briefings/expiry radar
+            query = query.where(PatentPublication.opportunity_score.isnot(None)).order_by(
+                PatentPublication.opportunity_score.desc().nulls_last()
+            )
+        else:
+            query = query.order_by(PatentPublication.publication_date.desc().nulls_last())
+
+        query = query.limit(limit)
+        result = await session.execute(query)
+        patents = result.scalars().all()
+
+        if not patents:
+            logger.info("No pending patents for figure backfill")
+            return stats
+
+        logger.info("Figure backfill: %d patents to process", len(patents))
+
+        for patent in patents:
+            try:
+                result_stats = await fetch_and_store_figures(session, patent)
+                stats["total_processed"] += 1
+                status = result_stats.get("status", "error")
+                if status == "complete":
+                    stats["complete"] += 1
+                elif status == "partial":
+                    stats["partial"] += 1
+                elif status == "unavailable":
+                    stats["unavailable"] += 1
+                else:
+                    stats["errors"] += 1
+
+                source = result_stats.get("source", "unknown")
+                stats["per_source"][source] = stats["per_source"].get(source, 0) + 1
+
+            except Exception:
+                logger.exception("Figure backfill failed for patent %s", patent.id)
+                stats["errors"] += 1
+
+        await session.commit()
+
+    return stats
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.backfill_figures.fetch_patent_figures",
+    max_retries=settings.figure_retry_max_attempts,
+    default_retry_delay=int(settings.figure_retry_backoff_base),
+)
+def fetch_patent_figures(self, patent_id: str) -> dict:
+    """Fetch and store figures for a single patent.
+
+    Intended for chaining after normalization in the ingestion pipeline.
+    Retries with exponential backoff on transient failures.
+
+    Args:
+        patent_id: UUID string of the patent.
+    """
+
+    async def _run():
+        from app.core.models import PatentPublication
+        from app.ingestion.figure_fetcher import fetch_and_store_figures
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(PatentPublication).where(PatentPublication.id == UUID(patent_id))
+            )
+            patent = result.scalar_one_or_none()
+            if patent is None:
+                return {"error": f"Patent {patent_id} not found"}
+
+            stats = await fetch_and_store_figures(session, patent)
+            await session.commit()
+            return stats
+
+    return asyncio.run(_run())
 
 
 def compute_figure_page_url(publication_number: str, office: str) -> str | None:
-    """Compute the Google Patents thumbnails page URL.
+    """Compute a Google Patents figure-page URL for link-out purposes.
 
-    Format: https://patents.google.com/patent/{office_prefix}{pub_number}/thumbnails
+    Args:
+        publication_number: e.g. '8930995' or 'US8930995'
+        office: 'USPTO', 'EPO', 'WIPO', etc.
 
-    Returns None for design patents ('D' prefix) — Google Patents uses
-    different routing for design patents that doesn't map cleanly to this
-    URL pattern. Frontend renders empty state cleanly when URL is null.
+    Returns:
+        Google Patents thumbnails URL, or None for design patents (D-prefix).
     """
-    # Design patents (e.g. D1127226) don't resolve with this URL pattern.
-    stripped = publication_number.strip()
-    if stripped.upper().startswith("D"):
+    clean = publication_number.strip().upper()
+    # Strip any existing prefix
+    for prefix in ("US", "EP", "WO", "JP", "CN", "KR", "DE", "FR", "GB"):
+        if clean.startswith(prefix) and not clean.startswith(f"{prefix}D"):
+            clean = clean[len(prefix) :]
+            break
+
+    office_prefix = {"USPTO": "US", "EPO": "EP", "WIPO": "WO"}.get(office, office[:2])
+
+    # Design patents: Google Patents URL format differs
+    if clean.startswith("D"):
         return None
 
-    # Office prefix: first 2 letters of the office code.
-    prefix = office[:2].upper() if office and len(office) >= 2 else "US"
-    # Strip any leading office/country prefixes from the publication number.
-    clean = stripped
-    for pfx in ("US", "EP", "WO", "JP", "CN", "KR", "GB", "DE", "FR", "CA", "AU"):
-        if clean.upper().startswith(pfx):
-            clean = clean[len(pfx):]
-            break
-    return f"https://patents.google.com/patent/{prefix}{clean}/thumbnails"
-
-
-async def backfill_figure_urls(
-    *,
-    limit: int | None = 5000,
-    offset: int = 0,
-) -> dict[str, Any]:
-    """Backfill figure_page_url for patents missing it.
-
-    Returns dict with keys: total_processed, updated, skipped.
-    Idempotent — only updates patents with NULL figure_page_url.
-    """
-    stats: dict[str, int] = {"total_processed": 0, "updated": 0, "skipped": 0}
-
-    async with async_session_maker() as session:
-        # Fetch IDs + publication_number + office for patents missing URL.
-        result = await session.execute(
-            select(
-                PatentPublication.id,
-                PatentPublication.publication_number,
-                PatentPublication.office,
-            )
-            .where(PatentPublication.figure_page_url.is_(None))
-            .where(PatentPublication.publication_number.isnot(None))
-            .order_by(PatentPublication.created_at.asc())
-            .offset(offset)
-            .limit(limit)
-        )
-        rows = result.all()
-
-        for row in rows:
-            patent_id, pub_number, office = row
-            url = compute_figure_page_url(pub_number, office)
-            await session.execute(
-                update(PatentPublication)
-                .where(PatentPublication.id == patent_id)
-                .values(figure_page_url=url)
-            )
-            stats["updated"] += 1
-
-        await session.commit()
-        stats["total_processed"] = len(rows)
-        logger.info(
-            "Figure URL backfill: processed=%d updated=%d",
-            len(rows),
-            stats["updated"],
-        )
-        return stats
-
-
-async def backfill_figure_urls_for_session(
-    session,
-    *,
-    limit: int | None = 5000,
-    offset: int = 0,
-) -> dict[str, Any]:
-    """Session-aware variant (testable)."""
-    stats: dict[str, int] = {"total_processed": 0, "updated": 0, "skipped": 0}
-
-    result = await session.execute(
-        select(
-            PatentPublication.id,
-            PatentPublication.publication_number,
-            PatentPublication.office,
-        )
-        .where(PatentPublication.figure_page_url.is_(None))
-        .where(PatentPublication.publication_number.isnot(None))
-        .order_by(PatentPublication.created_at.asc())
-        .offset(offset)
-        .limit(limit)
-    )
-    rows = result.all()
-
-    for row in rows:
-        patent_id, pub_number, office = row
-        url = compute_figure_page_url(pub_number, office)
-        await session.execute(
-            update(PatentPublication)
-            .where(PatentPublication.id == patent_id)
-            .values(figure_page_url=url)
-        )
-        stats["updated"] += 1
-
-    await session.commit()
-    stats["total_processed"] = len(rows)
-    return stats
+    return f"https://patents.google.com/patent/{office_prefix}{clean}/thumbnails"

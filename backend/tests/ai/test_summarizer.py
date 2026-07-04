@@ -1,4 +1,5 @@
 """Tests for app.ai.summarizer (module-level helpers + cached path)."""
+
 from typing import Any
 from uuid import uuid4
 
@@ -37,9 +38,7 @@ def valid_summary_response() -> dict[str, Any]:
         "how_it_works": "Works via test mechanism",
         "commercial_significance": "Test significance",
         "who_should_care": ["Engineers", "Product managers"],
-        "novel_applications": [
-            {"application": "Could be used for X", "label": "SPECULATIVE"}
-        ],
+        "novel_applications": [{"application": "Could be used for X", "label": "SPECULATIVE"}],
         "confidence_note": "High confidence",
         "source_spans": [{"quote": "step A; step B", "field": "claims"}],
     }
@@ -82,9 +81,7 @@ class TestValidateSummary:
             "how_it_works": "Test",
             "commercial_significance": "Test",
             "who_should_care": ["Test"],
-            "novel_applications": [
-                {"application": "Test app", "label": "CONFIRMED"}
-            ],
+            "novel_applications": [{"application": "Test app", "label": "CONFIRMED"}],
             "confidence_note": "Test",
             "source_spans": [],
         }

@@ -33,39 +33,33 @@ def _drop_fk_and_make_nullable(
     """Drop FK, make column nullable, re-add FK with ON DELETE SET NULL."""
     op.drop_constraint(fk_name, table, type_="foreignkey")
     op.alter_column(table, column, nullable=True)
-    op.create_foreign_key(
-        fk_name, table, ref_table, [column], [ref_column], ondelete="SET NULL"
-    )
+    op.create_foreign_key(fk_name, table, ref_table, [column], [ref_column], ondelete="SET NULL")
 
 
 def upgrade() -> None:
-    _drop_fk_and_make_nullable(
-        "email_deliveries", "user_id", "email_deliveries_user_id_fkey"
-    )
-    _drop_fk_and_make_nullable(
-        "ai_runs", "created_by", "ai_runs_created_by_fkey"
-    )
+    _drop_fk_and_make_nullable("email_deliveries", "user_id", "email_deliveries_user_id_fkey")
+    _drop_fk_and_make_nullable("ai_runs", "created_by", "ai_runs_created_by_fkey")
 
 
 def downgrade() -> None:
     # email_deliveries
-    op.drop_constraint(
-        "email_deliveries_user_id_fkey", "email_deliveries", type_="foreignkey"
-    )
+    op.drop_constraint("email_deliveries_user_id_fkey", "email_deliveries", type_="foreignkey")
     op.alter_column("email_deliveries", "user_id", nullable=False)
     op.create_foreign_key(
         "email_deliveries_user_id_fkey",
-        "email_deliveries", "users",
-        ["user_id"], ["id"],
+        "email_deliveries",
+        "users",
+        ["user_id"],
+        ["id"],
     )
 
     # ai_runs
-    op.drop_constraint(
-        "ai_runs_created_by_fkey", "ai_runs", type_="foreignkey"
-    )
+    op.drop_constraint("ai_runs_created_by_fkey", "ai_runs", type_="foreignkey")
     op.alter_column("ai_runs", "created_by", nullable=False)
     op.create_foreign_key(
         "ai_runs_created_by_fkey",
-        "ai_runs", "users",
-        ["created_by"], ["id"],
+        "ai_runs",
+        "users",
+        ["created_by"],
+        ["id"],
     )

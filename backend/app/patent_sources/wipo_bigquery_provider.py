@@ -85,9 +85,7 @@ class BigQueryWIPOProvider(BasePatentProvider):
 
         project = getattr(settings, "google_cloud_project", None)
         if not project:
-            logger.warning(
-                "BigQueryWIPOProvider: GOOGLE_CLOUD_PROJECT not set."
-            )
+            logger.warning("BigQueryWIPOProvider: GOOGLE_CLOUD_PROJECT not set.")
             self._ready = False
             return False
 
@@ -142,9 +140,7 @@ class BigQueryWIPOProvider(BasePatentProvider):
         self, publication_date: date, max_results: int = 100
     ) -> Iterator[dict[str, Any]]:
         """Base interface — delegates to date window for a single day."""
-        yield from self.search_by_date_window(
-            publication_date, publication_date, max_results
-        )
+        yield from self.search_by_date_window(publication_date, publication_date, max_results)
 
     def search_by_date_window(
         self,
@@ -207,20 +203,20 @@ class BigQueryWIPOProvider(BasePatentProvider):
             except Exception as e:
                 status = "failed"
                 error_msg = str(e)[:2000]
-                logger.warning(
-                    "BigQueryWIPO day %s failed: %s", current.isoformat(), e
-                )
+                logger.warning("BigQueryWIPO day %s failed: %s", current.isoformat(), e)
             finally:
                 _dur = int((_time.monotonic() - _start) * 1000)
                 try:
-                    asyncio.ensure_future(self._record_fetch(
-                        target_type="search_by_date",
-                        target_id=current.isoformat(),
-                        status=status,
-                        records_found=records_found,
-                        error_message=error_msg,
-                        duration_ms=_dur,
-                    ))
+                    asyncio.ensure_future(
+                        self._record_fetch(
+                            target_type="search_by_date",
+                            target_id=current.isoformat(),
+                            status=status,
+                            records_found=records_found,
+                            error_message=error_msg,
+                            duration_ms=_dur,
+                        )
+                    )
                 except RuntimeError:
                     pass
 
@@ -231,6 +227,7 @@ class BigQueryWIPOProvider(BasePatentProvider):
     async def _record_fetch(self, **kwargs):
         try:
             from app.ingestion.source_fetch import record_source_fetch_async
+
             await record_source_fetch_async(
                 provider=self.name,
                 office="WIPO",

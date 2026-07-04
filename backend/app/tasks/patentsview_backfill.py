@@ -7,6 +7,7 @@ with a free, rate-limited USPTO source.
 
 Schedule: 4x/day (00:00, 06:00, 12:00, 18:00 UTC).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -101,9 +102,7 @@ async def _backfill_patentsview_async(batch_size: int) -> dict:
         for chunk_start in range(0, len(pub_numbers), COMMIT_CHUNK):
             chunk_pubs = pub_numbers[chunk_start : chunk_start + COMMIT_CHUNK]
             chunk_ids = [
-                patents[pub_numbers.index(pn)][0]
-                for pn in chunk_pubs
-                if pn in pub_numbers
+                patents[pub_numbers.index(pn)][0] for pn in chunk_pubs if pn in pub_numbers
             ]
 
             # Bulk fetch for this chunk

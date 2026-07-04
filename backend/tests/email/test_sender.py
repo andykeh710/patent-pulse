@@ -1,4 +1,5 @@
 """Tests for Resend email sender with mode guards."""
+
 from unittest.mock import patch
 
 import pytest
@@ -20,14 +21,18 @@ def dev_settings():
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_dev_mode_rewrites_recipient(db_session, monkeypatch):
-    monkeypatch.setattr("app.email.sender.settings", Settings(
-        email_send_mode="dev",
-        email_dev_recipient="dev@example.com",
-        email_from_address="alerts@example.com",
-        resend_api_key="",
-        auth_secret_key="test-secret",
-    ))
+    monkeypatch.setattr(
+        "app.email.sender.settings",
+        Settings(
+            email_send_mode="dev",
+            email_dev_recipient="dev@example.com",
+            email_from_address="alerts@example.com",
+            resend_api_key="",
+            auth_secret_key="test-secret",
+        ),
+    )
     from app.email.sender import send_email
+
     r = await send_email(
         db_session=db_session,
         to="real@example.com",
@@ -39,23 +44,30 @@ async def test_dev_mode_rewrites_recipient(db_session, monkeypatch):
     )
     assert r["status"] == "dev"
     from sqlalchemy import select
-    delivery = (await db_session.execute(
-        select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
-    )).scalar_one()
+
+    delivery = (
+        await db_session.execute(
+            select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
+        )
+    ).scalar_one()
     assert delivery.status == "dev"
     assert delivery.email_type == "magic_link"
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_dry_run_writes_delivery_row(db_session, monkeypatch):
-    monkeypatch.setattr("app.email.sender.settings", Settings(
-        email_send_mode="dry_run",
-        email_dev_recipient="dev@example.com",
-        email_from_address="alerts@example.com",
-        resend_api_key="",
-        auth_secret_key="test-secret",
-    ))
+    monkeypatch.setattr(
+        "app.email.sender.settings",
+        Settings(
+            email_send_mode="dry_run",
+            email_dev_recipient="dev@example.com",
+            email_from_address="alerts@example.com",
+            resend_api_key="",
+            auth_secret_key="test-secret",
+        ),
+    )
     from app.email.sender import send_email
+
     r = await send_email(
         db_session=db_session,
         to="real@example.com",
@@ -67,23 +79,30 @@ async def test_dry_run_writes_delivery_row(db_session, monkeypatch):
     )
     assert r["status"] == "dry_run"
     from sqlalchemy import select
-    delivery = (await db_session.execute(
-        select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
-    )).scalar_one()
+
+    delivery = (
+        await db_session.execute(
+            select(EmailDelivery).order_by(EmailDelivery.sent_at.desc()).limit(1)
+        )
+    ).scalar_one()
     assert delivery.status == "dry_run"
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_production_without_acknowledgement_refused(db_session, monkeypatch):
-    monkeypatch.setattr("app.email.sender.settings", Settings(
-        email_send_mode="production",
-        email_dev_recipient="dev@example.com",
-        email_from_address="alerts@example.com",
-        resend_api_key="",
-        auth_secret_key="test-secret",
-    ))
+    monkeypatch.setattr(
+        "app.email.sender.settings",
+        Settings(
+            email_send_mode="production",
+            email_dev_recipient="dev@example.com",
+            email_from_address="alerts@example.com",
+            resend_api_key="",
+            auth_secret_key="test-secret",
+        ),
+    )
     monkeypatch.setenv("EMAIL_PRODUCTION_ACKNOWLEDGED", "false")
     from app.email.sender import send_email
+
     r = await send_email(
         db_session=db_session,
         to="real@example.com",
@@ -99,15 +118,19 @@ async def test_production_without_acknowledgement_refused(db_session, monkeypatc
 @pytest.mark.asyncio(loop_scope="function")
 async def test_production_with_acknowledgement_sends(db_session, monkeypatch):
     monkeypatch.setenv("EMAIL_PRODUCTION_ACKNOWLEDGED", "true")
-    monkeypatch.setattr("app.email.sender.settings", Settings(
-        email_send_mode="production",
-        email_dev_recipient="dev@example.com",
-        email_from_address="alerts@example.com",
-        resend_api_key="re_test123",
-        auth_secret_key="test-secret",
-    ))
+    monkeypatch.setattr(
+        "app.email.sender.settings",
+        Settings(
+            email_send_mode="production",
+            email_dev_recipient="dev@example.com",
+            email_from_address="alerts@example.com",
+            resend_api_key="re_test123",
+            auth_secret_key="test-secret",
+        ),
+    )
     with patch("resend.Emails.send", return_value={"id": "msg_123"}):
         from app.email.sender import send_email
+
         r = await send_email(
             db_session=db_session,
             to="real@example.com",

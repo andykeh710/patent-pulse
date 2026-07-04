@@ -65,9 +65,7 @@ class FamilyResolver:
     def _parse_family_response(self, response: dict) -> dict:
         """Parse EPO family API response."""
         try:
-            patent_family = response.get("ops:world-patent-data", {}).get(
-                "ops:patent-family", {}
-            )
+            patent_family = response.get("ops:world-patent-data", {}).get("ops:patent-family", {})
 
             family_id = patent_family.get("@family-id")
 
@@ -183,9 +181,7 @@ class FamilyResolver:
                     stats["failed"] += 1
 
             except Exception as e:
-                logger.warning(
-                    f"Failed to resolve family for {patent.publication_number}: {e}"
-                )
+                logger.warning(f"Failed to resolve family for {patent.publication_number}: {e}")
                 stats["failed"] += 1
 
             stats["processed"] += 1

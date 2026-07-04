@@ -9,6 +9,7 @@ reads.
 Output schema is enforced by the validator below. The prompt lives in
 ``backend/app/ai/prompts/why_now_v1.md`` (single source of truth).
 """
+
 from __future__ import annotations
 
 import json
@@ -83,9 +84,13 @@ def build_payload(patent: PatentPublication) -> dict[str, Any]:
         "cpc_codes": ", ".join(patent.cpc or []) or "(no classifications)",
         "legal_status": patent.legal_status or "(unknown)",
         "legal_status_confidence": patent.legal_status_confidence or "unknown",
-        "estimated_expiry": str(patent.estimated_expiry_date) if patent.estimated_expiry_date else "(not estimated)",
+        "estimated_expiry": str(patent.estimated_expiry_date)
+        if patent.estimated_expiry_date
+        else "(not estimated)",
         "family_members": ", ".join(patent.family_members or []) or "(none)",
-        "opportunity_score": str(patent.opportunity_score) if patent.opportunity_score is not None else "(not scored)",
+        "opportunity_score": str(patent.opportunity_score)
+        if patent.opportunity_score is not None
+        else "(not scored)",
         "opportunity_score_version": str(patent.opportunity_score_version or 1),
         "opportunity_breakdown": _format_opportunity_breakdown(breakdown),
         "tags": _format_tags(tags),
@@ -93,7 +98,8 @@ def build_payload(patent: PatentPublication) -> dict[str, Any]:
         "time_horizon": tags.get("time_horizon", "unknown"),
         "industries": ", ".join(tags.get("industries", [])) or "(none)",
         "technology_method": ", ".join(tags.get("technology_method", [])) or "(none)",
-        "novel_application_categories": ", ".join(tags.get("novel_application_categories", [])) or "(none)",
+        "novel_application_categories": ", ".join(tags.get("novel_application_categories", []))
+        or "(none)",
         "why_now_context": "",  # reserved for future trend signal injection
     }
 
@@ -155,10 +161,12 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
         st = (sig.get("type") or "other").strip().lower()
         if st not in ALLOWED_SIGNAL_TYPES:
             st = "other"
-        cleaned_signals.append({
-            "type": st,
-            "explanation": str(sig.get("explanation", "")).strip(),
-        })
+        cleaned_signals.append(
+            {
+                "type": st,
+                "explanation": str(sig.get("explanation", "")).strip(),
+            }
+        )
     data["signals"] = cleaned_signals[:4]  # cap at 4
 
     # confidence
@@ -211,11 +219,9 @@ async def generate_why_now(
     try:
         response = await client.complete(session, request)
     except anthropic.APIError as e:  # pragma: no cover - network path
-        raise SummarizationError(f"Claude API error during Why Now: {e}") from e
+        raise SummarizationError(f"AI API error during Why Now: {e}") from e
 
     if response.content_json is None:
-        raise SummarizationError(
-            f"Why Now artifact {response.artifact_id} did not parse as JSON."
-        )
+        raise SummarizationError(f"Why Now artifact {response.artifact_id} did not parse as JSON.")
     validated = validate_output(response.content_json)
     return validated, response.artifact_id

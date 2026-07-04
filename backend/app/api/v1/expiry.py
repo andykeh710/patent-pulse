@@ -1,4 +1,5 @@
 """Expiry API — Sprint 2B upgrade with ExpiryAssessment integration."""
+
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Query
@@ -16,8 +17,13 @@ router = APIRouter()
 
 # Allowed filter values (kept in sync with assessment engine).
 ALLOWED_EXPIRY_STATUSES = {
-    "active_estimated", "expiring_soon", "expired_estimated",
-    "lapsed_possible", "lapsed_confirmed", "expired_confirmed", "unknown",
+    "active_estimated",
+    "expiring_soon",
+    "expired_estimated",
+    "lapsed_possible",
+    "lapsed_confirmed",
+    "expired_confirmed",
+    "unknown",
 }
 ALLOWED_CONFIDENCE = {"low", "medium", "high", "confirmed"}
 
@@ -137,9 +143,7 @@ async def list_expiring_patents(
         )
 
     if time_horizon:
-        conditions.append(
-            PatentPublication.tags.op("->>")(("time_horizon")) == time_horizon
-        )
+        conditions.append(PatentPublication.tags.op("->>")(("time_horizon")) == time_horizon)
 
     # Sprint 2B: assessment-level filters.
     if expiry_status and expiry_status in ALLOWED_EXPIRY_STATUSES:
@@ -156,17 +160,13 @@ async def list_expiring_patents(
         else:
             conditions.append(PatentUsageSignals.patent_publication_id.is_(None))
     if min_expiry_opportunity_score is not None:
-        conditions.append(
-            ExpiryAssessment.expiry_opportunity_score >= min_expiry_opportunity_score
-        )
+        conditions.append(ExpiryAssessment.expiry_opportunity_score >= min_expiry_opportunity_score)
 
     base_query = base_query.where(and_(*conditions))
 
     # Count.
     count_subq = base_query.subquery()
-    count_result = await db.execute(
-        select(func.count()).select_from(count_subq)
-    )
+    count_result = await db.execute(select(func.count()).select_from(count_subq))
     total = count_result.scalar() or 0
 
     # Sort.
@@ -177,17 +177,20 @@ async def list_expiring_patents(
         ]
     elif sort_by == "expiry_date":
         order_clauses = [
-            PatentPublication.estimated_expiry_date.asc() if sort_order == "asc"
+            PatentPublication.estimated_expiry_date.asc()
+            if sort_order == "asc"
             else PatentPublication.estimated_expiry_date.desc()
         ]
     elif sort_by == "opportunity_score":
         order_clauses = [
-            PatentPublication.opportunity_score.desc() if sort_order == "desc"
+            PatentPublication.opportunity_score.desc()
+            if sort_order == "desc"
             else PatentPublication.opportunity_score.asc()
         ]
     elif sort_by == "expiry_opportunity_score":
         order_clauses = [
-            ExpiryAssessment.expiry_opportunity_score.desc() if sort_order == "desc"
+            ExpiryAssessment.expiry_opportunity_score.desc()
+            if sort_order == "desc"
             else ExpiryAssessment.expiry_opportunity_score.asc()
         ]
     elif sort_by == "confidence":
@@ -196,15 +199,15 @@ async def list_expiring_patents(
         order_clauses = [
             text(
                 "CASE expiry_assessments.expiry_status_confidence "
-                + " ".join(
-                    f"WHEN '{k}' THEN {v}" for k, v in conf_order.items()
-                )
-                + " ELSE 0 END " + ("DESC" if sort_order == "desc" else "ASC")
+                + " ".join(f"WHEN '{k}' THEN {v}" for k, v in conf_order.items())
+                + " ELSE 0 END "
+                + ("DESC" if sort_order == "desc" else "ASC")
             )
         ]
     elif sort_by == "recently_assessed":
         order_clauses = [
-            ExpiryAssessment.computed_at.desc() if sort_order == "desc"
+            ExpiryAssessment.computed_at.desc()
+            if sort_order == "desc"
             else ExpiryAssessment.computed_at.asc()
         ]
     else:
@@ -214,9 +217,7 @@ async def list_expiring_patents(
         ]
 
     offset = (page - 1) * page_size
-    result = await db.execute(
-        base_query.order_by(*order_clauses).offset(offset).limit(page_size)
-    )
+    result = await db.execute(base_query.order_by(*order_clauses).offset(offset).limit(page_size))
     rows = result.all()
 
     items = []

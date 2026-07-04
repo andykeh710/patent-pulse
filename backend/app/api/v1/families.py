@@ -68,9 +68,7 @@ async def get_family(db: DbSession, family_id: str) -> FamilyResponse:
     else:
         priority_pubs = [m for m in members if m.office in priority_offices]
         if priority_pubs:
-            primary = min(
-                priority_pubs, key=lambda x: x.publication_date or "9999-99-99"
-            )
+            primary = min(priority_pubs, key=lambda x: x.publication_date or "9999-99-99")
         else:
             primary = members[0]
 
@@ -156,9 +154,7 @@ async def list_families(
 
     if office:
         subquery = subquery.having(
-            func.array_agg(PatentPublication.office.distinct()).op("@>")(
-                func.array([office])
-            )
+            func.array_agg(PatentPublication.office.distinct()).op("@>")(func.array([office]))
         )
 
     subquery = subquery.order_by(func.count(PatentPublication.id).desc()).limit(limit)

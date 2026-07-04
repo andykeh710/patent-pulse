@@ -35,7 +35,9 @@ class USPTOClient:
                 try:
                     yield self._patent_to_dict(patent)
                 except Exception as e:
-                    logger.warning(f"Failed to process patent {getattr(patent, 'publication_number', '?')}: {e}")
+                    logger.warning(
+                        f"Failed to process patent {getattr(patent, 'publication_number', '?')}: {e}"
+                    )
                     continue
 
         except ConnectionError as e:
@@ -64,7 +66,9 @@ class USPTOClient:
                 try:
                     yield self._application_to_dict(app)
                 except Exception as e:
-                    logger.warning(f"Failed to process application {getattr(app, 'publication_number', '?')}: {e}")
+                    logger.warning(
+                        f"Failed to process application {getattr(app, 'publication_number', '?')}: {e}"
+                    )
                     continue
 
         except ConnectionError as e:
@@ -106,8 +110,12 @@ class USPTOClient:
             "abstract_text": None,
             "claims": None,
             "description": None,
-            "assignees": [{"assignee_name": n} for n in (getattr(patent, "assignee_names", None) or [])],
-            "inventors": [{"inventor_name": n} for n in (getattr(patent, "applicant_names", None) or [])],
+            "assignees": [
+                {"assignee_name": n} for n in (getattr(patent, "assignee_names", None) or [])
+            ],
+            "inventors": [
+                {"inventor_name": n} for n in (getattr(patent, "applicant_names", None) or [])
+            ],
             "cpc_codes": [{"code": c} for c in (getattr(patent, "cpc_additional", None) or [])],
             "ipc_codes": [{"code": c} for c in (getattr(patent, "ipc_code", None) or [])],
             # Sprint 6.5: populated when settings.uspto_fetch_citations=true.
@@ -131,7 +139,7 @@ class USPTOClient:
                     return []
                 # Ensure rate-limit: 1 call/sec.
                 if attempt > 0:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 return [
                     f"USPTO:{getattr(c, 'publication_number', '')}"
                     for c in fwd
@@ -141,22 +149,25 @@ class USPTOClient:
                 if e.code == 429 and attempt < max_retries:
                     backoff = 2 ** (attempt + 1)
                     logger.warning(
-                        "Rate-limited fetching citations (429). "
-                        "Retry %d/%d after %ds.",
-                        attempt + 1, max_retries, backoff,
+                        "Rate-limited fetching citations (429). Retry %d/%d after %ds.",
+                        attempt + 1,
+                        max_retries,
+                        backoff,
                     )
                     time.sleep(backoff)
                 else:
                     logger.error(
                         "Failed to fetch citations for %s (attempt %d): %s",
                         getattr(patent, "publication_number", "?"),
-                        attempt, e,
+                        attempt,
+                        e,
                     )
                     return []
             except Exception as e:
                 logger.error(
                     "Failed to fetch citations for %s: %s",
-                    getattr(patent, "publication_number", "?"), e,
+                    getattr(patent, "publication_number", "?"),
+                    e,
                 )
                 return []
 
@@ -175,8 +186,12 @@ class USPTOClient:
             "invention_title": getattr(app, "patent_title", None),
             "abstract_text": None,
             "claims": None,
-            "assignees": [{"assignee_name": n} for n in (getattr(app, "assignee_names", None) or [])],
-            "inventors": [{"inventor_name": n} for n in (getattr(app, "applicant_names", None) or [])],
+            "assignees": [
+                {"assignee_name": n} for n in (getattr(app, "assignee_names", None) or [])
+            ],
+            "inventors": [
+                {"inventor_name": n} for n in (getattr(app, "applicant_names", None) or [])
+            ],
             "cpc_codes": [{"code": c} for c in (getattr(app, "cpc_additional", None) or [])],
             "ipc_codes": [{"code": c} for c in (getattr(app, "ipc_code", None) or [])],
         }

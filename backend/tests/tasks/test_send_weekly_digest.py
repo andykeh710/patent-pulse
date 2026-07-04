@@ -1,4 +1,5 @@
 """Tests for weekly digest fan-out task."""
+
 from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -37,18 +38,25 @@ async def test_fan_out_generates_digest(db_session):
     for theme in [theme1, theme2]:
         for i in range(3):
             patent = PatentPublication(
-                doc_id=f"USPTO:{i}-{theme.name}", title=f"Patent {i}",
-                publication_number=f"US{i}0000", office="USPTO",
-                assignees=[f"Company{i}"], cpc=["G06N"],
-                filing_date=date(2024, 1, 1), publication_date=date(2025, 1, 1),
+                doc_id=f"USPTO:{i}-{theme.name}",
+                title=f"Patent {i}",
+                publication_number=f"US{i}0000",
+                office="USPTO",
+                assignees=[f"Company{i}"],
+                cpc=["G06N"],
+                filing_date=date(2024, 1, 1),
+                publication_date=date(2025, 1, 1),
             )
             db_session.add(patent)
             await db_session.commit()
             await db_session.refresh(patent)
 
             match = ThemeMatch(
-                theme_id=theme.id, patent_id=patent.id, match_score=0.9,
-                match_reasons=["test"], matched_at=datetime.utcnow(),
+                theme_id=theme.id,
+                patent_id=patent.id,
+                match_score=0.9,
+                match_reasons=["test"],
+                matched_at=datetime.utcnow(),
             )
             db_session.add(match)
     await db_session.commit()
@@ -57,11 +65,15 @@ async def test_fan_out_generates_digest(db_session):
     # Pre-create an AIArtifact row for the FK reference
     mock_artifact_id = uuid4()
     artifact = AIArtifact(
-        id=mock_artifact_id, artifact_type="weekly_digest",
+        id=mock_artifact_id,
+        artifact_type="weekly_digest",
         subject_key="weekly_digest:digest-user:test",
         content_json={"headline": "Mock", "highlights": [], "patterns": "", "caveats": []},
-        model="test", prompt_name="weekly_digest", prompt_version=1,
-        prompt_hash="aaaa", input_hash="bbbb",
+        model="test",
+        prompt_name="weekly_digest",
+        prompt_version=1,
+        prompt_hash="aaaa",
+        input_hash="bbbb",
     )
     db_session.add(artifact)
     await db_session.commit()
@@ -69,7 +81,9 @@ async def test_fan_out_generates_digest(db_session):
     mock_resp = AsyncMock()
     mock_resp.content_json = {
         "headline": "Weekly headline",
-        "highlights": [{"patent_doc_id": "USPTO:0-T1", "title": "P0", "why_it_matters": "Interesting"}],
+        "highlights": [
+            {"patent_doc_id": "USPTO:0-T1", "title": "P0", "why_it_matters": "Interesting"}
+        ],
         "patterns": "Patterns",
         "caveats": ["Evidence is patent-based only."],
     }
@@ -80,6 +94,7 @@ async def test_fan_out_generates_digest(db_session):
         mock_client.complete = AsyncMock(return_value=mock_resp)
 
         from app.tasks.send_weekly_digest import _fan_out_async
+
         stats = await _fan_out_async(session=db_session)
 
         assert stats.get("digests_generated", 0) >= 1
@@ -89,9 +104,11 @@ async def test_fan_out_generates_digest(db_session):
     assert sub1.last_delivered_at is not None
     assert sub2.last_delivered_at is not None
 
-    deliveries = (await db_session.execute(
-        select(EmailDelivery).where(EmailDelivery.user_id == user.id)
-    )).scalars().all()
+    deliveries = (
+        (await db_session.execute(select(EmailDelivery).where(EmailDelivery.user_id == user.id)))
+        .scalars()
+        .all()
+    )
     assert len(deliveries) >= 1
     assert deliveries[0].email_type == "weekly_briefing"
 
@@ -112,6 +129,7 @@ async def test_fan_out_skips_user_with_no_matches(db_session):
     await db_session.commit()
 
     from app.tasks.send_weekly_digest import _fan_out_async
+
     stats = await _fan_out_async(session=db_session)
     assert stats.get("digests_generated", 0) == 0
 
@@ -131,17 +149,25 @@ async def test_fan_out_cache_hit_no_new_artifact(db_session):
     db_session.add(sub)
 
     patent = PatentPublication(
-        doc_id="USPTO:cached", title="Cache Patent", publication_number="USC0000",
-        office="USPTO", assignees=["C"], cpc=["G06N"],
-        filing_date=date(2024, 1, 1), publication_date=date(2025, 1, 1),
+        doc_id="USPTO:cached",
+        title="Cache Patent",
+        publication_number="USC0000",
+        office="USPTO",
+        assignees=["C"],
+        cpc=["G06N"],
+        filing_date=date(2024, 1, 1),
+        publication_date=date(2025, 1, 1),
     )
     db_session.add(patent)
     await db_session.commit()
     await db_session.refresh(patent)
 
     match = ThemeMatch(
-        theme_id=theme.id, patent_id=patent.id, match_score=0.9,
-        match_reasons=["t"], matched_at=datetime.utcnow(),
+        theme_id=theme.id,
+        patent_id=patent.id,
+        match_score=0.9,
+        match_reasons=["t"],
+        matched_at=datetime.utcnow(),
     )
     db_session.add(match)
     await db_session.commit()
@@ -149,16 +175,24 @@ async def test_fan_out_cache_hit_no_new_artifact(db_session):
     week_start = (date.today() - timedelta(days=7)).isoformat()
 
     artifact = AIArtifact(
-        id=uuid4(), artifact_type="weekly_digest",
+        id=uuid4(),
+        artifact_type="weekly_digest",
         subject_key=f"weekly_digest:cache-digest:{week_start}",
         content_json={"headline": "Cached", "highlights": [], "patterns": "", "caveats": []},
-        model="test", prompt_name="weekly_digest", prompt_version=1,
-        prompt_hash="aaaa", input_hash="bbbb",
+        model="test",
+        prompt_name="weekly_digest",
+        prompt_version=1,
+        prompt_hash="aaaa",
+        input_hash="bbbb",
     )
     db_session.add(artifact)
     await db_session.commit()
 
-    cached = (await db_session.execute(
-        select(AIArtifact).where(AIArtifact.subject_key == f"weekly_digest:cache-digest:{week_start}")
-    )).scalar_one_or_none()
+    cached = (
+        await db_session.execute(
+            select(AIArtifact).where(
+                AIArtifact.subject_key == f"weekly_digest:cache-digest:{week_start}"
+            )
+        )
+    ).scalar_one_or_none()
     assert cached is not None

@@ -1,4 +1,5 @@
 """Tests for onboarding API."""
+
 import pytest
 from httpx import AsyncClient
 
@@ -51,9 +52,7 @@ async def test_onboarding_complete_updates_user(client: AsyncClient, db_session)
 
     from app.core.ai_models import User
 
-    user = (
-        await db_session.execute(select(User).where(User.id == "local-user"))
-    ).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     assert user.persona == "Founder"
     assert user.industry_focus == "AI/ML"
     assert user.interests_freetext == "LLM agents"
@@ -90,21 +89,21 @@ async def test_onboarding_confirm_creates_follows(client: AsyncClient, db_sessio
     from sqlalchemy import select
 
     follows = (
-        await db_session.execute(
-            select(UserCompanyFollow).where(
-                UserCompanyFollow.user_id == "local-user"
+        (
+            await db_session.execute(
+                select(UserCompanyFollow).where(UserCompanyFollow.user_id == "local-user")
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(follows) >= 1
     assert follows[0].company_normalized_name == "Boston Dynamics"
 
     # Verify onboarded_at was set
     from app.core.ai_models import User
 
-    user = (
-        await db_session.execute(select(User).where(User.id == "local-user"))
-    ).scalar_one()
+    user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     assert user.onboarded_at is not None
 
     # Verify status now shows onboarded
@@ -145,11 +144,13 @@ async def test_onboarding_confirm_creates_subscriptions(client: AsyncClient, db_
     from app.core.subscription_models import TopicSubscription
 
     subs = (
-        await db_session.execute(
-            select(TopicSubscription).where(
-                TopicSubscription.user_id == "local-user"
+        (
+            await db_session.execute(
+                select(TopicSubscription).where(TopicSubscription.user_id == "local-user")
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(subs) >= 1
     assert str(subs[0].theme_id) == theme_id

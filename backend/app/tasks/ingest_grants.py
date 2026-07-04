@@ -34,6 +34,7 @@ def _should_summarize_now(data: dict) -> bool:
     """
     return bool(data.get("abstract"))
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,7 +66,14 @@ def ingest_weekly_grants(self, target_date: str | None = None) -> dict:
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
-    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0, "skipped_expired": 0, "summarization_queued": 0}
+    stats = {
+        "processed": 0,
+        "created": 0,
+        "updated": 0,
+        "failed": 0,
+        "skipped_expired": 0,
+        "summarization_queued": 0,
+    }
     failed_ids = []
 
     for raw in client.fetch_grants_by_date(grant_date):
@@ -96,7 +104,9 @@ def ingest_weekly_grants(self, target_date: str | None = None) -> dict:
             failed_ids.append(patent_number)
             logger.error(f"Grant ingest failed for {patent_number}: {exc}")
 
-    stats["processed"] = stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
+    stats["processed"] = (
+        stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
+    )
 
     if failed_ids:
         logger.warning(f"Grant ingest completed with {len(failed_ids)} failures: {failed_ids[:10]}")
@@ -134,7 +144,14 @@ def ingest_grants_range(self, start_date: str, end_date: str) -> dict:
     normalizer = USPTONormalizer()
     scorer = PatentScorer()
 
-    stats = {"processed": 0, "created": 0, "updated": 0, "failed": 0, "skipped_expired": 0, "summarization_queued": 0}
+    stats = {
+        "processed": 0,
+        "created": 0,
+        "updated": 0,
+        "failed": 0,
+        "skipped_expired": 0,
+        "summarization_queued": 0,
+    }
 
     for raw in client.fetch_grants_range(start, end):
         try:
@@ -160,7 +177,9 @@ def ingest_grants_range(self, start_date: str, end_date: str) -> dict:
             stats["failed"] += 1
             logger.error(f"Grant ingest failed: {exc}")
 
-        stats["processed"] = stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
+        stats["processed"] = (
+            stats["created"] + stats["updated"] + stats["failed"] + stats["skipped_expired"]
+        )
         if stats["processed"] % 100 == 0:
             logger.info(
                 f"  Range progress: {stats['processed']} processed "

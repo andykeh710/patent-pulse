@@ -3,6 +3,7 @@ Test script: fetch a known EP publication via EPO OPS to diagnose ingestion.
 
 Usage: docker compose exec backend python scripts/test_epo_known_record.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -66,6 +67,7 @@ async def main():
 
             # 4. Test search by date
             from datetime import date, timedelta
+
             yesterday = date.today() - timedelta(days=1)
             print(f"\n--- Testing search by date: {yesterday} ---")
             with EPOClient() as client:
@@ -80,6 +82,7 @@ async def main():
 
             # 5. Test last Wednesday
             from app.ingestion.epo_client import get_last_wednesday
+
             lw = get_last_wednesday()
             print(f"\n--- Testing last Wednesday: {lw} ---")
             with EPOClient() as client:
@@ -95,6 +98,7 @@ async def main():
     except Exception as e:
         print(f"\nERROR: {e}")
         import traceback
+
         traceback.print_exc()
         await record_source_fetch_async(
             provider="epo_ops",

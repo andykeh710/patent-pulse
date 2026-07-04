@@ -49,6 +49,11 @@ class PatentPublication(Base):
 
     # Sprint 4.5: link-out to Google Patents thumbnails page (not inline image).
     figure_page_url: Mapped[str | None] = mapped_column(String(512))
+    # V3.8I: explicit image contract — first figure thumbnail endpoint
+    thumbnail_url: Mapped[str | None] = mapped_column(String(512))
+    figures_status: Mapped[str] = mapped_column(
+        String(16), default="pending", server_default="pending"
+    )
     abstract_source: Mapped[str | None] = mapped_column(String(32))
     claims_source: Mapped[str | None] = mapped_column(String(32))
 
@@ -66,16 +71,12 @@ class PatentPublication(Base):
     tags: Mapped[dict | None] = mapped_column(JSONB)
 
     interesting_score: Mapped[float | None] = mapped_column(Float)
-    interesting_score_version: Mapped[int] = mapped_column(
-        Integer, default=1, server_default="1"
-    )
+    interesting_score_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     score_breakdown: Mapped[dict | None] = mapped_column(JSON)
 
     # Phase 1: Opportunity score (pure-rules in Phase 1, LLM re-rank in Phase 4).
     opportunity_score: Mapped[float | None] = mapped_column(Float)
-    opportunity_score_version: Mapped[int] = mapped_column(
-        Integer, default=1, server_default="1"
-    )
+    opportunity_score_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     opportunity_breakdown: Mapped[dict | None] = mapped_column(JSON)
 
     # Phase 4: Why Now narrative. Mirror of latest AIArtifact(why_now).content_text.
@@ -172,11 +173,15 @@ class SourceFetch(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     records_found: Mapped[int | None] = mapped_column(Integer)
     raw_storage_key: Mapped[str | None] = mapped_column(String(512))
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     def __repr__(self) -> str:
         return f"<SourceFetch {self.provider}/{self.target_type} {self.status}>"
@@ -184,15 +189,20 @@ class SourceFetch(Base):
 
 # ── Round 9: User behavior + recommendations ─────────────────────
 
+
 class UserViewEvent(Base):
     __tablename__ = "user_view_events"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[str] = mapped_column(String(64), index=True)
-    patent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patent_publications.id", ondelete="CASCADE"))
+    patent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE")
+    )
     event_type: Mapped[str] = mapped_column(String(32))  # view, save, follow_assignee
     weight: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (Index("ix_user_view_events_user", "user_id", "created_at"),)
 
@@ -203,7 +213,9 @@ class UserEmbedding(Base):
     user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     embedding: Mapped[list[float]] = mapped_column(Vector(1536))
     event_count: Mapped[int] = mapped_column(Integer, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class NewsItem(Base):
@@ -216,7 +228,9 @@ class NewsItem(Base):
     snippet: Mapped[str | None] = mapped_column(Text)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (Index("ix_news_items_published", "published_at"),)
 
@@ -226,8 +240,64 @@ class NewsPatentLink(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     news_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("news_items.id", ondelete="CASCADE"))
-    patent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patent_publications.id", ondelete="CASCADE"))
+    patent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE")
+    )
     similarity: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (Index("ix_news_patent_links_news", "news_id"),)
+
+
+# ── V3.8I: Patent figures ───────────────────────────────────────
+
+
+class PatentFigure(Base):
+    __tablename__ = "patent_figures"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    patent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patent_publications.id", ondelete="CASCADE"), index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    full_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String(32))
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    figure_label: Mapped[str | None] = mapped_column(String(256))
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        Index("ix_patent_figures_patent_ordinal", "patent_id", "ordinal", unique=True),
+    )
+
+
+class IngestionRun(Base):
+    """ORM mirror of ingestion_runs table (created by migration 0036).
+
+    Exists so test conftest's Base.metadata.create_all() creates the table.
+    The production table is managed by Alembic.
+    """
+
+    __tablename__ = "ingestion_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    status: Mapped[str] = mapped_column(String(16), comment="started, success, failed")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    grants_processed: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_created: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_updated: Mapped[int] = mapped_column(Integer, server_default="0")
+    grants_failed: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_processed: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_created: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_updated: Mapped[int] = mapped_column(Integer, server_default="0")
+    apps_failed: Mapped[int] = mapped_column(Integer, server_default="0")
+    error_message: Mapped[str | None] = mapped_column(Text)

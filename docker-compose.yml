@@ -8,7 +8,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "patent", "-d", "patent_pulse"]
       interval: 5s
@@ -17,11 +17,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:-redis-dev-password}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis-dev-password}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,14 +40,22 @@ services:
       # Set GOOGLE_APPLICATION_CREDENTIALS_HOST in .env to the host path
       # of the JSON file (e.g. /Users/you/Downloads/patent-signals-XXX.json).
       - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
+      # V3.8I: patent figure storage (shared between backend + worker)
+      - figure_data:/data/figures
     ports:
       - "8080:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
-      REDIS_URL: redis://redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
+      ANTHROPIC_API_KEY: ${DEEPSEEK_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      LLM_PROVIDER: deepseek
+      AI_PROVIDER: deepseek
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.deepseek.com/anthropic}
+      CLAUDE_MODEL: deepseek-v4-pro
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
@@ -56,13 +64,16 @@ services:
       EMAIL_PRODUCTION_ACKNOWLEDGED: ${EMAIL_PRODUCTION_ACKNOWLEDGED:-}
       MAGIC_LINK_BASE_URL: ${MAGIC_LINK_BASE_URL:-http://localhost:3000}
       USPTO_API_KEY: ${USPTO_API_KEY}
+      USPTO_ODP_API_KEY: ${USPTO_API_KEY}
+      USPTO_ODP_BASE_URL: ${USPTO_ODP_BASE_URL:-https://developer.uspto.gov/ibd-api/v1}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      # CLAUDE_MODEL deprecated — using deepseek-v4-pro
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
       INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
       EPO_OPS_CLIENT_ID: ${EPO_OPS_CLIENT_ID:-}
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
@@ -76,19 +87,36 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app worker --loglevel=info -Q ingestion,summarization,maintenance
+    command: celery -A app.tasks.celery_app worker --loglevel=info -Q celery,ingestion,summarization,maintenance
+    # Worker runs Celery, not an HTTP server — the image's default
+    # HEALTHCHECK (curl :8000/health) always fails here and reported a false
+    # "unhealthy". Probe the worker via Celery's own ping instead.
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping -d celery@$${HOSTNAME} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     dns:
       - 8.8.8.8
       - 1.1.1.1
     volumes:
       - ./backend:/app
       - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-/dev/null}:/run/secrets/gcp-sa.json:ro
+      # V3.8I: patent figure storage (shared between backend + worker)
+      - figure_data:/data/figures
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
-      REDIS_URL: redis://redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
+      ANTHROPIC_API_KEY: ${DEEPSEEK_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      LLM_PROVIDER: deepseek
+      AI_PROVIDER: deepseek
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.deepseek.com/anthropic}
+      CLAUDE_MODEL: deepseek-v4-pro
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS}
@@ -97,9 +125,11 @@ services:
       EMAIL_PRODUCTION_ACKNOWLEDGED: ${EMAIL_PRODUCTION_ACKNOWLEDGED:-}
       MAGIC_LINK_BASE_URL: ${MAGIC_LINK_BASE_URL:-http://localhost:3000}
       USPTO_API_KEY: ${USPTO_API_KEY}
+      USPTO_ODP_API_KEY: ${USPTO_API_KEY}
+      USPTO_ODP_BASE_URL: ${USPTO_ODP_BASE_URL:-https://developer.uspto.gov/ibd-api/v1}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      # CLAUDE_MODEL deprecated — using deepseek-v4-pro
       SUMMARIZATION_BATCH_SIZE: ${SUMMARIZATION_BATCH_SIZE:-10}
       MAX_SUMMARY_RETRIES: ${MAX_SUMMARY_RETRIES:-3}
       INGEST_LOOKBACK_DAYS: ${INGEST_LOOKBACK_DAYS:-7}
@@ -108,6 +138,7 @@ services:
       EPO_OPS_CLIENT_SECRET: ${EPO_OPS_CLIENT_SECRET:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
     depends_on:
       db:
         condition: service_healthy
@@ -119,14 +150,20 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.tasks.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    # Beat is a scheduler with no HTTP server and no inspectable worker state,
+    # so the image's default curl-based HEALTHCHECK reported a false
+    # "unhealthy". Disable it rather than emit a misleading status.
+    healthcheck:
+      disable: true
     volumes:
       - ./backend:/app
     environment:
       DATABASE_URL: postgresql+asyncpg://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
       DATABASE_URL_SYNC: postgresql+psycopg2://patent:${POSTGRES_PASSWORD:-secret}@db:5432/patent_pulse
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
       ENVIRONMENT: ${ENVIRONMENT:-development}
       CELERY_WORKER: "true"
+      PATENT_CLIENT_BASE_DIR: /tmp/patent_client
     depends_on:
       db:
         condition: service_healthy
@@ -150,3 +187,4 @@ services:
 
 volumes:
   pgdata:
+  figure_data:

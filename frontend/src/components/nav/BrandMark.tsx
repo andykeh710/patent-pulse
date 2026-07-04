@@ -1,5 +1,3 @@
-import { BRAND } from "@/lib/brand";
-
 export function BrandMark() {
   return (
     <span className="inline-flex items-baseline gap-1 select-none">

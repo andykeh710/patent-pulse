@@ -1,4 +1,5 @@
 """Tests for Sprint 5 similarity evidence collector."""
+
 from datetime import date
 from uuid import uuid4
 

@@ -12,7 +12,6 @@ class TestIngestWeeklyGrants:
         mock_upsert: MagicMock,
         mock_client_class: MagicMock,
     ) -> None:
-
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.fetch_grants_by_date.return_value = [
@@ -45,7 +44,6 @@ class TestIngestWeeklyGrants:
 
     @patch("app.tasks.ingest_grants.USPTOClient")
     def test_ingest_handles_empty_results(self, mock_client_class: MagicMock) -> None:
-
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.fetch_grants_by_date.return_value = []

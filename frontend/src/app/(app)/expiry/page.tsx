@@ -5,13 +5,13 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
 import { useCliffs } from "@/hooks/useTrends";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { FreshnessBanner } from "@/components/ui/FreshnessBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FilterChips } from "@/components/ui/FilterChips";
 import { ExpirySummaryCards } from "@/components/expiry/ExpirySummaryCards";
 import { ExpiryRadarSection } from "@/components/expiry/ExpiryRadarSection";
+import { useWatchlist, addToWatchlist, removeFromWatchlist } from "@/hooks/useWatchlist";
 import type { ExpiryRadarCardProps } from "@/components/expiry/ExpiryRadarCard";
 import { expiryApi } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 import type {
   ExpiryItem,
   ExpiryParams,
@@ -130,7 +130,6 @@ function ExpiryContent() {
   );
 
   // ── 7 sections ──
-  const today = new Date().toISOString().split("T")[0];
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
   const fiveYearsAgo = new Date(Date.now() - 5 * 365 * 86400000).toISOString().split("T")[0];
 
@@ -138,6 +137,7 @@ function ExpiryContent() {
     ...params,
     expiry_status: "expiring_soon",
     expiry_window_start: undefined,
+    min_expiry_opportunity_score: undefined,  // never apply score filter to primary view
   };
 
   const recentlyExpiredParams: ExpiryParams = {
@@ -202,36 +202,89 @@ function ExpiryContent() {
   const { data: cliffs12 } = useCliffs(12, 5, 6);
   const { data: cliffs24 } = useCliffs(24, 5, 6);
 
+  // Watchlist for save/unsave on expiry cards
+  const { data: watchlist, mutate: mutateWatchlist } = useWatchlist();
+  const savedIds = new Set(watchlist?.map((item) => item.patent.id) || []);
+  const handleToggleSave = async (patentId: string) => {
+    try {
+      const item = watchlist?.find((w) => w.patent.id === patentId);
+      if (item) {
+        await removeFromWatchlist(item.id, patentId);
+      } else {
+        await addToWatchlist(patentId);
+      }
+      mutateWatchlist();
+    } catch {
+      // Silent — save failures are non-blocking
+    }
+  };
+
+  // FilterChips
+  const chips: { key: string; label: string; onRemove: () => void }[] = [];
+  if (params.expiry_status) {
+    chips.push({ key: "status", label: `Status: ${params.expiry_status}`, onRemove: () => setParams((p) => ({ ...p, expiry_status: undefined })) });
+  }
+  if (params.confidence) {
+    chips.push({ key: "conf", label: `Confidence: ${params.confidence}`, onRemove: () => setParams((p) => ({ ...p, confidence: undefined })) });
+  }
+  if (params.active_family_risk) {
+    chips.push({ key: "family", label: "Family risk only", onRemove: () => setParams((p) => ({ ...p, active_family_risk: undefined })) });
+  }
+  if (params.min_expiry_opportunity_score) {
+    chips.push({ key: "score", label: `Score ≥ ${params.min_expiry_opportunity_score}`, onRemove: () => setParams((p) => ({ ...p, min_expiry_opportunity_score: undefined })) });
+  }
+
   // ── render ──────────────────────────────────────────────────────────
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Expiry Radar</h1>
-          <FreshnessBanner show={["patents"]} className="mt-2" />
-          <p className="text-[var(--text-secondary)] mt-1">
-            Track patents approaching or past expiration — with confidence
-            labels and active family risk awareness.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Expiry Radar"
+        description="Track patents approaching or past expiration — with confidence labels and active family risk awareness."
+        freshnessSources={["patents"]}
+      />
 
       {/* Summary cards */}
       <ExpirySummaryCards data={summaryData ?? null} isLoading={summaryLoading} />
 
       {/* Legal caveat banner */}
-      <div className="mb-6 p-4 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
-        <p className="text-sm text-[var(--score-medium)]">
-          <strong>Important:</strong> All expiry indicators are heuristic estimates
-          derived from filing metadata. Verify with the issuing patent office
-          (USPTO, EPO, WIPO, etc.) before any commercial decision. We do not
-          provide legal advice.
+      <div className="mb-4 p-3 bg-[var(--score-medium-bg)] border border-[var(--score-medium)]/30 rounded-lg">
+        <p className="text-xs text-[var(--score-medium)]">
+          <strong>Important:</strong> Expiry dates are estimates based on available patent data.
+          Maintenance events, term adjustments, continuations, jurisdiction rules, and legal
+          status changes may affect actual enforceability. Verify with official registers.
         </p>
       </div>
 
+      {/* Horizon tabs */}
+      <div className="flex flex-wrap items-center gap-1 mb-4">
+        {[
+          { label: "Expired", days: 0 },
+          { label: "0–6 mo", days: 180 },
+          { label: "6–12 mo", days: 365 },
+          { label: "12–24 mo", days: 730 },
+          { label: "24–36 mo", days: 1095 },
+          { label: "All", days: 7300 },
+        ].map((h) => {
+          const active = (params.days_ahead ?? 1825) === h.days;
+          return (
+            <button
+              key={h.days}
+              onClick={() => setParams((p) => ({ ...p, days_ahead: h.days }))}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                active
+                  ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                  : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]"
+              }`}
+            >
+              {h.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* FilterBar */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <select
           value={params.days_ahead ?? 1825}
           onChange={(e) =>
@@ -312,6 +365,13 @@ function ExpiryContent() {
         </select>
       </div>
 
+      {/* Active filter chips */}
+      {chips.length > 0 && (
+        <div className="mb-4 mt-2">
+          <FilterChips chips={chips} onClearAll={() => setParams((p) => ({ ...p, expiry_status: undefined, confidence: undefined, active_family_risk: undefined, min_expiry_opportunity_score: undefined }))} />
+        </div>
+      )}
+
       {/* CSV Export */}
       <div className="flex justify-end mb-4">
         <CSVExportButton params={params} />
@@ -326,6 +386,8 @@ function ExpiryContent() {
           isLoading={expSoon.isLoading}
           emptyMessage="No patents currently flagged as expiring within your filter window."
           emptyDetail="Expiry estimates are based on filing date + standard term. Actual expiry may differ due to maintenance fees, patent term adjustments, or terminal disclaimers. Verify with official registers before any commercial decision."
+          savedIds={savedIds}
+          onToggleSave={handleToggleSave}
         />
 
         {/* 2. Recently Expired */}
@@ -336,6 +398,8 @@ function ExpiryContent() {
           isLoading={recentExp.isLoading}
           emptyMessage="No patents with estimated expiry in the last 90 days."
           emptyDetail="Estimated expiry does not account for maintenance fees, family status, or jurisdictional variations. All expiry statuses are heuristic estimates — verify with the issuing patent office before relying on this data."
+          savedIds={savedIds}
+          onToggleSave={handleToggleSave}
         />
 
         {/* 3. Likely Lapsed */}
@@ -354,7 +418,7 @@ function ExpiryContent() {
           description="Recently expired patents with high opportunity scores — may be worth investigating."
           items={(revival.data?.items || []).map(expiryItemToCardProps)}
           isLoading={revival.isLoading}
-          emptyMessage="No high-opportunity revival candidates in this window."
+          emptyMessage="No high-opportunity revival candidates in this window (score ≥ 50)."
           emptyDetail="A revival candidate is an estimated-expired patent with an above-threshold opportunity score. This is not a legal determination — active family members may still be enforceable in other jurisdictions."
         />
 
@@ -579,7 +643,7 @@ function CliffCard({ cliff }: { cliff: CliffClusterItem }) {
       : `${cliff.window_months / 12}yr`;
 
   return (
-    <div className="block rounded-lg border border-border-[var(--accent)]/20 bg-[var(--bg-elevated)] p-4">
+    <div className="block rounded-lg border border-[var(--accent)]/20 bg-[var(--bg-elevated)] p-4">
       <div className="flex items-start justify-between">
         <div>
           <span className="font-mono text-sm font-bold text-[var(--accent)]">

@@ -7,6 +7,7 @@ Create Date: 2026-05-23
 Adds figure_page_url column to patent_publications — stores a LINK-OUT
 URL to Google Patents thumbnails page. Not an inline image URL.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

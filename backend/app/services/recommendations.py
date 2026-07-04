@@ -4,6 +4,7 @@ Recommendation engine — embedding-based personalized patent recommendations.
 Computes user embeddings from view/save/follow history, then finds
 similar unviewed patents via pgvector cosine similarity.
 """
+
 from __future__ import annotations
 
 import logging
@@ -48,17 +49,23 @@ async def _recommend(session: AsyncSession, user_id: str, limit: int) -> list[di
     # Check user embedding
     from app.core.models import UserEmbedding
 
-    ue = (await session.execute(
-        select(UserEmbedding).where(UserEmbedding.user_id == user_id)
-    )).scalar_one_or_none()
+    ue = (
+        await session.execute(select(UserEmbedding).where(UserEmbedding.user_id == user_id))
+    ).scalar_one_or_none()
 
     if not ue or ue.event_count < MIN_EVENTS:
         return []
 
     # Find unviewed patents
-    viewed = (await session.execute(
-        select(UserViewEvent.patent_id).where(UserViewEvent.user_id == user_id)
-    )).scalars().all()
+    viewed = (
+        (
+            await session.execute(
+                select(UserViewEvent.patent_id).where(UserViewEvent.user_id == user_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     viewed_ids = set(viewed)
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=90)
@@ -86,12 +93,14 @@ async def _recommend(session: AsyncSession, user_id: str, limit: int) -> list[di
         if pid in viewed_ids:
             continue
         assignee = (row[3] or ["Unknown"])[0] if row[3] else "Unknown"
-        results.append({
-            "patent_id": str(pid),
-            "title": row[1] or row[4] or "Untitled",
-            "assignee": assignee,
-            "similarity": round(float(row[5]), 3),
-        })
+        results.append(
+            {
+                "patent_id": str(pid),
+                "title": row[1] or row[4] or "Untitled",
+                "assignee": assignee,
+                "similarity": round(float(row[5]), 3),
+            }
+        )
         if len(results) >= limit:
             break
 
@@ -121,21 +130,31 @@ async def _compute(session: AsyncSession, user_id: str) -> bool:
     from app.core.models import UserEmbedding
 
     # Get user's weighted events
-    events = (await session.execute(
-        select(UserViewEvent).where(UserViewEvent.user_id == user_id)
-        .order_by(UserViewEvent.created_at.desc()).limit(200)
-    )).scalars().all()
+    events = (
+        (
+            await session.execute(
+                select(UserViewEvent)
+                .where(UserViewEvent.user_id == user_id)
+                .order_by(UserViewEvent.created_at.desc())
+                .limit(200)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     if len(events) < MIN_EVENTS:
         return False
 
     # Get embeddings for viewed patents
     patent_ids = list({e.patent_id for e in events})
-    patents = (await session.execute(
-        select(PatentPublication.id, PatentPublication.embedding)
-        .where(PatentPublication.id.in_(patent_ids))
-        .where(PatentPublication.embedding.isnot(None))
-    )).all()
+    patents = (
+        await session.execute(
+            select(PatentPublication.id, PatentPublication.embedding)
+            .where(PatentPublication.id.in_(patent_ids))
+            .where(PatentPublication.embedding.isnot(None))
+        )
+    ).all()
 
     patent_embeddings = {p[0]: p[1] for p in patents}
 
@@ -162,20 +181,22 @@ async def _compute(session: AsyncSession, user_id: str) -> bool:
         centroid = [v / norm for v in centroid]
 
     # Upsert
-    ue = (await session.execute(
-        select(UserEmbedding).where(UserEmbedding.user_id == user_id)
-    )).scalar_one_or_none()
+    ue = (
+        await session.execute(select(UserEmbedding).where(UserEmbedding.user_id == user_id))
+    ).scalar_one_or_none()
 
     if ue:
         ue.embedding = centroid
         ue.event_count = len(events)
         ue.updated_at = datetime.now(timezone.utc)
     else:
-        session.add(UserEmbedding(
-            user_id=user_id,
-            embedding=centroid,
-            event_count=len(events),
-        ))
+        session.add(
+            UserEmbedding(
+                user_id=user_id,
+                embedding=centroid,
+                event_count=len(events),
+            )
+        )
 
     await session.commit()
     logger.info("User embedding updated: %s (%d events)", user_id, len(events))
@@ -192,10 +213,12 @@ async def track_view(
     from uuid import UUID
 
     async with async_session_maker() as session:
-        session.add(UserViewEvent(
-            user_id=user_id,
-            patent_id=UUID(patent_id),
-            event_type=event_type,
-            weight=weight,
-        ))
+        session.add(
+            UserViewEvent(
+                user_id=user_id,
+                patent_id=UUID(patent_id),
+                event_type=event_type,
+                weight=weight,
+            )
+        )
         await session.commit()

@@ -1,25 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useFreshness } from "@/hooks/useFreshness";
 
-function formatRelative(isoString: string | null): string {
-  if (!isoString) return "Unknown";
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 30) {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  if (diffDays > 0) return `${diffDays}d ago`;
-  if (diffHours > 0) return `${diffHours}h ago`;
-  return "Just now";
-}
+/**
+ * FreshnessBanner — Tier-3 hard-banner only.
+ *
+ * Only renders for TRUE full-source failures (all sources down).
+ * Dismissible and remembered per session (doesn't reappear until reload).
+ *
+ * Normal staleness, source lag, and amber warnings are handled by the
+ * always-on FreshnessChip in the PageHeader. This is the nuclear option.
+ */
 
 interface FreshnessBannerProps {
-  /** Which indicators to show. Defaults to all. */
+  /** Which indicators to monitor. Defaults to all. */
   show?: ("patents" | "summaries" | "trends" | "ai_runs")[];
   className?: string;
 }
@@ -29,51 +24,73 @@ export function FreshnessBanner({
   className = "",
 }: FreshnessBannerProps) {
   const { data, error } = useFreshness();
+  const [dismissed, setDismissed] = useState(false);
 
-  if (error || !data) return null;
+  if (error || !data || dismissed) return null;
 
-  const items: { label: string; value: string }[] = [];
+  // Only render for full-source failure — not partial, not stale, not success-no-data
+  const isTotalFailure =
+    data.last_ingestion_status === "failed" || data.last_ingestion_status === "degraded";
+  if (!isTotalFailure) return null;
 
-  if (show.includes("patents") && data.latest_patent_created_at) {
-    items.push({
-      label: "Patents updated",
-      value: formatRelative(data.latest_patent_created_at),
-    });
-  }
-
-  if (show.includes("summaries") && data.total_summarized > 0) {
-    items.push({
-      label: "Summaries",
-      value: `${data.total_summarized.toLocaleString()} / ${data.total_patents.toLocaleString()}`,
-    });
-  }
-
-  if (show.includes("trends") && data.latest_trend_snapshot_at) {
-    items.push({
-      label: "Trends computed",
-      value: formatRelative(data.latest_trend_snapshot_at),
-    });
-  }
-
-  if (show.includes("ai_runs") && data.latest_ai_run_at) {
-    items.push({
-      label: "Last AI run",
-      value: formatRelative(data.latest_ai_run_at),
-    });
-  }
-
-  if (items.length === 0) return null;
+  // Only show if the relevant sources are affected
+  const monitorsPatents = show.includes("patents");
+  if (!monitorsPatents) return null;
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] ${className}`}
-    >
-      {items.map((item, i) => (
-        <span key={i}>
-          <span className="text-[var(--text-secondary)]">{item.label}:</span>{" "}
-          {item.value}
-        </span>
-      ))}
+    <div className={className}>
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-4 py-3 text-xs"
+      >
+        <svg
+          className="w-4 h-4 mt-0.5 shrink-0"
+          style={{ color: "var(--danger)" }}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+
+        <div className="flex-1 min-w-0" style={{ color: "var(--danger)" }}>
+          <p className="font-semibold">
+            Patent data sources are currently unavailable.
+          </p>
+          <p className="mt-0.5 opacity-80">
+            {data.last_ingestion_error ||
+              "USPTO data APIs are unreachable."}{" "}
+            Patent data and intelligence may be out of date. Verify against
+            official patent registers before relying on this data.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 p-1 rounded hover:bg-[var(--danger)]/20 transition-colors"
+          style={{ color: "var(--danger)" }}
+          aria-label="Dismiss"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

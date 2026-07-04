@@ -9,9 +9,15 @@ def _make_cookie(user_id="local-user"):
     import jwt
 
     from app.config import settings
+
     return jwt.encode(
-        {"sub": user_id, "iat": datetime.now(timezone.utc), "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        settings.auth_secret_key, algorithm="HS256",
+        {
+            "sub": user_id,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=30),
+        },
+        settings.auth_secret_key,
+        algorithm="HS256",
     )
 
 
@@ -24,6 +30,7 @@ async def test_free_user_post_gets_402(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "free"
     await db_session.commit()
@@ -37,6 +44,7 @@ async def test_enterprise_user_creates_key(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "enterprise"
     await db_session.commit()
@@ -53,6 +61,7 @@ async def test_list_does_not_expose_raw_token(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "enterprise"
     await db_session.commit()
@@ -70,6 +79,7 @@ async def test_ownership_isolation(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "enterprise"
     await db_session.commit()
@@ -88,6 +98,7 @@ async def test_delete_own_key_returns_204(client, db_session):
     from sqlalchemy import select
 
     from app.core.ai_models import User
+
     user = (await db_session.execute(select(User).where(User.id == "local-user"))).scalar_one()
     user.tier = "enterprise"
     await db_session.commit()

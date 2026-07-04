@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.tasks.ingest_epo",
         "app.tasks.ingest_wipo",
         "app.tasks.ingest_wipo_bigquery",
+        "app.tasks.ingest_daily",
         "app.tasks.summarize",
         "app.tasks.embeddings",
         "app.tasks.enrich_abstracts",
@@ -40,6 +41,8 @@ celery_app = Celery(
         "app.tasks.patentsview_backfill",
         "app.tasks.bigquery_backfill",
         "app.tasks.news_ingestion",
+        "app.tasks.alerts",
+        "app.tasks.backfill_figures",
     ],
 )
 
@@ -55,6 +58,10 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.ingest_grants.*": {"queue": "ingestion"},
         "app.tasks.ingest_applications.*": {"queue": "ingestion"},
+        "app.tasks.ingest_daily.*": {"queue": "ingestion"},
+        "app.tasks.ingest_uspto_bulk.*": {"queue": "ingestion"},
+        "app.tasks.ingest_odp_bulk.*": {"queue": "ingestion"},
+        "app.tasks.ingest_bigquery.*": {"queue": "ingestion"},
         "app.tasks.summarize.*": {"queue": "summarization"},
         "app.tasks.enrich_abstracts.*": {"queue": "ingestion"},
         "app.tasks.expiry_watch.*": {"queue": "maintenance"},
@@ -77,6 +84,7 @@ celery_app.conf.update(
         "app.tasks.backup.*": {"queue": "maintenance"},
         "app.tasks.patentsview_backfill.*": {"queue": "maintenance"},
         "app.tasks.bigquery_backfill.*": {"queue": "maintenance"},
+        "app.tasks.backfill_figures.*": {"queue": "maintenance"},
         "app.tasks.news_ingestion.*": {"queue": "maintenance"},
     },
     task_default_retry_delay=60,
@@ -84,7 +92,13 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
-    # USPTO - Tuesday grants, Thursday applications
+    # USPTO - daily incremental catch-up (safe, idempotent upsert)
+    "ingest-daily": {
+        "task": "app.tasks.ingest_daily.run_daily_ingestion",
+        "schedule": crontab(hour=2, minute=0),
+        "options": {"queue": "ingestion"},
+    },
+    # USPTO - Tuesday grants, Thursday applications (full-week fidelity)
     "ingest-weekly-grants": {
         "task": "app.tasks.ingest_grants.ingest_weekly_grants",
         "schedule": crontab(hour=10, minute=0, day_of_week=2),
@@ -274,32 +288,32 @@ celery_app.conf.beat_schedule = {
     },
     # PatentsView abstract/claims backfill — 4x/day
     "patentsview-backfill-midnight": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=0, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-morning": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=6, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-noon": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=12, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     "patentsview-backfill-evening": {
-        "task": "app.tasks.patentsview_backfill.backfill_patentsview",
+        "task": "app.tasks.enrich_abstracts.backfill_patentsview",
         "schedule": crontab(hour=18, minute=0),
         "kwargs": {"batch_size": 200},
         "options": {"queue": "maintenance"},
     },
     # BigQuery high-priority abstract backfill — daily 04:30 UTC
     "bigquery-high-priority-backfill": {
-        "task": "app.tasks.bigquery_backfill.backfill_high_priority_bigquery",
+        "task": "app.tasks.enrich_abstracts.backfill_high_priority_bigquery",
         "schedule": crontab(hour=4, minute=30),
         "kwargs": {"limit": 500},
         "options": {"queue": "maintenance"},
@@ -326,6 +340,24 @@ celery_app.conf.beat_schedule = {
     "backfill-assignees-daily": {
         "task": "app.tasks.backfill_assignees.backfill_assignees_task",
         "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # V3.8I: figure backfill — daily at 05:30 UTC
+    "figures-backfill-daily": {
+        "task": "app.tasks.backfill_figures.backfill_figures",
+        "schedule": crontab(hour=5, minute=30),
+        "kwargs": {"limit": 50, "priority_order": "briefing"},
+        "options": {"queue": "maintenance"},
+    },
+    # Phase 5: Alert detection + delivery (hourly)
+    "scan-for-alerts-hourly": {
+        "task": "app.tasks.alerts.scan_for_alerts",
+        "schedule": crontab(minute=5),  # hourly at :05
+        "options": {"queue": "maintenance"},
+    },
+    "deliver-alerts-hourly": {
+        "task": "app.tasks.alerts.deliver_pending_alerts",
+        "schedule": crontab(minute=10),  # hourly at :10
         "options": {"queue": "maintenance"},
     },
 }

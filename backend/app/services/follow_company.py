@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ai_models import UserCompanyFollow
 
 _SUFFIX_RE = re.compile(
-    r'[ ,.]+(inc|corp|ltd|llc|gmbh|sa|ag|co)\.?$',
+    r"[ ,.]+(inc|corp|ltd|llc|gmbh|sa|ag|co)\.?$",
     re.IGNORECASE,
 )
 
@@ -44,7 +44,5 @@ async def remove_follow(db: AsyncSession, user_id: str, normalized_name: str) ->
 
 async def list_follows(db: AsyncSession, user_id: str) -> list[UserCompanyFollow]:
     """List all companies a user follows."""
-    result = await db.execute(
-        select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id)
-    )
+    result = await db.execute(select(UserCompanyFollow).where(UserCompanyFollow.user_id == user_id))
     return list(result.scalars().all())

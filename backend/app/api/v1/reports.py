@@ -1,4 +1,5 @@
 """Sprint 7 — PDF report endpoint."""
+
 from __future__ import annotations
 
 from datetime import date as date_type
@@ -39,17 +40,21 @@ async def get_patent_report(
 
     pdf_bytes = await generate_patent_report(db, patent_id)
 
-    db.add(Export(
-        user_id=user_id,
-        export_type="pdf",
-        scope="patent_report",
-        payload_size_bytes=len(pdf_bytes),
-    ))
+    db.add(
+        Export(
+            user_id=user_id,
+            export_type="pdf",
+            scope="patent_report",
+            payload_size_bytes=len(pdf_bytes),
+        )
+    )
     await db.commit()
 
     today = date_type.today().isoformat()
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=patent-report-{patent_id}-{today}.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename=patent-report-{patent_id}-{today}.pdf"
+        },
     )

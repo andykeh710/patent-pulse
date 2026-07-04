@@ -34,7 +34,7 @@ def _parse_events(text: str) -> list[dict]:
     for line in text.split("\n"):
         stripped = line.strip()
         if stripped.startswith("data: "):
-            events.append(json.loads(stripped[len("data: "):]))
+            events.append(json.loads(stripped[len("data: ") :]))
     return events
 
 
@@ -131,11 +131,15 @@ MOCK_CONVERSATION_ID = "00000000-0000-0000-0000-000000000001"
 
 MOCK_CONVERSATION_HISTORY = [
     {"role": "user", "content": "What patents does Toyota have?"},
-    {"role": "assistant", "content": "Toyota has several patents including [USPTO:US20240123456A1]."},
+    {
+        "role": "assistant",
+        "content": "Toyota has several patents including [USPTO:US20240123456A1].",
+    },
 ]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
+
 
 async def _mock_retrieve_patents(*a, **kw):
     """Async mock returning MOCK_PATENTS."""
@@ -243,7 +247,7 @@ async def test_chat_stream_yields_sse_data_lines(client: AsyncClient, monkeypatc
 
     for line in lines:
         assert line.startswith("data: ")
-        payload = json.loads(line[len("data: "):])
+        payload = json.loads(line[len("data: ") :])
         assert "type" in payload
 
 
@@ -532,21 +536,13 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
 
     events = _parse_events(r.text)
 
-    tcs_idx = next(
-        i for i, e in enumerate(events) if e["type"] == "tool_call_start"
-    )
-    tokens_before = [
-        e for e in events[:tcs_idx] if e["type"] == "token"
-    ]
+    tcs_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_start")
+    tokens_before = [e for e in events[:tcs_idx] if e["type"] == "token"]
     assert len(tokens_before) >= 1
     assert any("search" in t["content"].lower() for t in tokens_before)
 
-    tcr_idx = next(
-        i for i, e in enumerate(events) if e["type"] == "tool_call_result"
-    )
-    tokens_after = [
-        e for e in events[tcr_idx:] if e["type"] == "token"
-    ]
+    tcr_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_result")
+    tokens_after = [e for e in events[tcr_idx:] if e["type"] == "token"]
     assert len(tokens_after) >= 1
     assert any("found" in t["content"].lower() for t in tokens_after)
 
@@ -677,14 +673,13 @@ async def test_chat_stream_emits_citations_event(client: AsyncClient, monkeypatc
     cit_idx = event_types.index("citations")
     sources_idx = event_types.index("sources")
     done_idx = event_types.index("done")
-    assert cit_idx < sources_idx < done_idx, (
-        "citations must appear before sources before done"
-    )
+    assert cit_idx < sources_idx < done_idx, "citations must appear before sources before done"
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_all_verified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When all citations match known doc_ids, verified list is populated."""
     _setup_default_mocks(monkeypatch)
@@ -711,7 +706,8 @@ async def test_chat_stream_citations_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_warning_on_unverified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When unverified citations exist, warning event fires with code."""
     _setup_default_mocks(monkeypatch)
@@ -734,15 +730,14 @@ async def test_chat_stream_citations_warning_on_unverified(
     assert "USPTO:US99999999" in cit["unverified"]
 
     warnings = [e for e in events if e["type"] == "warning"]
-    cite_warnings = [
-        w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"
-    ]
+    cite_warnings = [w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"]
     assert len(cite_warnings) == 1
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_no_citation_warning_when_all_verified(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When all citations are verified, no citation warning fires."""
     _setup_default_mocks(monkeypatch)
@@ -764,7 +759,8 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
     assert cit["unverified"] == []
 
     cite_warnings = [
-        w for w in events
+        w
+        for w in events
         if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
     ]
     assert cite_warnings == []
@@ -775,7 +771,8 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_new_conversation_emits_conversation_id(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When conversation_id is None, meta event includes a generated UUID."""
     _setup_default_mocks(monkeypatch)
@@ -798,7 +795,8 @@ async def test_chat_stream_new_conversation_emits_conversation_id(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_continuing_conversation_loads_history(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When conversation_id is provided, prior messages are loaded and
     passed to the Anthropic client."""
@@ -848,7 +846,8 @@ async def test_chat_stream_continuing_conversation_loads_history(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_persists_messages_after_streaming(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """After the stream completes, user + assistant messages are persisted."""
     store = _make_memory_mock()
@@ -887,7 +886,8 @@ async def test_chat_stream_persists_messages_after_streaming(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_redis_failure_degrades_gracefully(
-    client: AsyncClient, monkeypatch,
+    client: AsyncClient,
+    monkeypatch,
 ):
     """When Redis fails, the stream still works — memory just degrades."""
     store = _make_memory_mock()

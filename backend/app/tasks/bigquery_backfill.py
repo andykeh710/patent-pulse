@@ -6,6 +6,7 @@ for patents that are high-priority but missing abstracts. Runs daily at 04:30 UT
 
 Hard budget: maximum_bytes_billed=50GB per call.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -147,6 +148,7 @@ async def _bigquery_backfill_async(limit: int) -> dict:
 
             # Queue summarization
             from app.tasks.summarize import summarize_patent
+
             summarize_patent.delay(str(patent_id), force=True)
 
         await session.commit()

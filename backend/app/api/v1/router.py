@@ -7,6 +7,7 @@ from app.api.v1 import (
     api_keys,
     auth,
     billing,
+    blog,
     chat,
     content,
     expiry,
@@ -15,9 +16,13 @@ from app.api.v1 import (
     onboarding,
     opportunity,
     patents,
+    preferences,
     reports,
+    retention,
+    saved_searches,
     search,
     semantic_search,
+    share,
     subscriptions,
     suppliers,
     themes,
@@ -47,6 +52,7 @@ v1_router.include_router(content.router, prefix="/content", tags=["content"])
 v1_router.include_router(usage_signals.router, prefix="/usage-signals", tags=["usage-signals"])
 v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 v1_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
+v1_router.include_router(preferences.router, tags=["preferences"])
 v1_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 v1_router.include_router(exports.router, prefix="/exports", tags=["exports"])
 v1_router.include_router(reports.router, prefix="/patents", tags=["reports"])
@@ -55,3 +61,7 @@ v1_router.include_router(account.router, prefix="/account", tags=["account"])
 v1_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
 v1_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 v1_router.include_router(webhooks.webhook_router, tags=["webhooks"])
+v1_router.include_router(share.router, tags=["share"])
+v1_router.include_router(blog.router, prefix="/blog", tags=["blog"])
+v1_router.include_router(retention.router, tags=["retention"])
+v1_router.include_router(saved_searches.router, tags=["saved-searches"])

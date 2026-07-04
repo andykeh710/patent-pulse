@@ -1,181 +1,276 @@
 "use client";
 
-import { Card } from "@/components/ui/Card";
-import { StatTile } from "@/components/ui/StatTile";
-import { BriefingItem } from "@/components/ui/BriefingItem";
-import { Pill } from "@/components/ui/Pill";
-import { Button } from "@/components/ui/Button";
-import { LiveIndicator } from "@/components/ui/LiveIndicator";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EvidenceRail } from "@/components/ui/EvidenceRail";
+import { ConfidenceMark } from "@/components/ui/ConfidenceMark";
+import type { ConfidenceLevel } from "@/components/ui/ConfidenceMark";
+import { Score } from "@/components/ui/Score";
+import type { ScoreKind, ScoreTier } from "@/components/ui/Score";
+import { ProvenanceLine } from "@/components/ui/ProvenanceLine";
+import { FreshnessChip } from "@/components/ui/FreshnessChip";
+import type { FreshnessSource } from "@/components/ui/FreshnessChip";
+import { DisclosureWarning } from "@/components/ui/DisclosureWarning";
 
-export default function ComponentShowcase() {
+export default function PrimitivesShowcase() {
+  const confidenceLevels: ConfidenceLevel[] = [
+    "confirmed",
+    "high",
+    "medium",
+    "estimated",
+    "low",
+  ];
+
+  const freshnessSources: FreshnessSource[] = [
+    {
+      label: "Patent Ingestion",
+      status: "up",
+      lastRun: "2h ago",
+      newRecords: 142,
+    },
+    {
+      label: "AI Summaries",
+      status: "up",
+      detail: "48,231 / 64,231 summarized",
+    },
+    {
+      label: "Trends",
+      status: "up",
+      lastRun: "6h ago",
+    },
+    {
+      label: "Source Lag",
+      status: "stale",
+      detail:
+        "Latest patent publication: Jun 14 (8d ago). USPTO publishes Tue/Thu.",
+    },
+  ];
+
+  const degradedSources: FreshnessSource[] = [
+    {
+      label: "Patent Ingestion",
+      status: "down",
+      lastRun: "3d ago",
+      detail: "USPTO data APIs are unreachable",
+    },
+    {
+      label: "AI Summaries",
+      status: "stale",
+      detail: "48,231 / 64,231 summarized — no new data to summarize",
+    },
+  ];
+
   return (
-    <div className="py-8 space-y-12 max-w-4xl">
+    <div className="py-8 space-y-16 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">
-          Phase A — Component Showcase
+        <h1 className="text-2xl font-bold text-[var(--text)] mb-2">
+          S0 — Design Primitives
         </h1>
         <p className="text-sm text-[var(--text-muted)]">
-          All primitives rendered in the dark/premium theme.
+          &quot;The Bench&quot; — instrument-grade, evidence-first primitives.
+          All rendered in the new token system.
         </p>
       </div>
 
-      {/* Card variants */}
+      {/* ── EvidenceRail ── */}
       <section>
-        <SectionHeader title="Card" label="Surfaces" />
-        <div className="grid grid-cols-3 gap-4">
-          <Card>Glass (default)</Card>
-          <Card variant="default">Default</Card>
-          <Card variant="elevated">Elevated</Card>
-          <Card interactive className="col-span-3">
-            Interactive — hover me (scan sweep + elevation)
-          </Card>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          EvidenceRail
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          2px accent spine + provenance line in signature warm-neutral.
+        </p>
+        <div className="space-y-4">
+          <EvidenceRail
+            source="USPTO"
+            docId="US12345678"
+            confidence="high"
+            verifyUrl="https://patents.google.com"
+          >
+            <h3 className="font-semibold text-[var(--text)] mb-1">
+              Biodegradable implant with controlled drug release
+            </h3>
+            <p className="text-sm text-[var(--text-2)]">
+              Medtronic · GRANTED · Expired (est.)
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mt-2">
+              A biodegradable polymer matrix that releases therapeutic agents at a controlled rate...
+            </p>
+          </EvidenceRail>
+
+          <EvidenceRail
+            source="EPO"
+            docId="EP4025681"
+            confidence="medium"
+          >
+            <h3 className="font-semibold text-[var(--text)] mb-1">
+              Solid-state battery electrolyte composition
+            </h3>
+            <p className="text-sm text-[var(--text-2)]">
+              Samsung SDI · PUBLISHED · Expiring soon
+            </p>
+          </EvidenceRail>
+
+          <EvidenceRail
+            source="WIPO"
+            docId="WO2024012345"
+            confidence="estimated"
+          >
+            <h3 className="font-semibold text-[var(--text)] mb-1">
+              CRISPR delivery vector for in vivo gene therapy
+            </h3>
+            <p className="text-sm text-[var(--text-2)]">
+              Editas Medicine · PUBLISHED
+            </p>
+          </EvidenceRail>
         </div>
       </section>
 
-      {/* StatTile */}
+      {/* ── ConfidenceMark ── */}
       <section>
-        <SectionHeader title="StatTile" label="Data display" />
-        <div className="grid grid-cols-4 gap-4">
-          <StatTile label="Index size" value={64231} subtext="USPTO · EPO · WIPO" />
-          <StatTile label="New this week" value={1247} subtext="↑ 12% vs avg" accent="signal" />
-          <StatTile label="Your follows" value={7} subtext="4 topics · 3 companies" />
-          <StatTile label="Expiring 90d" value={47} subtext="In your topics" accent="warning" />
-        </div>
-      </section>
-
-      {/* BriefingItem types */}
-      <section>
-        <SectionHeader
-          title="BriefingItem"
-          label="Feed items"
-          meta="All 6 types with required fields (reason, source, freshness)"
-        />
-        <div className="space-y-3">
-          <BriefingItem
-            type="trend"
-            label="Filing trend · momentum"
-            title="G06T image processing surges 42%"
-            subtext="Samsung, NVIDIA lead"
-            reason="Shown because you follow NVIDIA and G06T"
-            source="USPTO direct"
-            freshness={{ updated_at: "2026-06-01T08:30:00Z", relative: "2h ago" }}
-          />
-          <BriefingItem
-            type="notable"
-            label="Notable patent"
-            title="Bio-based succinic acid composition"
-            subtext="BASF SE · US20260146129"
-            reason="High opportunity score in your Biotech topic"
-            source="USPTO direct"
-            freshness={{ updated_at: "2026-06-01T07:15:00Z", relative: "3h ago" }}
-            confidence={{ level: "medium", caveat: "AI-generated summary — verify" }}
-          />
-          <BriefingItem
-            type="company"
-            label="Company move"
-            title="Apple Inc. expands into H10W semiconductor filings"
-            reason="You follow Apple Inc."
-            source="WIPO BigQuery"
-            freshness={{ updated_at: "2026-06-01T06:00:00Z", relative: "4h ago" }}
-          />
-          <BriefingItem
-            type="expiring"
-            label="Expiring opportunity"
-            title="47 high-value patents in your topics expire within 90 days"
-            reason="Matches your Operator persona and Clean Energy topic"
-            source="USPTO · computed expiry estimates"
-            freshness={{ updated_at: "2026-05-31T22:00:00Z", relative: "12h ago" }}
-            confidence={{ level: "low", caveat: "Verify with official registers" }}
-          />
-          <BriefingItem
-            type="foryou"
-            label="For you · early personalization"
-            title="Personalized feed will appear here as you follow topics and companies"
-            reason="Based on your Operator persona"
-            source="Invention Index 8"
-            freshness={{ updated_at: "2026-06-01T00:00:00Z", relative: "14h ago" }}
-          />
-          <BriefingItem
-            type="news"
-            label="News · V1.1"
-            title="News-patent linking slot reserved for V1.1"
-            reason="V1.1 feature — will link real news to relevant patents"
-            source="Invention Index 8"
-            freshness={{ updated_at: "2026-06-01T00:00:00Z", relative: "14h ago" }}
-          />
-        </div>
-      </section>
-
-      {/* Pills */}
-      <section>
-        <SectionHeader title="Pill" label="Chips & labels" />
-        <div className="flex flex-wrap gap-2">
-          {(["indigo", "violet", "cyan", "green", "amber", "red", "gray"] as const).map((tone) => (
-            <Pill key={tone} tone={tone}>{tone}</Pill>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          ConfidenceMark
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Texture grammar: fill / solid ring / dashed ring / dotted ring.
+          Colorblind-safe — redundant encoding (shape + label).
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {confidenceLevels.map((level) => (
+            <div
+              key={level}
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2"
+            >
+              <ConfidenceMark level={level} size="md" />
+              <ConfidenceMark level={level} size="sm" />
+              <ConfidenceMark level={level} size="dot" />
+            </div>
           ))}
-          <Pill tone="indigo" variant="outline">outline</Pill>
-          <Pill tone="green" mono>42,231</Pill>
         </div>
       </section>
 
-      {/* Buttons */}
+      {/* ── Score ── */}
       <section>
-        <SectionHeader title="Button" label="Actions" />
-        <div className="flex flex-wrap gap-3">
-          <Button variant="primary">Primary CTA</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="danger">Danger</Button>
-          <Button variant="primary" disabled>Disabled</Button>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          Score
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Unified score display — integer only, tier dot, never two decimals.
+          Kills the three-format inconsistency across pages.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(
+            [
+              [82, "opportunity", "strong"],
+              [57, "opportunity", "medium"],
+              [22, "opportunity", "weak"],
+              [0.75, "interesting", "strong"],
+              [0.42, "interesting", "medium"],
+              [0.11, "interesting", "weak"],
+              [91, "composite", "strong"],
+              [null, "opportunity", "weak"],
+            ] as [number | null, ScoreKind, ScoreTier][]
+          ).map(([value, kind, tier], i) => (
+            <div
+              key={i}
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2"
+            >
+              <Score value={value} kind={kind} tier={tier} size="md" />
+              <Score value={value} kind={kind} tier={tier} size="sm" />
+              <Score value={value} kind={kind} showLabel={false} />
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* LiveIndicator */}
+      {/* ── ProvenanceLine ── */}
       <section>
-        <SectionHeader title="LiveIndicator" label="Status" />
-        <div className="flex gap-6">
-          <LiveIndicator state="live" />
-          <LiveIndicator state="scanning" />
-          <LiveIndicator state="updated" label="Updated 2m ago" />
-          <LiveIndicator state="idle" />
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          ProvenanceLine
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Source · doc_id · confidence · Verify at source ↗. Signature
+          warm-neutral color. Geist Mono.
+        </p>
+        <div className="space-y-3">
+          <ProvenanceLine
+            source="USPTO"
+            docId="US12345678"
+            confidence="high"
+            verifyUrl="https://patents.google.com"
+          />
+          <ProvenanceLine
+            source="EPO"
+            docId="EP4025681"
+            confidence="medium"
+          />
+          <ProvenanceLine
+            source="WIPO"
+            docId="WO2024012345"
+            confidence="estimated"
+          />
         </div>
       </section>
 
-      {/* Badge */}
+      {/* ── FreshnessChip ── */}
       <section>
-        <SectionHeader title="Badge" label="Legacy — refreshed for dark theme" />
-        <div className="flex gap-2">
-          <Badge variant="default">Default</Badge>
-          <Badge variant="success">Success</Badge>
-          <Badge variant="warning">Warning</Badge>
-          <Badge variant="danger">Danger</Badge>
-          <Badge variant="speculative">Speculative</Badge>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          FreshnessChip
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Always-on freshness indicator. States: fresh (green dot), stale
+          (amber dot), degraded (red dot). Click opens popover.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <p className="text-[11px] text-[var(--text-muted)] mb-1">
+              Fresh — normal state
+            </p>
+            <FreshnessChip
+              state="fresh"
+              label="Updated 2h ago · 142 new"
+              sources={freshnessSources}
+            />
+          </div>
+          <div>
+            <p className="text-[11px] text-[var(--text-muted)] mb-1">
+              Stale — data &gt; 7d old
+            </p>
+            <FreshnessChip
+              state="stale"
+              label="Updated 8d ago"
+              sources={freshnessSources}
+            />
+          </div>
+          <div>
+            <p className="text-[11px] text-[var(--text-muted)] mb-1">
+              Degraded — source failure
+            </p>
+            <FreshnessChip
+              state="degraded"
+              label="Sources unavailable"
+              sources={degradedSources}
+            />
+          </div>
+          <div>
+            <p className="text-[11px] text-[var(--text-muted)] mb-1">
+              Simple — no popover
+            </p>
+            <FreshnessChip state="fresh" label="Updated 2h ago" simple />
+          </div>
         </div>
       </section>
 
-      {/* Skeleton */}
+      {/* ── DisclosureWarning ── */}
       <section>
-        <SectionHeader title="Skeleton" label="Loading states" />
-        <div className="grid grid-cols-3 gap-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">
+          DisclosureWarning
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          V4-ready. Warns users before publishing confidential information.
+        </p>
+        <DisclosureWarning action="publish this insight" />
+        <div className="mt-3">
+          <DisclosureWarning action="share this comment" />
         </div>
-      </section>
-
-      {/* EmptyState */}
-      <section>
-        <SectionHeader title="EmptyState" label="Zero states" />
-        <EmptyState
-          icon="search"
-          title="No results found"
-          message="Try adjusting your search or filters."
-          action={{ label: "Clear filters", onClick: () => {} }}
-        />
       </section>
     </div>
   );

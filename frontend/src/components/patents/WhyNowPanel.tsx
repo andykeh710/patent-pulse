@@ -26,7 +26,7 @@ interface WhyNowPanelProps {
   onGenerate: () => Promise<void>;
 }
 
-export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowPanelProps) {
+export function WhyNowPanel({ artifact, isLoading, onGenerate }: WhyNowPanelProps) {
   const [handleGenerate, isGenerating] = useAsyncAction(onGenerate);
 
   if (isLoading || isGenerating) {
@@ -92,7 +92,7 @@ export function WhyNowPanel({ patent, artifact, isLoading, onGenerate }: WhyNowP
           </h3>
           {artifact.signals.map((signal, i) => (
             <div key={i} className="flex gap-2">
-              <span className="text-xs font-medium text-[var(--accent)] bg-bg-[var(--bg-elevated)] px-2 py-1 rounded flex-shrink-0">
+              <span className="text-xs font-medium text-[var(--accent)] bg-[var(--bg-elevated)] px-2 py-1 rounded flex-shrink-0">
                 {signal.type}
               </span>
               <p className="text-sm text-[var(--text-secondary)]">{signal.explanation}</p>
