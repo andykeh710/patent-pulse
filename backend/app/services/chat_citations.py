@@ -17,21 +17,38 @@ import re
 # Requires at least one character after the colon (rejects bare [USPTO]).
 CITATION_PATTERN = re.compile(r"\[((?:USPTO|EPO|WIPO):[A-Z0-9_/-]+)\]")
 
-# ── Prefix normalisation ───────────────────────────────────────────────
+# ── Citation normalisation ─────────────────────────────────────────────
 
-_CITATION_PREFIXES = ("USPTO:", "EPO:", "WIPO:")
+_CITATION_PREFIXES = {
+    "USPTO:": "USPTO",
+    "EPO:": "EPO",
+    "WIPO:": "WIPO",
+}
+
+_DOC_ID_OFFICE_PREFIXES = (
+    ("US", "USPTO"),
+    ("EP", "EPO"),
+    ("WO", "WIPO"),
+)
 
 
-def _strip_prefix(doc_id: str) -> str:
-    """Remove a known citation prefix if present.
+def _canonical_doc_id(doc_id: str) -> tuple[str | None, str]:
+    """Return ``(office, document_id)`` for citation verification.
 
-    ``USPTO:US12345`` → ``US12345``
-    ``EP4567890B1``    → ``EP4567890B1`` (no prefix, pass through)
+    ``USPTO:US12345`` and ``US12345`` both resolve to
+    ``("USPTO", "US12345")``. Wrong-office citations such as
+    ``EPO:US12345`` stay distinct from ``USPTO:US12345``.
     """
-    for p in _CITATION_PREFIXES:
-        if doc_id.startswith(p):
-            return doc_id[len(p) :]
-    return doc_id
+    normalized = doc_id.strip()
+    for prefix, office in _CITATION_PREFIXES.items():
+        if normalized.startswith(prefix):
+            return office, normalized[len(prefix):]
+
+    for doc_prefix, office in _DOC_ID_OFFICE_PREFIXES:
+        if normalized.startswith(doc_prefix):
+            return office, normalized
+
+    return None, normalized
 
 
 # ── Public API ─────────────────────────────────────────────────────────
@@ -58,9 +75,10 @@ def verify_citations(
 ) -> dict[str, list[str]]:
     """Split cited doc_ids into verified vs unverified.
 
-    Matching is prefix-agnostic: ``USPTO:US12345`` matches ``US12345``
-    in the known set and vice versa. This handles the mismatch between
-    database doc_ids (no prefix) and model citations (with prefix).
+    Matching canonicalises office prefixes: ``USPTO:US12345`` matches
+    ``US12345`` in the known set, but ``EPO:US12345`` does not. This
+    handles the mismatch between database doc_ids (often no prefix) and
+    model citations while preserving jurisdiction.
 
     Args:
         cited_doc_ids: Citations extracted from the response text.
@@ -71,9 +89,16 @@ def verify_citations(
     Returns:
         Dict with ``verified`` and ``unverified`` lists.
     """
-    # Build a normalised known set (prefixes stripped) for matching.
-    normalised_known: set[str] = {_strip_prefix(d) for d in known_doc_ids}
+    known: set[tuple[str | None, str]] = {
+        _canonical_doc_id(d) for d in known_doc_ids
+    }
 
-    verified = [d for d in cited_doc_ids if _strip_prefix(d) in normalised_known]
-    unverified = [d for d in cited_doc_ids if _strip_prefix(d) not in normalised_known]
+    verified = [
+        d for d in cited_doc_ids
+        if _canonical_doc_id(d) in known
+    ]
+    unverified = [
+        d for d in cited_doc_ids
+        if _canonical_doc_id(d) not in known
+    ]
     return {"verified": verified, "unverified": unverified}
