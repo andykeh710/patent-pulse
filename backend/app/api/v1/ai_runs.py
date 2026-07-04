@@ -36,8 +36,15 @@ from app.ai.assignee_intelligence import (
 from app.ai.assignee_intelligence import (
     RULES_VERSION as ASSIGNEE_RULES_VERSION,
 )
+<<<<<<< HEAD
+=======
+from app.ai.assignee_intelligence import (
+    extract_features as extract_assignee_features,
+)
+>>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.llm_client import (
     _model_for_tier,
+    compute_input_hash,
     estimate_cost_usd,
     estimate_tokens,
     hash_rules,
@@ -58,6 +65,12 @@ from app.ai.opportunity_scorer import (
 from app.ai.opportunity_scorer import (
     RULES_VERSION as OPPORTUNITY_RULES_VERSION,
 )
+<<<<<<< HEAD
+=======
+from app.ai.opportunity_scorer import (
+    extract_features as extract_opportunity_features,
+)
+>>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.prompts import get_prompt
 from app.ai.summarizer import (
     SUMMARY_PROMPT_NAME,
@@ -78,6 +91,12 @@ from app.ai.trend_snapshot import (
 from app.ai.trend_snapshot import (
     RULES_VERSION as TREND_RULES_VERSION,
 )
+<<<<<<< HEAD
+=======
+from app.ai.trend_snapshot import (
+    extract_features as extract_trend_features,
+)
+>>>>>>> origin/cursor/critical-bug-inspection-a56e
 from app.ai.why_now import (
     WHY_NOW_PROMPT_NAME,
     WHY_NOW_PROMPT_VERSION,
@@ -303,14 +322,7 @@ async def _resolve_cohort(
                 )
 
             # Per-task-type sensible defaults.
-            if task_type == "summary":
-                conditions.append(
-                    or_(
-                        PatentPublication.abstract.isnot(None),
-                        PatentPublication.title.isnot(None),
-                    )
-                )
-            elif task_type == "tags":
+            if task_type == "tags":
                 # Tagging is only useful once we have a summary; skip the rest.
                 conditions.append(PatentPublication.summarized_at.isnot(None))
             elif task_type == "opportunity_score":
@@ -333,6 +345,15 @@ async def _resolve_cohort(
             stmt = stmt.order_by(PatentPublication.grant_date.desc().nullslast())
             if cohort.limit:
                 stmt = stmt.limit(cohort.limit)
+
+    if task_type == "summary":
+        stmt = stmt.where(PatentPublication.summarized_at.is_(None))
+        stmt = stmt.where(
+            or_(
+                PatentPublication.abstract.isnot(None),
+                PatentPublication.title.isnot(None),
+            )
+        )
 
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]
@@ -436,21 +457,83 @@ def _prompt_for_task(task_type: str):
 
 
 async def _count_cached_artifacts(
-    db, *, task_type: str, prompt_hash: str, patent_ids: list[UUID]
+    db, *, task_type: str, prompt_hash: str, model: str, patent_ids: list[UUID]
 ) -> int:
     """Count complete AIArtifact rows for (task_type, prompt_hash, input_hash in patents)."""
     if not patent_ids:
         return 0
+
+    patents = list(
+        (
+            await db.execute(
+                select(PatentPublication).where(PatentPublication.id.in_(patent_ids))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    patent_input_hashes = [
+        _cache_input_hash_for_task(task_type, patent, model) for patent in patents
+    ]
+    input_hashes = set(patent_input_hashes)
+    if not input_hashes:
+        return 0
+
     stmt = (
-        select(func.count())
+        select(AIArtifact.input_hash)
         .select_from(AIArtifact)
         .where(AIArtifact.artifact_type == task_type)
         .where(AIArtifact.prompt_hash == prompt_hash)
+        .where(AIArtifact.input_hash.in_(input_hashes))
         .where(AIArtifact.status == "complete")
-        .where(AIArtifact.patent_publication_id.in_(patent_ids))
+        .group_by(AIArtifact.input_hash)
     )
     result = await db.execute(stmt)
-    return int(result.scalar_one() or 0)
+    cached_input_hashes = set(result.scalars().all())
+    return _cached_completion_count(
+        patent_input_hashes=patent_input_hashes,
+        cached_input_hashes=cached_input_hashes,
+    )
+
+
+def _cached_completion_count(
+    *, patent_input_hashes: list[str], cached_input_hashes: set[str]
+) -> int:
+    return sum(
+        1 for input_hash in patent_input_hashes if input_hash in cached_input_hashes
+    )
+
+
+def _cache_input_hash_for_task(
+    task_type: str, patent: PatentPublication, model: str
+) -> str:
+    if task_type == "summary":
+        payload = build_summary_payload(patent)
+    elif task_type == "tags":
+        payload = build_tag_payload(patent)
+    elif task_type == "why_now":
+        payload = build_why_now_payload(patent)
+    elif task_type == "opportunity_narrative":
+        payload = build_opportunity_narrative_payload(patent)
+    elif task_type == "opportunity_score":
+        payload = extract_opportunity_features(patent).as_dict()
+    elif task_type == "trend_snapshot":
+        payload = extract_trend_features(patent).as_dict()
+    elif task_type == "assignee_intelligence":
+        payload = extract_assignee_features(patent).as_dict()
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail=f"Cache estimator for task_type={task_type} is not implemented yet.",
+        )
+
+    return compute_input_hash(
+        {
+            "payload": payload,
+            "subject_key": None,
+            "model": model,
+        }
+    )
 
 
 async def _recent_cache_hit_rate(db, *, task_type: str) -> float:
@@ -509,6 +592,7 @@ async def estimate_run(
         db,
         task_type=request.task_type,
         prompt_hash=prompt_hash,
+        model=model,
         patent_ids=patent_ids,
     )
     uncached = max(0, cohort_size - cached)
@@ -650,8 +734,12 @@ async def create_run(
             request.task_type,
             estimate.cohort_size,
         )
-        run.status = "running"
         run.started_at = datetime.utcnow()
+        if enqueued == 0:
+            run.status = "succeeded"
+            run.finished_at = run.started_at
+        else:
+            run.status = "running"
         await db.commit()
         await db.refresh(run)
 
@@ -668,7 +756,7 @@ def _dispatch_celery_per_patent(*, task_type: str, patent_ids: list[UUID], run_i
         from app.tasks.summarize import summarize_patent as task
 
         for pid in patent_ids:
-            task.delay(str(pid))
+            task.delay(str(pid), False, run_id)
         return len(patent_ids)
 
     if task_type == "tags":

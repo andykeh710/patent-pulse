@@ -25,7 +25,41 @@ from app.core.ai_models import AIArtifact, AIRun
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
 async def recompute_run_aggregates(session: AsyncSession, run_id: UUID | str) -> None:
+=======
+async def record_run_task_completion(
+    session: AsyncSession, run_id: UUID | str
+) -> None:
+    """Record that one dispatched task reached a terminal non-failed outcome."""
+    if isinstance(run_id, str):
+        run_id = UUID(run_id)
+
+    await session.execute(
+        update(AIRun)
+        .where(AIRun.id == run_id)
+        .where(AIRun.status.notin_(("succeeded", "failed", "cancelled")))
+        .values(completed_count=AIRun.completed_count + 1)
+    )
+
+
+async def record_run_task_failure(session: AsyncSession, run_id: UUID | str) -> None:
+    """Record that one dispatched task reached a terminal failed outcome."""
+    if isinstance(run_id, str):
+        run_id = UUID(run_id)
+
+    await session.execute(
+        update(AIRun)
+        .where(AIRun.id == run_id)
+        .where(AIRun.status.notin_(("succeeded", "failed", "cancelled")))
+        .values(failed_count=AIRun.failed_count + 1)
+    )
+
+
+async def recompute_run_aggregates(
+    session: AsyncSession, run_id: UUID | str
+) -> None:
+>>>>>>> origin/cursor/critical-bug-inspection-a56e
     """Recompute counters + finalize status for one AIRun.
 
     Safe to call after every per-patent task completion. Will:
@@ -74,11 +108,14 @@ async def recompute_run_aggregates(session: AsyncSession, run_id: UUID | str) ->
         out_tokens += int(otok or 0)
         cost += float(c or 0.0)
 
-    finished = completed + failed >= max(run.cohort_size, 1)
+    completed = max(completed, int(getattr(run, "completed_count", 0) or 0))
+    failed = max(failed, int(getattr(run, "failed_count", 0) or 0))
+    cohort_size = max(int(run.cohort_size or 0), 0)
+    finished = completed + failed >= cohort_size
     new_status = run.status
     finished_at = run.finished_at
     if finished:
-        new_status = "succeeded" if completed > 0 else "failed"
+        new_status = "succeeded" if completed > 0 or cohort_size == 0 else "failed"
         finished_at = finished_at or datetime.utcnow()
 
     await session.execute(
