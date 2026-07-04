@@ -111,10 +111,11 @@ export const patentsApi = {
 
   getFreshness: () => apiFetch<Freshness>(`/api/v1/patents/freshness`),
 
-  getThumbnailUrl: (publicationNumber: string) =>
-    apiFetch<{ url: string | null; cached: boolean; error: string | null }>(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/thumbnail-url`
+  getPatentFigures: (patentId: string) =>
+    apiFetch<{ figures: { ordinal: number; thumbnail_url: string; full_url: string; width: number | null; height: number | null }[] }>(
+      `/api/v1/patents/${patentId}/figures`
     ),
+
 
   getExpirySummary: () => apiFetch<ExpirySummary>(`/api/v1/patents/expiry-summary`),
 

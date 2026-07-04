@@ -56,6 +56,19 @@ export function PatentCard({ patent, isSaved, onToggleSave }: PatentCardProps) {
         </p>
       )}
 
+      {/* V3.8I: patent figure thumbnail */}
+      {patent.thumbnail_url && (
+        <div className="mb-3 aspect-[4/3] rounded-lg overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={patent.thumbnail_url}
+            alt={`Figure from patent ${patent.publication_number}`}
+            className="w-full h-full object-contain"
+            loading="lazy"
+          />
+        </div>
+      )}
+
       {patent.tags && (
         <div className="mb-3">
           <TagsPanel tags={patent.tags} variant="compact" />

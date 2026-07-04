@@ -21,6 +21,13 @@ interface InsightAction {
   onClick?: () => void;
 }
 
+/** Personalization context — "why you're seeing this" affordance. */
+export interface InsightCardPersonalization {
+  whyShown: string;
+  rank?: number;
+  signals?: string[];
+}
+
 interface InsightCardProps {
   type: InsightType;
   title: string;
@@ -35,11 +42,7 @@ interface InsightCardProps {
   secondaryAction?: InsightAction;
   sourceIds?: string[];
   /** Personalization context (why shown for this user) */
-  personalization?: {
-    whyShown: string;
-    rank?: number;
-    signals?: string[];
-  };
+  personalization?: InsightCardPersonalization;
   /** Source provenance for provenance footer */
   provenance?: {
     source?: string;
@@ -60,27 +63,27 @@ const TYPE_STYLES: Record<
   signal: {
     badge: "bg-[var(--accent-muted)] text-[var(--type-trend)]",
     spine: "var(--accent)",
-    bg: "bg-[var(--bg-glass)]",
+    bg: "bg-[var(--bench-glass)]",
   },
   risk: {
     badge: "bg-[var(--warning)]/12 text-[var(--warning)]",
     spine: "var(--warning)",
-    bg: "bg-[var(--bg-glass)]",
+    bg: "bg-[var(--bench-glass)]",
   },
   opportunity: {
-    badge: "bg-[var(--score-high-bg)] text-[var(--score-high)]",
-    spine: "var(--score-high)",
-    bg: "bg-[var(--bg-glass)]",
+    badge: "bg-[var(--bench-score-high-bg)] text-[var(--bench-score-high)]",
+    spine: "var(--bench-score-high)",
+    bg: "bg-[var(--bench-glass)]",
   },
   update: {
-    badge: "bg-[var(--text-muted)]/12 text-[var(--text-muted)]",
-    spine: "var(--text-muted)",
-    bg: "bg-[var(--bg-glass)]",
+    badge: "bg-[var(--bench-ink-muted)]/12 text-[var(--bench-ink-muted)]",
+    spine: "var(--bench-ink-muted)",
+    bg: "bg-[var(--bench-glass)]",
   },
   recommendation: {
-    badge: "bg-[var(--accent-muted)] text-[var(--text-2)]",
+    badge: "bg-[var(--accent-muted)] text-[var(--bench-ink-secondary)]",
     spine: "var(--accent)",
-    bg: "bg-[var(--bg-elevated)]",
+    bg: "bg-[var(--bench-raised)]",
   },
 };
 
@@ -133,7 +136,7 @@ export function InsightCard({
 
   return (
     <div
-      className={`rounded-[var(--radius-md)] border border-[var(--border)] ${style.bg} ${className}`}
+      className={`rounded-[var(--radius-md)] border border-[var(--bench-line)] ${style.bg} ${className}`}
     >
       {/* Evidence spine — 2px left rule in type color */}
       <div className="flex">
@@ -157,33 +160,33 @@ export function InsightCard({
               />
             )}
             {timestamp && (
-              <span className="text-[11px] text-[var(--text-muted)] ml-auto font-mono tabular-nums">
+              <span className="text-[11px] text-[var(--bench-ink-muted)] ml-auto font-mono tabular-nums">
                 {timestamp}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="text-sm font-semibold text-[var(--text)] mb-1">
+          <h3 className="text-sm font-semibold text-[var(--bench-ink)] mb-1">
             {title}
           </h3>
 
           {/* Summary */}
-          <p className="text-[13px] text-[var(--text-2)] mb-2 leading-relaxed">
+          <p className="text-[13px] text-[var(--bench-ink-secondary)] mb-2 leading-relaxed">
             {summary}
           </p>
 
           {/* Why it matters */}
           {whyItMatters && (
-            <p className="text-xs text-[var(--text-muted)] mb-2 leading-relaxed">
+            <p className="text-xs text-[var(--bench-ink-muted)] mb-2 leading-relaxed">
               Why it matters: {whyItMatters}
             </p>
           )}
 
-          {/* Personalization */}
+          {/* Personalization — "why you're seeing this" affordance */}
           {personalization && (
-            <div className="mb-2 rounded-[var(--radius-sm)] bg-[var(--bg-glass-strong)] px-3 py-2">
-              <p className="text-[11px] text-[var(--text-2)] leading-relaxed">
+            <div className="mb-2 rounded-[var(--radius-sm)] bg-[var(--bench-glass-strong)] px-3 py-2">
+              <p className="text-[11px] text-[var(--bench-ink-secondary)] leading-relaxed">
                 {personalization.whyShown}
               </p>
               {personalization.signals &&
@@ -192,7 +195,7 @@ export function InsightCard({
                     {personalization.signals.map((s, i) => (
                       <span
                         key={i}
-                        className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-glass)] px-1.5 py-0.5 rounded"
+                        className="text-[10px] text-[var(--bench-ink-muted)] bg-[var(--bench-glass)] px-1.5 py-0.5 rounded"
                       >
                         {s}
                       </span>
@@ -204,7 +207,7 @@ export function InsightCard({
 
           {/* Actions */}
           {(primaryAction || secondaryAction) && (
-            <div className="flex items-center gap-4 mt-2 pt-2 border-t border-[var(--border)]">
+            <div className="flex items-center gap-4 mt-2 pt-2 border-t border-[var(--bench-line)]">
               {primaryAction && <ActionLink action={primaryAction} />}
               {secondaryAction && <ActionLink action={secondaryAction} />}
             </div>
@@ -228,11 +231,11 @@ export function InsightCard({
 
       {/* Provenance footer — source/evidence metadata */}
       {(evidence || provenance) && (
-        <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-mono text-[var(--provenance)] border-t border-[var(--border)] mx-4">
-          {evidence && <span className="text-[var(--text-muted)]">{evidence}</span>}
+        <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-mono text-[var(--bench-provenance)]">
+          {evidence && <span className="text-[var(--bench-ink-muted)]">{evidence}</span>}
           {provenance?.source && (
             <>
-              {evidence && <span className="text-[var(--text-muted)]">·</span>}
+              {evidence && <span className="text-[var(--bench-ink-muted)]">·</span>}
               <span>{provenance.source}</span>
             </>
           )}
@@ -251,10 +254,10 @@ export function InsightCard({
           {provenance?.verifyUrl && (
             <span className="ml-auto">
               <span
-                className="underline cursor-pointer hover:text-[var(--text-2)] transition-colors"
+                className="underline cursor-pointer hover:text-[var(--bench-ink-secondary)] transition-colors"
                 onClick={() =>
                   window.open(
-                    provenance.verifyUrl,
+                    provenance.verifyUrl!,
                     "_blank",
                     "noopener,noreferrer"
                   )

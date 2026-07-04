@@ -130,6 +130,7 @@ export interface PatentDetail {
   figure_page_url: string | null;
   // V3.8I: direct image URL (lazy-resolved by frontend via /thumbnail-url)
   thumbnail_url: string | null;
+  figures_status: string | null;
 }
 
 export interface ExpiryItem {

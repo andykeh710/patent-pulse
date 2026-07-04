@@ -278,14 +278,13 @@ export default function PatentDetailPage({
         )}
 
         {/* Figures — link-out to Google Patents */}
-        {patent.figure_page_url && (
-          <div className="mt-3">
+        <div className="mt-3">
             <PatentFiguresPanel
+              patentId={patent.id}
               publicationNumber={patent.publication_number}
-              figurePageUrl={patent.figure_page_url}
+              figuresStatus={patent.figures_status}
             />
           </div>
-        )}
       </div>
 
       {/* Executive Summary — above the fold */}
@@ -454,17 +453,19 @@ function ExecutiveSummary({
               </div>
             </div>
 
-            {/* Score badges */}
-            <div className="flex flex-col items-end gap-2 shrink-0">
+            {/* Score badges — Bench dial variant */}
+            <div className="flex flex-col items-end gap-3 shrink-0">
               <Score
                 value={patent.opportunity_score}
                 kind="opportunity"
+                variant="dial"
                 size="md"
               />
               <Score
                 value={patent.interesting_score}
                 kind="interesting"
-                size="md"
+                variant="bar"
+                size="sm"
               />
               <LegalConfidenceBadge
                 confidence={patent.legal_status_confidence}
