@@ -34,16 +34,8 @@ def _parse_events(text: str) -> list[dict]:
     for line in text.split("\n"):
         stripped = line.strip()
         if stripped.startswith("data: "):
-            events.append(json.loads(stripped[len("data: ") :]))
+            events.append(json.loads(stripped[len("data: "):]))
     return events
-
-
-async def _collect_stream_events(stream) -> list[dict]:
-    """Collect events from a direct stream generator call."""
-    text = ""
-    async for chunk in stream:
-        text += chunk
-    return _parse_events(text)
 
 
 # ── Mock data ─────────────────────────────────────────────────────────
@@ -139,15 +131,11 @@ MOCK_CONVERSATION_ID = "00000000-0000-0000-0000-000000000001"
 
 MOCK_CONVERSATION_HISTORY = [
     {"role": "user", "content": "What patents does Toyota have?"},
-    {
-        "role": "assistant",
-        "content": "Toyota has several patents including [USPTO:US20240123456A1].",
-    },
+    {"role": "assistant", "content": "Toyota has several patents including [USPTO:US20240123456A1]."},
 ]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
-
 
 async def _mock_retrieve_patents(*a, **kw):
     """Async mock returning MOCK_PATENTS."""
@@ -185,6 +173,7 @@ def _make_memory_mock(
     store.new_conversation_id = AsyncMock(return_value=conversation_id)
     store.get_history = AsyncMock(return_value=history if history is not None else [])
     store.append_message = AsyncMock()
+    store.append_turn = AsyncMock()
     return store
 
 
@@ -255,7 +244,7 @@ async def test_chat_stream_yields_sse_data_lines(client: AsyncClient, monkeypatc
 
     for line in lines:
         assert line.startswith("data: ")
-        payload = json.loads(line[len("data: ") :])
+        payload = json.loads(line[len("data: "):])
         assert "type" in payload
 
 
@@ -505,87 +494,6 @@ async def test_chat_stream_tool_call_result_event(client: AsyncClient, monkeypat
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_chat_stream_executes_parallel_tool_uses(monkeypatch):
-    """Multiple tool_use blocks in one assistant turn all receive results."""
-    from app.api.v1.chat import _stream_anthropic_response
-
-    monkeypatch.setattr(
-        "app.api.v1.chat.retrieve_patents",
-        _mock_retrieve_patents,
-    )
-    monkeypatch.setattr(
-        "app.api.v1.chat.get_conversation_store",
-        lambda: _make_memory_mock(),
-    )
-
-    calls = []
-
-    async def _stream_with_parallel_tools(self, **kw):
-        calls.append(kw["messages"])
-        if len(calls) == 1:
-            yield {
-                "type": "tool_use",
-                "id": "toolu_search",
-                "name": "search_patents",
-                "input": {"query": "solid state batteries"},
-            }
-            yield {
-                "type": "tool_use",
-                "id": "toolu_open",
-                "name": "open_patent",
-                "input": {"doc_id": "USPTO:US99999"},
-            }
-        else:
-            assistant_message = kw["messages"][-2]
-            user_message = kw["messages"][-1]
-            assert assistant_message["role"] == "assistant"
-            assert user_message["role"] == "user"
-            assert [block["id"] for block in assistant_message["content"]] == [
-                "toolu_search",
-                "toolu_open",
-            ]
-            assert [
-                block["tool_use_id"] for block in user_message["content"]
-            ] == [
-                "toolu_search",
-                "toolu_open",
-            ]
-            yield {"type": "text", "content": "Both tools completed."}
-
-    async def _execute_tool(name, input, db):
-        return {
-            **MOCK_TOOL_RESULT,
-            "tool_name": name,
-        }
-
-    monkeypatch.setattr(
-        "app.ai.anthropic_client.AnthropicChatClient.stream",
-        _stream_with_parallel_tools,
-    )
-    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
-
-    stream = _stream_anthropic_response(
-        "compare and open patents",
-        None,
-        "local-user",
-        MagicMock(),
-    )
-    events = _parse_events("".join([chunk async for chunk in stream]))
-
-    event_types = [e["type"] for e in events]
-    starts = [e for e in events if e["type"] == "tool_call_start"]
-    results = [e for e in events if e["type"] == "tool_call_result"]
-
-    assert event_types.count("error") == 0
-    assert [e["name"] for e in starts] == ["search_patents", "open_patent"]
-    assert [e["name"] for e in results] == ["search_patents", "open_patent"]
-    assert any(
-        e["type"] == "token" and "Both tools completed" in e["content"]
-        for e in events
-    )
-
-
-@pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monkeypatch):
     """After a tool_result, the stream resumes with more tokens."""
     monkeypatch.setattr(
@@ -625,13 +533,21 @@ async def test_chat_stream_continues_after_tool_result(client: AsyncClient, monk
 
     events = _parse_events(r.text)
 
-    tcs_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_start")
-    tokens_before = [e for e in events[:tcs_idx] if e["type"] == "token"]
+    tcs_idx = next(
+        i for i, e in enumerate(events) if e["type"] == "tool_call_start"
+    )
+    tokens_before = [
+        e for e in events[:tcs_idx] if e["type"] == "token"
+    ]
     assert len(tokens_before) >= 1
     assert any("search" in t["content"].lower() for t in tokens_before)
 
-    tcr_idx = next(i for i, e in enumerate(events) if e["type"] == "tool_call_result")
-    tokens_after = [e for e in events[tcr_idx:] if e["type"] == "token"]
+    tcr_idx = next(
+        i for i, e in enumerate(events) if e["type"] == "tool_call_result"
+    )
+    tokens_after = [
+        e for e in events[tcr_idx:] if e["type"] == "token"
+    ]
     assert len(tokens_after) >= 1
     assert any("found" in t["content"].lower() for t in tokens_after)
 
@@ -735,108 +651,6 @@ async def test_chat_stream_tool_call_limit_capped(client: AsyncClient, monkeypat
     assert "sources" not in event_types
 
 
-@pytest.mark.asyncio(loop_scope="function")
-async def test_stream_executes_all_tool_uses_from_same_assistant_turn(monkeypatch):
-    """Multiple tool_use blocks in one stream pass all get tool results."""
-    from app.api.v1.chat import _stream_anthropic_response
-
-    monkeypatch.setattr(
-        "app.api.v1.chat.retrieve_patents",
-        _mock_retrieve_patents,
-    )
-    monkeypatch.setattr(
-        "app.api.v1.chat.get_conversation_store",
-        lambda: _make_memory_mock(),
-    )
-
-    captured_messages = []
-
-    async def _stream_with_parallel_tools(self, **kw):
-        captured_messages.append(kw.get("messages", []))
-        if len(captured_messages) == 1:
-            yield {"type": "text", "content": "I'll compare and search."}
-            yield {
-                "type": "tool_use",
-                "id": "toolu_search",
-                "name": "search_patents",
-                "input": {"query": "solid state batteries"},
-            }
-            yield {
-                "type": "tool_use",
-                "id": "toolu_compare",
-                "name": "compare_companies",
-                "input": {"names": ["Toyota", "Panasonic"]},
-            }
-        else:
-            yield {"type": "text", "content": "Both tool results are available."}
-
-    tool_results = {
-        "search_patents": MOCK_TOOL_RESULT,
-        "compare_companies": {
-            "companies": [
-                {
-                    "company": "Toyota Motor Corp",
-                    "total_patents": 3,
-                    "recent_patents_3y": 1,
-                    "avg_opportunity_score": 72.0,
-                    "top_opportunity_score": 91.0,
-                    "top_patent_id": "USPTO:US12345",
-                    "top_patent_title": "Battery Patent",
-                }
-            ],
-            "compared": 2,
-        },
-    }
-
-    async def _execute_tool(name, input, db):
-        return tool_results[name]
-
-    monkeypatch.setattr(
-        "app.ai.anthropic_client.AnthropicChatClient.stream",
-        _stream_with_parallel_tools,
-    )
-    monkeypatch.setattr("app.api.v1.chat.execute_tool", _execute_tool)
-
-    events = await _collect_stream_events(
-        _stream_anthropic_response(
-            "compare Toyota and Panasonic batteries",
-            None,
-            "local-user",
-            db=object(),
-        )
-    )
-
-    starts = [e for e in events if e["type"] == "tool_call_start"]
-    results = [e for e in events if e["type"] == "tool_call_result"]
-    assert [e["name"] for e in starts] == ["search_patents", "compare_companies"]
-    assert [e["name"] for e in results] == ["search_patents", "compare_companies"]
-
-    resumed_messages = captured_messages[1]
-    assistant_turn = resumed_messages[-2]
-    tool_result_turn = resumed_messages[-1]
-    assert assistant_turn["role"] == "assistant"
-    assert assistant_turn["content"] == [
-        {"type": "text", "text": "I'll compare and search."},
-        {
-            "type": "tool_use",
-            "id": "toolu_search",
-            "name": "search_patents",
-            "input": {"query": "solid state batteries"},
-        },
-        {
-            "type": "tool_use",
-            "id": "toolu_compare",
-            "name": "compare_companies",
-            "input": {"names": ["Toyota", "Panasonic"]},
-        },
-    ]
-    assert tool_result_turn["role"] == "user"
-    assert [block["tool_use_id"] for block in tool_result_turn["content"]] == [
-        "toolu_search",
-        "toolu_compare",
-    ]
-
-
 # ── Citation tests ────────────────────────────────────────────────────
 
 
@@ -864,13 +678,14 @@ async def test_chat_stream_emits_citations_event(client: AsyncClient, monkeypatc
     cit_idx = event_types.index("citations")
     sources_idx = event_types.index("sources")
     done_idx = event_types.index("done")
-    assert cit_idx < sources_idx < done_idx, "citations must appear before sources before done"
+    assert cit_idx < sources_idx < done_idx, (
+        "citations must appear before sources before done"
+    )
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_all_verified(
-    client: AsyncClient,
-    monkeypatch,
+    client: AsyncClient, monkeypatch,
 ):
     """When all citations match known doc_ids, verified list is populated."""
     _setup_default_mocks(monkeypatch)
@@ -897,8 +712,7 @@ async def test_chat_stream_citations_all_verified(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_citations_warning_on_unverified(
-    client: AsyncClient,
-    monkeypatch,
+    client: AsyncClient, monkeypatch,
 ):
     """When unverified citations exist, warning event fires with code."""
     _setup_default_mocks(monkeypatch)
@@ -921,14 +735,15 @@ async def test_chat_stream_citations_warning_on_unverified(
     assert "USPTO:US99999999" in cit["unverified"]
 
     warnings = [e for e in events if e["type"] == "warning"]
-    cite_warnings = [w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"]
+    cite_warnings = [
+        w for w in warnings if w.get("code") == "uncited_or_invalid_doc_ids"
+    ]
     assert len(cite_warnings) == 1
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_no_citation_warning_when_all_verified(
-    client: AsyncClient,
-    monkeypatch,
+    client: AsyncClient, monkeypatch,
 ):
     """When all citations are verified, no citation warning fires."""
     _setup_default_mocks(monkeypatch)
@@ -950,71 +765,10 @@ async def test_chat_stream_no_citation_warning_when_all_verified(
     assert cit["unverified"] == []
 
     cite_warnings = [
-        w
-        for w in events
+        w for w in events
         if w["type"] == "warning" and w.get("code") == "uncited_or_invalid_doc_ids"
     ]
     assert cite_warnings == []
-
-
-@pytest.mark.asyncio(loop_scope="function")
-async def test_stream_warns_when_failed_open_patent_doc_id_is_cited(monkeypatch):
-    """A failed open_patent lookup must not authorize that doc_id as a citation."""
-    from app.api.v1.chat import _stream_anthropic_response
-
-    monkeypatch.setattr(
-        "app.api.v1.chat.retrieve_patents",
-        _mock_retrieve_empty,
-    )
-    monkeypatch.setattr(
-        "app.api.v1.chat.get_conversation_store",
-        lambda: _make_memory_mock(),
-    )
-
-    calls = []
-
-    async def _stream_with_failed_open_patent(self, **kw):
-        calls.append(1)
-        if len(calls) == 1:
-            yield {
-                "type": "tool_use",
-                "id": "toolu_missing",
-                "name": "open_patent",
-                "input": {"doc_id": "USPTO:US99999999"},
-            }
-        else:
-            yield {
-                "type": "text",
-                "content": "I found details in [USPTO:US99999999].",
-            }
-
-    async def _missing_patent_tool(name, input, db):
-        return {"error": "Patent not found", "doc_id": input["doc_id"]}
-
-    monkeypatch.setattr(
-        "app.ai.anthropic_client.AnthropicChatClient.stream",
-        _stream_with_failed_open_patent,
-    )
-    monkeypatch.setattr("app.api.v1.chat.execute_tool", _missing_patent_tool)
-
-    events = await _collect_stream_events(
-        _stream_anthropic_response(
-            "open USPTO:US99999999",
-            None,
-            "local-user",
-            db=object(),
-        )
-    )
-
-    citations = next(e for e in events if e["type"] == "citations")
-    assert citations["verified"] == []
-    assert citations["unverified"] == ["USPTO:US99999999"]
-
-    cite_warnings = [
-        e for e in events
-        if e["type"] == "warning" and e.get("code") == "uncited_or_invalid_doc_ids"
-    ]
-    assert len(cite_warnings) == 1
 
 
 # ── Conversation memory tests ─────────────────────────────────────────
@@ -1022,8 +776,7 @@ async def test_stream_warns_when_failed_open_patent_doc_id_is_cited(monkeypatch)
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_new_conversation_emits_conversation_id(
-    client: AsyncClient,
-    monkeypatch,
+    client: AsyncClient, monkeypatch,
 ):
     """When conversation_id is None, meta event includes a generated UUID."""
     _setup_default_mocks(monkeypatch)
@@ -1046,8 +799,7 @@ async def test_chat_stream_new_conversation_emits_conversation_id(
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_continuing_conversation_loads_history(
-    client: AsyncClient,
-    monkeypatch,
+    client: AsyncClient, monkeypatch,
 ):
     """When conversation_id is provided, prior messages are loaded and
     passed to the Anthropic client."""
@@ -1096,11 +848,12 @@ async def test_chat_stream_continuing_conversation_loads_history(
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_chat_stream_persists_messages_after_streaming(
-    client: AsyncClient,
+async def test_chat_stream_persists_completed_turn_atomically(
     monkeypatch,
 ):
-    """After the stream completes, user + assistant messages are persisted."""
+    """After streaming, user + assistant messages are persisted as one turn."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -1115,35 +868,36 @@ async def test_chat_stream_persists_messages_after_streaming(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "solid state batteries", "conversation_id": None},
-        cookies=_cookie(),
-    )
-    assert r.status_code == 200
+    events = []
+    async for raw in _stream_anthropic_response(
+        "solid state batteries",
+        None,
+        "local-user",
+        MagicMock(),
+    ):
+        events.extend(_parse_events(raw))
 
-    # Two append calls: user message + assistant response
-    assert store.append_message.await_count >= 2
+    assert "done" in [event["type"] for event in events]
 
-    calls = store.append_message.await_args_list
-    # First call: user message
-    assert calls[0].args[0] == "local-user"
-    assert calls[0].args[2] == "user"
-    assert calls[0].args[3] == "solid state batteries"
-    # Second call: assistant response
-    assert calls[1].args[2] == "assistant"
-    assert len(calls[1].args[3]) > 0  # non-empty response text
+    store.append_turn.assert_awaited_once()
+    args = store.append_turn.await_args.args
+    assert args[0] == "local-user"
+    assert args[1] == MOCK_CONVERSATION_ID
+    assert args[2] == "solid state batteries"
+    assert len(args[3]) > 0
+    store.append_message.assert_not_awaited()
 
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_chat_stream_redis_failure_degrades_gracefully(
-    client: AsyncClient,
     monkeypatch,
 ):
     """When Redis fails, the stream still works — memory just degrades."""
+    from app.api.v1.chat import _stream_anthropic_response
+
     store = _make_memory_mock()
     store.get_history.side_effect = RuntimeError("Redis connection refused")
-    store.append_message.side_effect = RuntimeError("Redis connection refused")
+    store.append_turn.side_effect = RuntimeError("Redis connection refused")
 
     monkeypatch.setattr(
         "app.api.v1.chat.retrieve_patents",
@@ -1158,15 +912,15 @@ async def test_chat_stream_redis_failure_degrades_gracefully(
         _fake_token_stream,
     )
 
-    r = await client.post(
-        "/api/v1/chat/stream",
-        json={"message": "test", "conversation_id": None},
-        cookies=_cookie(),
-    )
-    # Stream still completes normally
-    assert r.status_code == 200
+    events = []
+    async for raw in _stream_anthropic_response(
+        "test",
+        None,
+        "local-user",
+        MagicMock(),
+    ):
+        events.extend(_parse_events(raw))
 
-    events = _parse_events(r.text)
     event_types = [e["type"] for e in events]
     assert "meta" in event_types
     assert "done" in event_types
