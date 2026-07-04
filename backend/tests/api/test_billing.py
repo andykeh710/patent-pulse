@@ -85,13 +85,13 @@ async def test_checkout_session_invalid_tier_returns_422(client):
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_webhook_bad_signature_returns_400(client):
+async def test_webhook_bad_signature_returns_401(client):
     r = await client.post(
         "/api/v1/billing/webhook",
         content=json.dumps({"type": "unknown"}).encode(),
         headers={"stripe-signature": "bad"},
     )
-    assert r.status_code == 400
+    assert r.status_code == 401
 
 
 @pytest.mark.asyncio(loop_scope="function")

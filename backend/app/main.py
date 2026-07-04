@@ -57,13 +57,23 @@ if settings.email_send_mode == "production":
         )
         raise SystemExit(1)
 
-# Sprint 7: refuse to start if Stripe is in live mode (must use test keys).
-if settings.stripe_api_key and settings.stripe_api_key.startswith("sk_live_"):
-    logger.critical(
-        "STRIPE_API_KEY starts with 'sk_live_'. Production Stripe is not allowed. "
-        "Use a test key (sk_test_...) or leave STRIPE_API_KEY unset."
-    )
-    raise SystemExit(1)
+# Phase 4: Stripe live-mode safety gate — refuse to start in prod unless acknowledged.
+if settings.stripe_mode == "live":
+    ack = (settings.stripe_live_acknowledged or "").lower()
+    if ack != "true":
+        logger.critical(
+            "STRIPE_MODE=live but STRIPE_LIVE_ACKNOWLEDGED is not 'true'. "
+            "Refusing to start. Set STRIPE_LIVE_ACKNOWLEDGED=true in .env to acknowledge "
+            "that you are processing real payments in Stripe LIVE mode."
+        )
+        raise SystemExit(1)
+    # Additional sanity: if STRIPE_MODE=live but the key still looks like test, warn loudly.
+    if settings.stripe_api_key and not settings.stripe_api_key.startswith("sk_live_"):
+        logger.critical(
+            "STRIPE_MODE=live but STRIPE_API_KEY does not start with 'sk_live_'. "
+            "Refusing to start. Ensure you are using live-mode Stripe keys."
+        )
+        raise SystemExit(1)
 
 
 @asynccontextmanager
