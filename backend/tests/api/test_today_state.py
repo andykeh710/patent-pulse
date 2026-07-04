@@ -198,15 +198,14 @@ async def test_mark_seen_idempotent(client: AsyncClient, db_session):
     await db_session.refresh(user)
     first_last = user.last_today_seen_at
 
-    # Second call
+    # Second call immediately — within 5-min idempotency window → skipped
     r2 = await client.post("/api/v1/today/mark-seen", cookies=_cookie("local-user"))
     assert r2.status_code == 200
+    assert r2.json()["status"] == "skipped"
 
     await db_session.refresh(user)
-    # previous should now hold the first last_seen
-    assert user.previous_today_seen_at == first_last
-    # last_seen should be newer than first
-    assert user.last_today_seen_at > first_last
+    assert user.last_today_seen_at == first_last
+    assert user.previous_today_seen_at is None
 
 
 @pytest.mark.asyncio(loop_scope="function")
