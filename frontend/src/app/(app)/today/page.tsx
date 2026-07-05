@@ -380,6 +380,25 @@ export default function TodayPage() {
     );
   }
 
+  // Show platform overview + stats even for first-time visitors.
+  // The first-time wrapper is shown as a banner, not a page replacement.
+  if (isFirstTime) {
+    return (
+      <div>
+        <PageHeader
+          title="Today"
+          description="Welcome — your first Today briefing"
+          freshnessSources={["patents"]}
+        />
+        <FirstTimeWelcome />
+        {/* Render platform overview below onboarding for first-time users */}
+        {stats && (
+          <PlatformOverview stats={stats} highlights={highlights} watchlist={watchlist} />
+        )}
+      </div>
+    );
+  }
+
   // ── Render ──────────────────────────────────────────────────────────
 
   return (

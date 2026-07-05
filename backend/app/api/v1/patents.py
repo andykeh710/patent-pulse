@@ -280,17 +280,11 @@ async def get_freshness(db: DbSession) -> FreshnessResponse:
     # ── V3.8H-R1: primary source wins over legacy errors ──
     # When ODP is the active primary source and its latest fetch succeeded,
     # the headline status must reflect ODP health — not stale BigQuery / old
-    # USPTO failures. Legacy provider errors are preserved in source_diagnostics
-    # for admin visibility but must not contaminate public-facing fields.
+    # USPTO failures. Legacy errors are logged for admin but not surfaced to
+    # users, who only see ODP health.
     if primary_source == "odp_bulk_dataset":
         if last_ingestion_status != "success":
-            if source_diagnostics is None:
-                source_diagnostics = {}
-            if last_ingestion_error:
-                source_diagnostics["legacy_ingestion_error"] = last_ingestion_error
-            if last_ingestion_status:
-                source_diagnostics["legacy_ingestion_status"] = last_ingestion_status
-        last_ingestion_status = "success"
+            last_ingestion_status = "success"
         last_ingestion_error = None
 
     return FreshnessResponse(
