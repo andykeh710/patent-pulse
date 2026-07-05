@@ -42,7 +42,7 @@ function CitationBadge({
 
 // ── Citation-aware markdown renderer ──────────────────────────────────
 
-const CITATION_RE = /\[((?:USPTO|EPO|WIPO):[A-Z0-9_/-]+)\]/g;
+const CITATION_RE = /\[((?:USPTO|EPO|WIPO):[A-Z0-9_/-]+|\d{7,8})\]/g;
 
 function renderWithCitations(
   content: string,
